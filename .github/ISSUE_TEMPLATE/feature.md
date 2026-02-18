@@ -1,6 +1,9 @@
-## 📌 Title
-[Short descriptive title]
-
+---
+name: Feature
+about: Create a new feature task
+title: "[FEATURE] "
+labels: feature
+assignees: ""
 ---
 
 ## 🎯 Goal
@@ -14,8 +17,6 @@ Detailed explanation of the task.
 ---
 
 ## 📦 Deliverable
-What must exist at the end?
-
 - [ ] Code written
 - [ ] Deployed
 - [ ] Tested
@@ -25,6 +26,17 @@ What must exist at the end?
 
 ## 🔗 Dependencies
 List related issues or blockers.
+
+---
+
+## ⏱ Estimated effort
+S / M / L
+
+---
+
+## 🧪 How to test
+Describe verification steps.
+
 
 ---
 
