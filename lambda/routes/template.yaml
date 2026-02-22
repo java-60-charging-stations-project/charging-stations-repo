@@ -1,0 +1,51 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Charging Stations Lambda - invokable from another account
+
+Globals:
+  Function:
+    Runtime: python3.13
+    MemorySize: 128
+    Timeout: 10
+
+
+Parameters:
+  Region:
+    Type: String
+    Description: AWS region
+    Default: "il-central-1"
+  InvokerAccountId:
+    Type: String
+    Description: AWS account ID that is allowed to invoke this Lambda (e.g. the account that runs Node.js and calls Invoke)
+    Default: "852215679994"
+  InvokerApiGatewayId:
+    Type: String
+    Description: API Gateway ID that is allowed to invoke this Lambda (e.g. the API Gateway that runs Node.js and calls Invoke)
+    Default: "api-gateway-id"
+
+Resources:
+  CommonLoggerLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      ContentUri: ../layers/common
+      CompatibleRuntimes:
+        - python3.13
+      Description: Common logger for charging-stations Lambdas
+  HealthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: charging-stations-health
+      Handler: health.app.handler
+      CodeUri: .
+      Layers:
+        - !Ref CommonLoggerLayer
+      Description: Health check - returns {"code":200,"status":"running"}
+      # No env vars needed for health
+
+  # Cross-account invoke permission: allow the other account to call this Lambda
+  HealthInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref HealthFunction
+      Action: lambda:InvokeFunction
+      Principal: !Sub "arn:aws:iam::${InvokerAccountId}:root"
