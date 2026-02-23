@@ -6,16 +6,27 @@ There is no SNS subscription; callers invoke the functions and get a response.
 
 ## Access
 
-Invoke permission is granted at the **AWS account** level. Provide the caller’s AWS Account ID when deploying 
-so that account can invoke these Lambdas.
+Invoke permission is granted at the **AWS account** level.
+Provide the caller’s AWS Account ID when deploying using sam deploy --guided (or via samconfig / parameter overrides) so that account can invoke these Lambdas.
+Provide your own AWS Account ID in LAMBDA_ACCOUNT_ID variable in GitHub repo → Settings → Secrets and variables → Actions → Variables
+so that other contributors can reach your lambdas
 
 ## Routes
+
+Route lambdas are deployed from lambdas/routes
 
 ### `/health` – Health check
 
 - **Payload:** Empty (e.g. `{}`).
 - **Response:** `{"code": 200, "status": "running"}`.
 
-## Integration test
+#### Integration test
 
-The health route has an integration test that invokes the deployed Lambda. If the test **passes**, the script exits with code 0 and prints nothing. On failure, it prints an assertion error and traceback.
+The health route has an integration test that invokes the deployed Lambda. 
+To run the test get LAMBDA_ACCOUNT_ID from GitHub repo → Settings → Secrets and variables → Actions → Variables
+Then run the test from /lambda directory passing LAMBDA_ACCOUNT_ID as an argument:
+
+Example 1: python -m tests.integration.routes.health_invoker **LAMBDA_ACCOUNT_ID**
+Example 2: python -m tests.integration.routes.health_invoker --account **LAMBDA_ACCOUNT_ID**
+
+If the test **passes**, the script exits with code 0 and prints nothing. On failure, it prints an assertion error and traceback.

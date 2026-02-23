@@ -31,3 +31,4 @@ pytest.xml
 #pytest json report
 pytest.json
 #pytest html report
+__pycache__/

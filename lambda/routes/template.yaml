@@ -10,18 +10,10 @@ Globals:
 
 
 Parameters:
-  Region:
-    Type: String
-    Description: AWS region
-    Default: "il-central-1"
   InvokerAccountId:
     Type: String
     Description: AWS account ID that is allowed to invoke this Lambda (e.g. the account that runs Node.js and calls Invoke)
     Default: "852215679994"
-  InvokerApiGatewayId:
-    Type: String
-    Description: API Gateway ID that is allowed to invoke this Lambda (e.g. the API Gateway that runs Node.js and calls Invoke)
-    Default: "api-gateway-id"
 
 Resources:
   CommonLoggerLayer:

@@ -11,9 +11,13 @@ lint = true
 
 [default.deploy.parameters]
 stack_name = "charging-stations-routes"
+region = "il-central-1"
 capabilities = "CAPABILITY_IAM"
 confirm_changeset = true
 resolve_s3 = true
+s3_prefix = "charging-stations-routes"
+disable_rollback = true
+image_repositories = []
 
 [default.package.parameters]
 resolve_s3 = true
