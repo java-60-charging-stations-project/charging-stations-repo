@@ -1,5 +1,5 @@
-import { apiClient } from "@/services/api/api";
-import { useState } from "react";
+import { apiClient } from "@/services/api";
+import { useCallback, useState } from "react";
 import type { FC } from "react";
 import { getLogger } from "@/services/logging";
 
@@ -28,27 +28,27 @@ const HealthChecker: FC<HealthCheckerProps> = ({
   
   const buttonCaption = buttonText ?? `Check ${endpoint}`;
 
-  logger.debug("HealthChecker rendering...");
-
-  const handleClick = async () => {
-    try {
-      setIsLoading(true);
-      const {code, status} = await apiClient.get<HealthResponse>(endpoint);
-      setCheckInfo(`Successfully checked at ${getTime()}. Response: code="${code}", status="${status}"`);
-    }
-    catch (error) {
-      logger.error(`Error while checking endpoint: "${endpoint}". Error: `, error);
-      setCheckInfo(`Check failure at ${getTime()}`);
-    }
-    finally {
-      setIsLoading(false);
-    }
-  }
+  const handleClick = useCallback(
+    async () => {
+      try {
+        setIsLoading(true);
+        const { code, status } = await apiClient.get<HealthResponse>(endpoint);
+        setCheckInfo(`Successfully checked at ${getTime()}. Response: code="${code}", status="${status}"`);
+      }
+      catch (error) {
+        logger.error("Health check failed", { endpoint, error });
+        setCheckInfo(`Check failure at ${getTime()}`);
+      }
+      finally {
+        setIsLoading(false);
+      }
+    }, [endpoint]
+  );
   
   return (
     <div>
-      <p>Health checker for "{endpoint}"</p>
-      <button type="button" onClick={handleClick}>
+      <p>Health checker for {endpoint}</p>
+      <button type="button" onClick={handleClick} disabled={isLoading}>
         {isLoading? "Requesting...": buttonCaption}
       </button>
       <p>{checkInfo}</p>
