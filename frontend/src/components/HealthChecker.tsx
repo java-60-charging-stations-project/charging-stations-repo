@@ -7,7 +7,12 @@ const logger = getLogger();
 
 function getTime(): string {
   const now = new Date();
-  return now.toLocaleDateString();
+  return now.toTimeString();
+}
+
+interface HealthResponse {
+    code: number;
+    status: string;
 }
 
 interface HealthCheckerProps {
@@ -28,12 +33,12 @@ const HealthChecker: FC<HealthCheckerProps> = ({
   const handleClick = async () => {
     try {
       setIsLoading(true);
-      const result = apiClient.get(endpoint);
-      setCheckInfo(`Successfully checked at ${getTime()}. Response: "${result.toString()}"`);
+      const {code, status} = await apiClient.get<HealthResponse>(endpoint);
+      setCheckInfo(`Successfully checked at ${getTime()}. Response: code="${code}", status="${status}"`);
     }
     catch (error) {
-      logger.error(`Error while checking endpoint: "${endpoint}"`);
-      setCheckInfo(`Check failure at ${getTime()}. Error: ${error}`);
+      logger.error(`Error while checking endpoint: "${endpoint}". Error: `, error);
+      setCheckInfo(`Check failure at ${getTime()}`);
     }
     finally {
       setIsLoading(false);
@@ -42,6 +47,7 @@ const HealthChecker: FC<HealthCheckerProps> = ({
   
   return (
     <div>
+      <p>Health checker for "{endpoint}"</p>
       <button type="button" onClick={handleClick}>
         {isLoading? "Requesting...": buttonCaption}
       </button>
