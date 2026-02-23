@@ -15,42 +15,38 @@ const DEFAULT_LEVEL: LogLevel = "info";
 const MAIN_LOGGER_NAME: string = "app";
 
 const LOG_HANDLERS = {
-    debug: console.log,
-    info: console.log,
-    warn: console.warn,
-    error: console.error,
-} as Record<LogLevel, LogHandler>;
+    debug: (...args) => console.log(...args),
+    info:  (...args) => console.log(...args),
+    warn:  (...args) => console.warn(...args),
+    error: (...args) => console.error(...args),
+} satisfies Record<LogLevel, LogHandler>;
 
 function getLogLevel(value: string | undefined): LogLevel {
     const level = DEFAULT_LEVEL;
     if (value == undefined) {
-        console.log('Level value is undefined. Attach default log level: ', level)
+        console.log(`No log level provided. Falling back to defaults: "${level}"`);
         return level;
     }
     const normalized: string = value.toLowerCase();
-    if (normalized in LOG_LEVELS) {
+    if (Object.keys(LOG_LEVELS).includes(normalized)) {
+        console.log(`Log level set to "${normalized}"`)
         return (normalized as LogLevel);
     }
-    console.warn('Wrong log level value received: ', value, 'Attach default log level: ', level)
+    console.warn(`Invalid log level value provided: "${value}". Falling back to defaults: "${level}"`);
     return level;
 }
 
 class Logger {
-    private logLevel: LogLevel;
-    private name: string;
+    private readonly logLevel: LogLevel;
+    private readonly name: string;
     
     constructor(name: string, logLevel: LogLevel) {
         this.logLevel = logLevel;
         this.name = name;
     }
     
-    private formatMessage(message: string): string {
-        const elements = [];
-        elements.push(this.name);
-        elements.push(this.logLevel.toString().toUpperCase());
-        elements.push(message);
-
-        return elements.join(' ')
+    private formatMessage(level: LogLevel, message: string): string {
+        return `[${this.name}] [${level.toUpperCase()}] ${message}`;
     }
 
     private log(level: LogLevel, message: string, ...others: unknown[]) {
@@ -58,7 +54,7 @@ class Logger {
             return;
         }
         const handler = LOG_HANDLERS[level];
-        const formatted = this.formatMessage(message);
+        const formatted = this.formatMessage(level, message);
         
         handler(formatted, ...others);
     }
@@ -72,19 +68,19 @@ class Logger {
     }
 
     public debug(message: string, ...others: unknown[]) {
-        this.log('debug', message, others);
+        this.log('debug', message, ...others);
     }
 
     public info(message: string, ...others: unknown[]) {
-        this.log('info', message, others);
+        this.log('info', message, ...others);
     }
 
     public warn(message: string, ...others: unknown[]) {
-        this.log('info', message, others);
+        this.log('info', message, ...others);
     }
 
     public error(message: string, ...others: unknown[]) {
-        this.log('error', message, others);
+        this.log('error', message, ...others);
     }
 }
 
