@@ -13,7 +13,10 @@ Parameters:
   InvokerAccountId:
     Type: String
     Description: AWS account ID that is allowed to invoke this Lambda (e.g. the account that runs Node.js and calls Invoke)
-    Default: "852215679994"
+    Default: ""
+
+Conditions:
+  UseInvokerAccount: !Not [!Equals [!Ref InvokerAccountId, ""]]
 
 Resources:
   CommonLoggerLayer:
@@ -23,6 +26,7 @@ Resources:
       CompatibleRuntimes:
         - python3.13
       Description: Common logger for charging-stations Lambdas
+      
   HealthFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -32,11 +36,11 @@ Resources:
       Layers:
         - !Ref CommonLoggerLayer
       Description: Health check - returns {"code":200,"status":"running"}
-      # No env vars needed for health
 
-  # Cross-account invoke permission: allow the other account to call this Lambda
+  # Cross-account: only when InvokerAccountId is provided
   HealthInvokePermission:
     Type: AWS::Lambda::Permission
+    Condition: UseInvokerAccount
     Properties:
       FunctionName: !Ref HealthFunction
       Action: lambda:InvokeFunction
