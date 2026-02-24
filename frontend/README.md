@@ -666,27 +666,6 @@ cp env.example .env
 
 ---
 
-## Running the App
-
-```bash
-# install dependencies
-npm install
-
-# copy env template
-cp env.example .env
-
-# development server → http://localhost:5173
-npm run dev
-
-# type-check only
-npx tsc --noEmit
-
-# production build → dist/
-npm run build
-
-# preview production build locally
-npm run preview
-```
 
 ---
 
