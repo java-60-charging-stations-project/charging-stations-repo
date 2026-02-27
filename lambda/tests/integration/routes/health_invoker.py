@@ -17,8 +17,8 @@ def invoke_health_function(account_id):
 def test_health_function(account_id):
     responseBytes = invoke_health_function(account_id)
     response = json.loads(responseBytes)
-    assert response['statusCode'] == 200
-    assert json.loads(response['body']) == {'code': 200, 'status': 'running'}
+    assert response['code'] == 200
+    assert response['status'] == 'running'
 
 if __name__ == '__main__':
     account_id = parse_aws_account_id_from_args()
