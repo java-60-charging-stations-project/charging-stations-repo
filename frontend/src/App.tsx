@@ -49,9 +49,9 @@ export default function App() {
       {/* Root → Dashboard */}
       <Route path="/" element={<ProtectedRoute><Wrap><Dashboard /></Wrap></ProtectedRoute>} />
 
-      {/* Stations */}
-      <Route path="/stations" element={<ProtectedRoute><Wrap><StationList /></Wrap></ProtectedRoute>} />
-      <Route path="/stations/:id" element={<ProtectedRoute><Wrap><StationDetail /></Wrap></ProtectedRoute>} />
+      {/* Stations — public (guests can browse, but not start charging) */}
+      <Route path="/stations" element={<Wrap><StationList /></Wrap>} />
+      <Route path="/stations/:id" element={<Wrap><StationDetail /></Wrap>} />
 
       {/* Sessions */}
       <Route path="/sessions/current" element={<ProtectedRoute><Wrap><ChargingSession /></Wrap></ProtectedRoute>} />

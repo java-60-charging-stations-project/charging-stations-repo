@@ -21,7 +21,7 @@ export default function StationList() {
 
   useEffect(() => {
     loadStations();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
 
   const loadStations = async () => {
@@ -38,48 +38,77 @@ export default function StationList() {
   if (loading) return <LoadingSpinner />;
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Charging Stations</h1>
-        <select
-          value={filter}
-          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilter(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 outline-none"
-        >
-          <option value="">All Stations</option>
-          <option value="ACTIVE">Active</option>
-          <option value="MAINTENANCE">Maintenance</option>
-          <option value="OUT_OF_ORDER">Out of Order</option>
-        </select>
+    <div className="page-enter">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-ios-label tracking-tight">Станции</h1>
+          <p className="text-base mt-1" style={{ color: 'rgba(60,60,67,0.55)' }}>
+            Доступные зарядные комплексы
+          </p>
+        </div>
+
+        {/* iOS-styled select */}
+        <div className="relative w-full sm:w-auto">
+          <select
+            value={filter}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilter(e.target.value)}
+            className="input-ios appearance-none pr-10 cursor-pointer sm:min-w-[180px]"
+          >
+            <option value="">Все станции</option>
+            <option value="ACTIVE">Только активные</option>
+            <option value="MAINTENANCE">На обслуживании</option>
+            <option value="OUT_OF_ORDER">Не работают</option>
+          </select>
+          <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none" style={{ color: 'rgba(60,60,67,0.45)' }}>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </div>
       </div>
 
       {stations.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">No stations found</div>
+        <div className="text-center py-20 px-4">
+          <div className="inline-flex items-center justify-center w-24 h-24 rounded-3xl mb-6" style={{ background: 'rgba(120,120,128,0.08)' }}>
+            <svg className="w-10 h-10" style={{ color: 'rgba(60,60,67,0.3)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-ios-label mb-2">Станции не найдены</h2>
+          <p style={{ color: 'rgba(60,60,67,0.45)' }}>Попробуйте изменить параметры фильтрации</p>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {stations.map((station) => (
             <Link
               key={station.stationId}
               to={`/stations/${station.stationId}`}
-              className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition hover:border-green-300"
+              className="glass rounded-3xl p-6 card-hover block group"
             >
-              <div className="flex items-start justify-between mb-3">
-                <h3 className="font-semibold text-gray-900">{station.name}</h3>
+              <div className="flex items-start justify-between mb-4">
+                <div className="pr-3">
+                  <h3 className="font-bold text-lg text-ios-label leading-tight group-hover:text-blue-500 transition-colors">
+                    {station.name}
+                  </h3>
+                  <p className="text-sm mt-1" style={{ color: 'rgba(60,60,67,0.55)' }}>
+                    {station.address}
+                  </p>
+                </div>
                 <StatusBadge status={station.status} />
               </div>
-              <p className="text-sm text-gray-500 mb-4">{station.address}</p>
-              <div className="grid grid-cols-3 gap-3 text-center">
-                <div className="bg-gray-50 rounded-lg p-2">
-                  <div className="text-lg font-bold text-gray-900">{station.totalPorts}</div>
-                  <div className="text-xs text-gray-500">Ports</div>
+
+              <div className="grid grid-cols-3 gap-3 text-center mt-6">
+                <div className="rounded-2xl p-2.5 transition-colors" style={{ background: 'rgba(120,120,128,0.06)' }}>
+                  <div className="text-lg font-bold text-ios-label">{station.totalPorts}</div>
+                  <div className="text-xs font-medium" style={{ color: 'rgba(60,60,67,0.45)' }}>Входов</div>
                 </div>
-                <div className="bg-gray-50 rounded-lg p-2">
-                  <div className="text-lg font-bold text-gray-900">{station.powerKw}</div>
-                  <div className="text-xs text-gray-500">kW</div>
+                <div className="rounded-2xl p-2.5 transition-colors" style={{ background: 'rgba(120,120,128,0.06)' }}>
+                  <div className="text-lg font-bold text-ios-label">{station.powerKw}<span className="text-sm font-medium ml-0.5">kW</span></div>
+                  <div className="text-xs font-medium" style={{ color: 'rgba(60,60,67,0.45)' }}>Мощность</div>
                 </div>
-                <div className="bg-gray-50 rounded-lg p-2">
-                  <div className="text-lg font-bold text-green-600">${station.tariffPerKwh}</div>
-                  <div className="text-xs text-gray-500">/kWh</div>
+                <div className="rounded-2xl p-2.5 transition-colors" style={{ background: 'rgba(48,209,88,0.08)' }}>
+                  <div className="text-lg font-bold" style={{ color: '#28B14C' }}>${station.tariffPerKwh}</div>
+                  <div className="text-xs font-medium" style={{ color: '#30D158' }}>за kWh</div>
                 </div>
               </div>
             </Link>

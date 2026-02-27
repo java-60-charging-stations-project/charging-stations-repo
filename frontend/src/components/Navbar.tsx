@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 
+
 const BoltIcon = () => (
   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -17,7 +18,7 @@ const MobileDivider = () => (
 )
 
 export default function Navbar() {
-  const { user, logout, isAdmin, isTechSupport } = useAuth()
+  const { user, logout, isAdmin, isTechSupport, isAuthenticated } = useAuth()
   const location = useLocation()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
@@ -49,12 +50,15 @@ export default function Navbar() {
 
           {/* Desktop nav */}
           <div className="hidden lg:flex items-center space-x-1 bg-ios-fill rounded-2xl px-2 py-1.5">
-            {/* All users */}
             <Link to="/stations" className={linkClass('/stations')}>Stations</Link>
-            <Link to="/sessions/current" className={linkClass('/sessions/current')}>Charging</Link>
-            <Link to="/sessions/history" className={linkClass('/sessions/history')}>History</Link>
 
-            {/* Tech support & admin */}
+            {isAuthenticated && (
+              <>
+                <Link to="/sessions/current" className={linkClass('/sessions/current')}>Charging</Link>
+                <Link to="/sessions/history" className={linkClass('/sessions/history')}>History</Link>
+              </>
+            )}
+
             {(isTechSupport || isAdmin) && (
               <>
                 <Divider />
@@ -65,7 +69,6 @@ export default function Navbar() {
               </>
             )}
 
-            {/* Admin only */}
             {isAdmin && (
               <>
                 <Divider />
@@ -76,28 +79,48 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Right: profile + role */}
+          {/* Right: profile / guest actions */}
           <div className="flex items-center space-x-3">
-            <div className="hidden sm:flex items-center space-x-2.5">
-              <Link
-                to="/account/profile"
-                className="text-sm font-medium truncate max-w-[140px] hover:underline"
-                style={{ color: 'rgba(60,60,67,0.7)' }}
-              >
-                {user?.email}
-              </Link>
-              <span className={roleColors}>{user?.role}</span>
-            </div>
-
-            <button
-              onClick={logout}
-              className="hidden sm:flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-sm font-medium transition-all duration-200"
-              style={{ color: '#FF453A', background: 'rgba(255,69,58,0.08)' }}
-              onMouseEnter={(e: React.MouseEvent<HTMLButtonElement>) => (e.currentTarget.style.background = 'rgba(255,69,58,0.14)')}
-              onMouseLeave={(e: React.MouseEvent<HTMLButtonElement>) => (e.currentTarget.style.background = 'rgba(255,69,58,0.08)')}
-            >
-              Sign Out
-            </button>
+            {isAuthenticated ? (
+              <>
+                <div className="hidden sm:flex items-center space-x-2.5">
+                  <Link
+                    to="/account/profile"
+                    className="text-sm font-medium truncate max-w-[140px] hover:underline"
+                    style={{ color: 'rgba(60,60,67,0.7)' }}
+                  >
+                    {user?.email}
+                  </Link>
+                  <span className={roleColors}>{user?.role}</span>
+                </div>
+                <button
+                  onClick={logout}
+                  className="hidden sm:flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-sm font-medium transition-all duration-200"
+                  style={{ color: '#FF453A', background: 'rgba(255,69,58,0.08)' }}
+                  onMouseEnter={(e: React.MouseEvent<HTMLButtonElement>) => (e.currentTarget.style.background = 'rgba(255,69,58,0.14)')}
+                  onMouseLeave={(e: React.MouseEvent<HTMLButtonElement>) => (e.currentTarget.style.background = 'rgba(255,69,58,0.08)')}
+                >
+                  Sign Out
+                </button>
+              </>
+            ) : (
+              <div className="hidden sm:flex items-center gap-2">
+                <Link
+                  to="/register"
+                  className="px-4 py-1.5 rounded-xl text-sm font-medium transition-all duration-200"
+                  style={{ color: 'rgba(60,60,67,0.7)', background: 'rgba(120,120,128,0.08)' }}
+                >
+                  Register
+                </Link>
+                <Link
+                  to="/login"
+                  className="px-4 py-1.5 rounded-xl text-sm font-medium text-white transition-all duration-200"
+                  style={{ background: 'linear-gradient(135deg, #30D158, #0A84FF)' }}
+                >
+                  Sign In
+                </Link>
+              </div>
+            )}
 
             {/* Hamburger */}
             <button
@@ -123,17 +146,16 @@ export default function Navbar() {
       {mobileMenuOpen && (
         <div className="lg:hidden glass border-t border-white/50 animate-fade-in">
           <div className="px-4 py-4 space-y-1">
-            {[
-              { to: '/stations', label: 'Stations' },
-              { to: '/sessions/current', label: 'Charging' },
-              { to: '/sessions/history', label: 'History' },
-              { to: '/account/profile', label: 'Profile' },
-              { to: '/account/settings', label: 'Settings' },
-            ].map(({ to, label }) => (
-              <Link key={to} to={to} className={`block ${linkClass(to)}`} onClick={closeMobile}>
-                {label}
-              </Link>
-            ))}
+            <Link to="/stations" className={`block ${linkClass('/stations')}`} onClick={closeMobile}>Stations</Link>
+
+            {isAuthenticated && (
+              <>
+                <Link to="/sessions/current" className={`block ${linkClass('/sessions/current')}`} onClick={closeMobile}>Charging</Link>
+                <Link to="/sessions/history" className={`block ${linkClass('/sessions/history')}`} onClick={closeMobile}>History</Link>
+                <Link to="/account/profile" className={`block ${linkClass('/account/profile')}`} onClick={closeMobile}>Profile</Link>
+                <Link to="/account/settings" className={`block ${linkClass('/account/settings')}`} onClick={closeMobile}>Settings</Link>
+              </>
+            )}
 
             {(isTechSupport || isAdmin) && (
               <>
@@ -157,17 +179,40 @@ export default function Navbar() {
           </div>
 
           <div className="border-t border-white/40 px-4 py-4 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold text-ios-label truncate">{user?.email}</p>
-              <span className={`${roleColors} mt-1`}>{user?.role}</span>
-            </div>
-            <button
-              onClick={() => { logout(); closeMobile() }}
-              className="text-sm font-semibold px-3 py-1.5 rounded-xl"
-              style={{ color: '#FF453A', background: 'rgba(255,69,58,0.1)' }}
-            >
-              Sign Out
-            </button>
+            {isAuthenticated ? (
+              <>
+                <div>
+                  <p className="text-sm font-semibold text-ios-label truncate">{user?.email}</p>
+                  <span className={`${roleColors} mt-1`}>{user?.role}</span>
+                </div>
+                <button
+                  onClick={() => { logout(); closeMobile() }}
+                  className="text-sm font-semibold px-3 py-1.5 rounded-xl"
+                  style={{ color: '#FF453A', background: 'rgba(255,69,58,0.1)' }}
+                >
+                  Sign Out
+                </button>
+              </>
+            ) : (
+              <div className="flex items-center gap-2 w-full">
+                <Link
+                  to="/register"
+                  onClick={closeMobile}
+                  className="flex-1 text-center py-2 rounded-xl text-sm font-medium"
+                  style={{ color: 'rgba(60,60,67,0.7)', background: 'rgba(120,120,128,0.08)' }}
+                >
+                  Register
+                </Link>
+                <Link
+                  to="/login"
+                  onClick={closeMobile}
+                  className="flex-1 text-center py-2 rounded-xl text-sm font-medium text-white"
+                  style={{ background: 'linear-gradient(135deg, #30D158, #0A84FF)' }}
+                >
+                  Sign In
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       )}
