@@ -29,6 +29,18 @@ export class AwsLambdaInvoker implements LambdaInvoker {
       return {} as any;
     }
 
-    return JSON.parse(raw) as TResponse;
+    const parsed = JSON.parse(raw);
+
+    // If lambda returns API Gateway proxy format: { statusCode, body: "..." }
+    if (
+      parsed &&
+      typeof parsed === 'object' &&
+      'body' in parsed &&
+      typeof (parsed as any).body === 'string'
+    ) {
+      return JSON.parse((parsed as any).body) as TResponse;
+    }
+
+    return parsed as TResponse;
   }
 }
