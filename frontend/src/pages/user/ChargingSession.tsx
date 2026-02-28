@@ -1,6 +1,7 @@
-import React, { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { sessionsAPI } from '@/api/client';
 import { usePolling } from '@/hooks/usePolling';
+import { useI18n } from '@/i18n/I18nContext';
 import StatusBadge from '@/components/common/StatusBadge';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 
@@ -49,7 +50,6 @@ function CompletedOverlay({ show }: CompletedOverlayProps) {
 
   return (
     <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-      {/* Confetti */}
       {Array.from({ length: 18 }).map((_, i) => (
         <div
           key={i}
@@ -65,7 +65,6 @@ function CompletedOverlay({ show }: CompletedOverlayProps) {
           }}
         />
       ))}
-      {/* Check circle */}
       <div className="charge-complete-bounce">
         <div className="w-24 h-24 rounded-full flex items-center justify-center"
           style={{ background: 'linear-gradient(135deg, #30D158, #34C759)', boxShadow: '0 8px 30px rgba(48,209,88,0.4)' }}>
@@ -79,6 +78,7 @@ function CompletedOverlay({ show }: CompletedOverlayProps) {
 }
 
 export default function ChargingSession() {
+  const { t } = useI18n();
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [stopping, setStopping] = useState<boolean>(false);
@@ -136,8 +136,8 @@ export default function ChargingSession() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
           </svg>
         </div>
-        <h2 className="text-xl font-semibold text-ios-label mb-2">Нет активной сессии</h2>
-        <p style={{ color: 'rgba(60,60,67,0.45)' }}>Перейдите к станции, чтобы начать зарядку</p>
+        <h2 className="text-xl font-semibold text-ios-label mb-2">{t('charging.noSession')}</h2>
+        <p style={{ color: 'rgba(60,60,67,0.45)' }}>{t('charging.noSessionHint')}</p>
       </div>
     );
   }
@@ -152,40 +152,33 @@ export default function ChargingSession() {
   return (
     <div className={`max-w-2xl mx-auto page-enter ${justStarted ? 'animate-[scaleIn_0.5s_ease-out]' : ''}`}>
       <h1 className="text-2xl font-bold text-ios-label mb-6 tracking-tight">
-        {isCharging ? '⚡ Зарядка активна' : isComplete ? '✓ Зарядка завершена' : 'Сессия зарядки'}
+        {isCharging ? t('charging.active') : isComplete ? t('charging.complete') : t('charging.session')}
       </h1>
 
       <div className="glass rounded-3xl p-8 relative overflow-hidden">
-        {/* Completed overlay */}
         <CompletedOverlay show={justCompleted} />
 
-        {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <p className="text-xs font-medium" style={{ color: 'rgba(60,60,67,0.45)' }}>ID сессии</p>
+            <p className="text-xs font-medium" style={{ color: 'rgba(60,60,67,0.45)' }}>{t('charging.sessionId')}</p>
             <p className="font-mono text-sm text-ios-label mt-0.5">{session.sessionId?.slice(0, 12)}...</p>
           </div>
           <StatusBadge status={session.status} />
         </div>
 
-        {/* Circular progress */}
         <div className="flex justify-center mb-8">
           <div className="relative w-52 h-52">
-            {/* Glow */}
             {isCharging && (
               <div className="absolute inset-2 rounded-full charging-glow" style={{ background: 'transparent' }} />
             )}
 
-            {/* Pulse ring */}
             {isCharging && (
               <div className="absolute inset-0 rounded-full charging-pulse-ring"
                 style={{ border: `2px solid ${strokeColor}`, opacity: 0.3 }} />
             )}
 
-            {/* Energy particles */}
             <EnergyParticles active={isCharging} />
 
-            {/* SVG ring */}
             <svg className="w-52 h-52 transform -rotate-90 relative z-10" viewBox="0 0 100 100">
               <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(120,120,128,0.1)" strokeWidth="7" />
               <circle
@@ -201,7 +194,6 @@ export default function ChargingSession() {
               />
             </svg>
 
-            {/* Center content */}
             <div className="absolute inset-0 flex flex-col items-center justify-center z-20">
               {isCharging && (
                 <div className="charging-bolt mb-1" style={{ color: strokeColor }}>
@@ -216,12 +208,11 @@ export default function ChargingSession() {
                 </svg>
               )}
               <span className="text-4xl font-bold text-ios-label">{percent.toFixed(1)}%</span>
-              <span className="text-xs font-medium" style={{ color: 'rgba(60,60,67,0.45)' }}>заряжено</span>
+              <span className="text-xs font-medium" style={{ color: 'rgba(60,60,67,0.45)' }}>{t('charging.charged')}</span>
             </div>
           </div>
         </div>
 
-        {/* Progress bar with shimmer */}
         <div className="mb-8">
           <div className="w-full rounded-full h-2.5" style={{ background: 'rgba(120,120,128,0.1)' }}>
             <div
@@ -236,28 +227,25 @@ export default function ChargingSession() {
           </div>
         </div>
 
-        {/* Stats */}
         <div className="grid grid-cols-2 gap-3 mb-6">
           {[
-            { label: 'Потреблено', value: `${session.energyConsumedKwh.toFixed(2)} kWh`, color: '#0A84FF' },
-            { label: 'Стоимость', value: `$${session.totalCost.toFixed(2)}`, color: '#30D158' },
-            { label: 'Тариф', value: `$${session.tariffPerKwh}/kWh`, color: '#FF9F0A' },
-            { label: 'Ёмкость', value: `${session.batteryCapacityKwh} kWh`, color: '#BF5AF2' },
-          ].map(({ label, value, color }) => (
-            <div key={label} className="rounded-2xl p-4" style={{ background: 'rgba(120,120,128,0.06)' }}>
+            { key: 'consumed', label: t('charging.consumed'), value: `${session.energyConsumedKwh.toFixed(2)} kWh`, color: '#0A84FF' },
+            { key: 'cost', label: t('charging.cost'), value: `$${session.totalCost.toFixed(2)}`, color: '#30D158' },
+            { key: 'tariff', label: t('charging.tariff'), value: `$${session.tariffPerKwh}/kWh`, color: '#FF9F0A' },
+            { key: 'capacity', label: t('charging.capacity'), value: `${session.batteryCapacityKwh} kWh`, color: '#BF5AF2' },
+          ].map(({ key, label, value, color }) => (
+            <div key={key} className="rounded-2xl p-4" style={{ background: 'rgba(120,120,128,0.06)' }}>
               <p className="text-xs font-medium mb-1" style={{ color: 'rgba(60,60,67,0.45)' }}>{label}</p>
               <p className="text-xl font-bold" style={{ color }}>{value}</p>
             </div>
           ))}
         </div>
 
-        {/* Station info */}
         <div className="flex items-center justify-between text-sm mb-6 px-1" style={{ color: 'rgba(60,60,67,0.5)' }}>
-          <span>Станция: {session.stationId?.slice(0, 8)}...</span>
-          <span>Порт: {session.portId}</span>
+          <span>{t('charging.station')}: {session.stationId?.slice(0, 8)}...</span>
+          <span>{t('charging.port')}: {session.portId}</span>
         </div>
 
-        {/* Stop button */}
         {isCharging && (
           <button
             onClick={handleStop}
@@ -270,9 +258,9 @@ export default function ChargingSession() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
-                Останавливаем...
+                {t('charging.stopping')}
               </span>
-            ) : '■ Остановить зарядку'}
+            ) : t('charging.stopCharging')}
           </button>
         )}
       </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { sessionsAPI } from '@/api/client';
+import { useI18n } from '@/i18n/I18nContext';
 import StatusBadge from '@/components/common/StatusBadge';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 
@@ -14,6 +15,7 @@ interface Session {
 }
 
 export default function SessionHistory() {
+  const { t, dateLocale } = useI18n();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -37,9 +39,9 @@ export default function SessionHistory() {
   return (
     <div className="page-enter max-w-6xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-ios-label tracking-tight">История зарядок</h1>
+        <h1 className="text-3xl font-bold text-ios-label tracking-tight">{t('history.title')}</h1>
         <p className="text-base mt-1" style={{ color: 'rgba(60,60,67,0.55)' }}>
-          Список всех ваших прошедших сессий
+          {t('history.subtitle')}
         </p>
       </div>
 
@@ -50,8 +52,8 @@ export default function SessionHistory() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h2 className="text-xl font-semibold text-ios-label mb-2">История пуста</h2>
-          <p style={{ color: 'rgba(60,60,67,0.45)' }}>Вы еще не заряжались на наших станциях</p>
+          <h2 className="text-xl font-semibold text-ios-label mb-2">{t('history.empty')}</h2>
+          <p style={{ color: 'rgba(60,60,67,0.45)' }}>{t('history.emptyHint')}</p>
         </div>
       ) : (
         <div className="glass rounded-4xl overflow-hidden shadow-sm">
@@ -59,7 +61,7 @@ export default function SessionHistory() {
             <table className="min-w-full text-left border-collapse">
               <thead>
                 <tr>
-                  {['Сессия', 'Станция', 'Статус', 'Заряд', 'Потреблено', 'Стоимость', 'Дата'].map((header) => (
+                  {[t('history.session'), t('history.station'), t('history.status'), t('history.charge'), t('history.consumed'), t('history.cost'), t('history.date')].map((header) => (
                     <th
                       key={header}
                       className="px-6 py-4 text-xs font-semibold uppercase tracking-wider whitespace-nowrap"
@@ -92,7 +94,7 @@ export default function SessionHistory() {
                       ${s.totalCost.toFixed(2)}
                     </td>
                     <td className="px-6 py-4 text-sm whitespace-nowrap" style={{ color: 'rgba(60,60,67,0.6)' }}>
-                      {new Date(s.createdAt).toLocaleDateString('ru-RU', {
+                      {new Date(s.createdAt).toLocaleDateString(dateLocale, {
                         day: 'numeric',
                         month: 'short',
                         hour: '2-digit',

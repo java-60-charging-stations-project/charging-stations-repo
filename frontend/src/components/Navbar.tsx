@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
-
+import { useI18n } from '@/i18n/I18nContext'
+import LanguageSwitcher from '@/components/LanguageSwitcher'
 
 const BoltIcon = () => (
   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -19,6 +20,7 @@ const MobileDivider = () => (
 
 export default function Navbar() {
   const { user, logout, isAdmin, isTechSupport, isAuthenticated } = useAuth()
+  const { t } = useI18n()
   const location = useLocation()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
@@ -37,7 +39,6 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
 
-          {/* Logo */}
           <Link to="/" className="flex items-center space-x-2.5 shrink-0 group">
             <div className="w-9 h-9 rounded-2xl flex items-center justify-center text-white transition-transform group-hover:scale-105"
               style={{ background: 'linear-gradient(135deg, #30D158, #0A84FF)' }}>
@@ -48,39 +49,38 @@ export default function Navbar() {
             </span>
           </Link>
 
-          {/* Desktop nav */}
           <div className="hidden lg:flex items-center space-x-1 bg-ios-fill rounded-2xl px-2 py-1.5">
-            <Link to="/stations" className={linkClass('/stations')}>Stations</Link>
+            <Link to="/stations" className={linkClass('/stations')}>{t('nav.stations')}</Link>
 
             {isAuthenticated && (
               <>
-                <Link to="/sessions/current" className={linkClass('/sessions/current')}>Charging</Link>
-                <Link to="/sessions/history" className={linkClass('/sessions/history')}>History</Link>
+                <Link to="/sessions/current" className={linkClass('/sessions/current')}>{t('nav.charging')}</Link>
+                <Link to="/sessions/history" className={linkClass('/sessions/history')}>{t('nav.history')}</Link>
               </>
             )}
 
             {(isTechSupport || isAdmin) && (
               <>
                 <Divider />
-                <Link to="/support/dashboard" className={linkClass('/support/dashboard')}>Dashboard</Link>
-                <Link to="/support/logs" className={linkClass('/support/logs')}>Logs</Link>
-                <Link to="/support/stations" className={linkClass('/support/stations')}>Stations</Link>
-                <Link to="/support/sessions" className={linkClass('/support/sessions')}>Sessions</Link>
+                <Link to="/support/dashboard" className={linkClass('/support/dashboard')}>{t('nav.dashboard')}</Link>
+                <Link to="/support/logs" className={linkClass('/support/logs')}>{t('nav.logs')}</Link>
+                <Link to="/support/stations" className={linkClass('/support/stations')}>{t('nav.stations')}</Link>
+                <Link to="/support/sessions" className={linkClass('/support/sessions')}>{t('nav.sessions')}</Link>
               </>
             )}
 
             {isAdmin && (
               <>
                 <Divider />
-                <Link to="/admin/dashboard" className={linkClass('/admin/dashboard')}>Admin</Link>
-                <Link to="/admin/users" className={linkClass('/admin/users')}>Users</Link>
-                <Link to="/admin/tariffs" className={linkClass('/admin/tariffs')}>Tariffs</Link>
+                <Link to="/admin/dashboard" className={linkClass('/admin/dashboard')}>{t('nav.admin')}</Link>
+                <Link to="/admin/users" className={linkClass('/admin/users')}>{t('nav.users')}</Link>
+                <Link to="/admin/tariffs" className={linkClass('/admin/tariffs')}>{t('nav.tariffs')}</Link>
               </>
             )}
           </div>
 
-          {/* Right: profile / guest actions */}
           <div className="flex items-center space-x-3">
+            <LanguageSwitcher />
             {isAuthenticated ? (
               <>
                 <div className="hidden sm:flex items-center space-x-2.5">
@@ -100,7 +100,7 @@ export default function Navbar() {
                   onMouseEnter={(e: React.MouseEvent<HTMLButtonElement>) => (e.currentTarget.style.background = 'rgba(255,69,58,0.14)')}
                   onMouseLeave={(e: React.MouseEvent<HTMLButtonElement>) => (e.currentTarget.style.background = 'rgba(255,69,58,0.08)')}
                 >
-                  Sign Out
+                  {t('nav.signOut')}
                 </button>
               </>
             ) : (
@@ -110,19 +110,18 @@ export default function Navbar() {
                   className="px-4 py-1.5 rounded-xl text-sm font-medium transition-all duration-200"
                   style={{ color: 'rgba(60,60,67,0.7)', background: 'rgba(120,120,128,0.08)' }}
                 >
-                  Register
+                  {t('nav.register')}
                 </Link>
                 <Link
                   to="/login"
                   className="px-4 py-1.5 rounded-xl text-sm font-medium text-white transition-all duration-200"
                   style={{ background: 'linear-gradient(135deg, #30D158, #0A84FF)' }}
                 >
-                  Sign In
+                  {t('nav.signIn')}
                 </Link>
               </div>
             )}
 
-            {/* Hamburger */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="lg:hidden w-9 h-9 flex items-center justify-center rounded-xl transition-all duration-200"
@@ -142,38 +141,37 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Mobile menu */}
       {mobileMenuOpen && (
         <div className="lg:hidden glass border-t border-white/50 animate-fade-in">
           <div className="px-4 py-4 space-y-1">
-            <Link to="/stations" className={`block ${linkClass('/stations')}`} onClick={closeMobile}>Stations</Link>
+            <Link to="/stations" className={`block ${linkClass('/stations')}`} onClick={closeMobile}>{t('nav.stations')}</Link>
 
             {isAuthenticated && (
               <>
-                <Link to="/sessions/current" className={`block ${linkClass('/sessions/current')}`} onClick={closeMobile}>Charging</Link>
-                <Link to="/sessions/history" className={`block ${linkClass('/sessions/history')}`} onClick={closeMobile}>History</Link>
-                <Link to="/account/profile" className={`block ${linkClass('/account/profile')}`} onClick={closeMobile}>Profile</Link>
-                <Link to="/account/settings" className={`block ${linkClass('/account/settings')}`} onClick={closeMobile}>Settings</Link>
+                <Link to="/sessions/current" className={`block ${linkClass('/sessions/current')}`} onClick={closeMobile}>{t('nav.charging')}</Link>
+                <Link to="/sessions/history" className={`block ${linkClass('/sessions/history')}`} onClick={closeMobile}>{t('nav.history')}</Link>
+                <Link to="/account/profile" className={`block ${linkClass('/account/profile')}`} onClick={closeMobile}>{t('nav.profile')}</Link>
+                <Link to="/account/settings" className={`block ${linkClass('/account/settings')}`} onClick={closeMobile}>{t('nav.settings')}</Link>
               </>
             )}
 
             {(isTechSupport || isAdmin) && (
               <>
                 <MobileDivider />
-                <Link to="/support/dashboard" className={`block ${linkClass('/support/dashboard')}`} onClick={closeMobile}>Dashboard</Link>
-                <Link to="/support/logs" className={`block ${linkClass('/support/logs')}`} onClick={closeMobile}>Error Logs</Link>
-                <Link to="/support/stations" className={`block ${linkClass('/support/stations')}`} onClick={closeMobile}>Stations</Link>
-                <Link to="/support/sessions" className={`block ${linkClass('/support/sessions')}`} onClick={closeMobile}>Active Sessions</Link>
+                <Link to="/support/dashboard" className={`block ${linkClass('/support/dashboard')}`} onClick={closeMobile}>{t('nav.dashboard')}</Link>
+                <Link to="/support/logs" className={`block ${linkClass('/support/logs')}`} onClick={closeMobile}>{t('nav.errorLogs')}</Link>
+                <Link to="/support/stations" className={`block ${linkClass('/support/stations')}`} onClick={closeMobile}>{t('nav.stations')}</Link>
+                <Link to="/support/sessions" className={`block ${linkClass('/support/sessions')}`} onClick={closeMobile}>{t('nav.activeSessions')}</Link>
               </>
             )}
 
             {isAdmin && (
               <>
                 <MobileDivider />
-                <Link to="/admin/dashboard" className={`block ${linkClass('/admin/dashboard')}`} onClick={closeMobile}>Admin Dashboard</Link>
-                <Link to="/admin/users" className={`block ${linkClass('/admin/users')}`} onClick={closeMobile}>Users</Link>
-                <Link to="/admin/stations" className={`block ${linkClass('/admin/stations')}`} onClick={closeMobile}>Stations</Link>
-                <Link to="/admin/tariffs" className={`block ${linkClass('/admin/tariffs')}`} onClick={closeMobile}>Tariffs</Link>
+                <Link to="/admin/dashboard" className={`block ${linkClass('/admin/dashboard')}`} onClick={closeMobile}>{t('nav.adminDashboard')}</Link>
+                <Link to="/admin/users" className={`block ${linkClass('/admin/users')}`} onClick={closeMobile}>{t('nav.users')}</Link>
+                <Link to="/admin/stations" className={`block ${linkClass('/admin/stations')}`} onClick={closeMobile}>{t('nav.stations')}</Link>
+                <Link to="/admin/tariffs" className={`block ${linkClass('/admin/tariffs')}`} onClick={closeMobile}>{t('nav.tariffs')}</Link>
               </>
             )}
           </div>
@@ -190,7 +188,7 @@ export default function Navbar() {
                   className="text-sm font-semibold px-3 py-1.5 rounded-xl"
                   style={{ color: '#FF453A', background: 'rgba(255,69,58,0.1)' }}
                 >
-                  Sign Out
+                  {t('nav.signOut')}
                 </button>
               </>
             ) : (
@@ -201,7 +199,7 @@ export default function Navbar() {
                   className="flex-1 text-center py-2 rounded-xl text-sm font-medium"
                   style={{ color: 'rgba(60,60,67,0.7)', background: 'rgba(120,120,128,0.08)' }}
                 >
-                  Register
+                  {t('nav.register')}
                 </Link>
                 <Link
                   to="/login"
@@ -209,7 +207,7 @@ export default function Navbar() {
                   className="flex-1 text-center py-2 rounded-xl text-sm font-medium text-white"
                   style={{ background: 'linear-gradient(135deg, #30D158, #0A84FF)' }}
                 >
-                  Sign In
+                  {t('nav.signIn')}
                 </Link>
               </div>
             )}
