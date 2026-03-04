@@ -17,17 +17,14 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    type: string
+                $ref: '#/components/schemas/HealthResponse'
 
         '500':
           $ref: '#/components/responses/ErrorResponse'
 
   /welcome:
     get:
-      operationId: getWelcomePageData
+      operationId: listWelcomePageData
       summary: Get list of all active charging stations for the welcome page (unauthenticated)
       description: Returns all public data about active charging stations.
       parameters:
@@ -50,9 +47,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/StationBasicInfo'
+                $ref: '#/components/schemas/StationBasicInfoCollectionResponse'
 
         '400':
           $ref: '#/components/responses/ErrorResponse'
@@ -62,7 +57,7 @@ paths:
 
   /stations:
     get:
-      operationId: getStations
+      operationId: listStations
       summary: Get list of charging stations
       description: Returns a list of charging stations data
       parameters:
@@ -92,9 +87,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Station'
+                $ref: '#/components/schemas/StationCollectionResponse'
 
         '400':
           $ref: '#/components/responses/ErrorResponse'
@@ -120,7 +113,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Station'
+                $ref: '#/components/schemas/StationSingleResponse'
 
         '400':
           $ref: '#/components/responses/ErrorResponse'
@@ -131,9 +124,125 @@ paths:
         '500':
           $ref: '#/components/responses/ErrorResponse'
 
+  /sessions/current:
+    get:
+      operationId: getCurrentSession
+      summary: Get current session
+      responses:
+        '200':
+          description: Current charging session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionSingleResponse'
+
+        '400':
+          $ref: '#/components/responses/ErrorResponse'
+
+        '404':
+          $ref: '#/components/responses/ErrorResponse'
+
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
+
+  /sessions/history/{sessionId}:
+    get:
+      operationId: getSessionById
+      summary: Get session history item by ID
+      description: Returns a single user charging session from history by its ID.
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          description: Session history identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session history item
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionHistorySingleResponse'
+
+        '400':
+          $ref: '#/components/responses/ErrorResponse'
+
+        '404':
+          $ref: '#/components/responses/ErrorResponse'
+
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
+
+  /sessions/history:
+    get:
+      operationId: listSessionHistory
+      summary: Get user charging sessions history
+      description: Returns user charging sessions during the specified period.
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          description: User identifier
+          schema:
+            type: string
+        - name: dateFrom
+          in: query
+          required: false
+          description: Start date for history period
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          required: false
+          description: End date for history period (if omitted, defaults to current date/time)
+          schema:
+            type: string
+            format: date
+        - name: stationId
+          in: query
+          required: false
+          description: Filter by station identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User charging sessions history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionHistoryCollectionResponse'
+
+        '400':
+          $ref: '#/components/responses/ErrorResponse'
+
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
+
 components:
 
   schemas:
+    HealthResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+
+    Meta:
+      type: object
+      properties:
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalItems:
+          type: integer
+        totalPages:
+          type: integer
+
     Error:
       type: object
       required: [error]
@@ -173,6 +282,24 @@ components:
         tariff:
           type: string
 
+    StationSingleResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/Station'
+
+    StationCollectionResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Station'
+        meta:
+          $ref: '#/components/schemas/Meta'
+
     StationBasicInfo:
       type: object
       required: [id, address, providerName, maxPowerKw, portCount]
@@ -189,6 +316,136 @@ components:
           type: integer
         portCount:
           type: integer
+
+    StationBasicInfoCollectionResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/StationBasicInfo'
+        meta:
+          $ref: '#/components/schemas/Meta'
+
+    Session:
+      type: object
+      required:
+        - id
+        - stationId
+        - status
+        - startedAt
+        - durationMinutes
+        - chargeLevelPercent
+        - energyConsumedKWh
+        - maxPowerKw
+        - pricePerKWh
+        - currentCost
+        - currency
+        - estimatedMinutesRemaining
+      properties:
+        id:
+          type: string
+        stationId:
+          type: string
+        status:
+          type: string
+          enum: [preparing, charging, paused, completed, faulted, error]
+        startedAt:
+          type: string
+          format: date-time
+          example: '2026-03-04T09:00:00Z'
+        endedAt:
+          type: string
+          format: date-time
+          nullable: true
+        durationMinutes:
+          type: integer
+        chargeLevelPercent:
+          type: integer
+        energyConsumedKWh:
+          type: number
+          format: float
+          example: 18.4
+        maxPowerKw:
+          type: integer
+        pricePerKWh:
+          type: number
+          format: float
+          example: 1.50
+        currentCost:
+          type: number
+          format: float
+          example: 27.60
+        currency:
+          type: string
+          example: ILS
+        estimatedMinutesRemaining:
+          type: integer
+          example: 25
+
+    SessionSingleResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/Session'
+
+    SessionHistoryItem:
+      type: object
+      required:
+        - id
+        - stationId
+        - startedAt
+        - endedAt
+        - totalDurationMinutes
+        - energyConsumedKWh
+        - pricePerKWh
+        - totalCost
+        - currency
+      properties:
+        id:
+          type: string
+        stationId:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        endedAt:
+          type: string
+          format: date-time
+          nullable: true
+        totalDurationMinutes:
+          type: integer
+        energyConsumedKWh:
+          type: number
+          format: float
+        pricePerKWh:
+          type: number
+          format: float
+        totalCost:
+          type: number
+          format: float
+        currency:
+          type: string
+
+    SessionHistoryCollectionResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/SessionHistoryItem'
+        meta:
+          $ref: '#/components/schemas/Meta'
+
+    SessionHistorySingleResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/SessionHistoryItem'
 
   responses:
 
