@@ -124,6 +124,62 @@ paths:
         '500':
           $ref: '#/components/responses/ErrorResponse'
 
+  /sessions:
+    post:
+      operationId: createSession
+      summary: Start a charging session
+      description: Creates a new charging session for the given station, port, and user.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartSessionRequest'
+      responses:
+        '200':
+          description: Session started successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionCreatedResponse'
+        '400':
+          description: Wrong statuses of station or port
+          $ref: '#/components/responses/ErrorResponse'
+        '404':
+          description: Wrong stationId or portId
+          $ref: '#/components/responses/ErrorResponse'
+        '409':
+          description: Port is occupied
+          $ref: '#/components/responses/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
+
+  /sessions/{sessionId}/stop:
+    post:
+      operationId: stopSession
+      summary: Stop a charging session
+      description: Stops an active charging session and returns the session summary.
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          description: Session identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session stopped successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionStoppedResponse'
+        '400':
+          $ref: '#/components/responses/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
+
   /sessions/current:
     get:
       operationId: getCurrentSession
@@ -349,7 +405,6 @@ components:
 
     Station:
       type: object
-        name:
       required: 
         - id
         - name
@@ -491,6 +546,71 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/Session'
+
+    StartSessionRequest:
+      type: object
+      required: [stationId, portId, userId]
+      properties:
+        stationId:
+          type: string
+        portId:
+          type: string
+        userId:
+          type: string
+
+    SessionCreated:
+      type: object
+      required: [id, status, startedAt, currency, pricePerKWh]
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        currency:
+          type: string
+        pricePerKWh:
+          type: number
+          format: float
+
+    SessionCreatedResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/SessionCreated'
+
+    SessionStopped:
+      type: object
+      required: [id, status, endedAt, totalDurationMinutes, energyConsumedKWh, totalCost, currency]
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          example: completed
+        endedAt:
+          type: string
+          format: date-time
+        totalDurationMinutes:
+          type: integer
+        energyConsumedKWh:
+          type: number
+          format: float
+        totalCost:
+          type: number
+          format: float
+        currency:
+          type: string
+
+    SessionStoppedResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/SessionStopped'
 
     SessionHistoryItem:
       type: object
