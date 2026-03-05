@@ -1,8 +1,12 @@
 import boto3
 import json
 from tests.common.argument_parsers import parse_aws_account_id_from_args
+import os
+from dotenv import load_dotenv
 
-REGION = 'il-central-1'
+load_dotenv()
+
+REGION = os.getenv('REGION', 'il-central-1')
 
 lambda_client = boto3.client('lambda', region_name=REGION)
 
