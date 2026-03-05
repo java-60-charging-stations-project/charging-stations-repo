@@ -42,6 +42,23 @@ paths:
           required: false
           schema:
             type: string
+        - name: page
+          in: query
+          required: false
+          description: Page number for pagination (defaults to 1 if omitted)
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: pageSize
+          in: query
+          required: false
+          description: Number of items per page (defaults to 200 if omitted)
+          schema:
+            type: integer
+            default: 200
+            minimum: 1
+            maximum: 200
       responses:
         '200':
           description: List of active charging stations data
@@ -82,6 +99,23 @@ paths:
           schema:
             type: string
             enum: [New, Active, OutOfService]
+        - name: page
+          in: query
+          required: false
+          description: Page number for pagination (defaults to 1 if omitted)
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: pageSize
+          in: query
+          required: false
+          description: Number of items per page (defaults to 200 if omitted)
+          schema:
+            type: integer
+            default: 200
+            minimum: 1
+            maximum: 200
       responses:
         '200':
           description: List of charging stations
@@ -263,6 +297,23 @@ paths:
           description: Filter by station identifier
           schema:
             type: string
+        - name: page
+          in: query
+          required: false
+          description: Page number for pagination (defaults to 1 if omitted)
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: pageSize
+          in: query
+          required: false
+          description: Number of items per page (defaults to 200 if omitted)
+          schema:
+            type: integer
+            default: 200
+            minimum: 1
+            maximum: 200
       responses:
         '200':
           description: User charging sessions history
@@ -382,6 +433,23 @@ paths:
           description: Provider code filter
           schema:
             type: string
+        - name: page
+          in: query
+          required: false
+          description: Page number for pagination (defaults to 1 if omitted)
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: pageSize
+          in: query
+          required: false
+          description: Number of items per page (defaults to 200 if omitted)
+          schema:
+            type: integer
+            default: 200
+            minimum: 1
+            maximum: 200
       responses:
         '200':
           description: List of support stations
@@ -479,16 +547,21 @@ paths:
             type: boolean
         - name: page
           in: query
-          required: true
-          description: Page number for pagination
+          required: false
+          description: Page number for pagination (defaults to 1 if omitted)
           schema:
             type: integer
+            default: 1
+            minimum: 1
         - name: pageSize
           in: query
-          required: true
-          description: Number of items per page
+          required: false
+          description: Number of items per page (defaults to 200 if omitted)
           schema:
             type: integer
+            default: 200
+            minimum: 1
+            maximum: 200
       responses:
         '200':
           description: List of support sessions
@@ -535,16 +608,21 @@ paths:
             format: date-time
         - name: page
           in: query
-          required: true
-          description: Page number for pagination
+          required: false
+          description: Page number for pagination (defaults to 1 if omitted)
           schema:
             type: integer
+            default: 1
+            minimum: 1
         - name: pageSize
           in: query
-          required: true
-          description: Number of items per page
+          required: false
+          description: Number of items per page (defaults to 200 if omitted)
           schema:
             type: integer
+            default: 200
+            minimum: 1
+            maximum: 200
       responses:
         '200':
           description: List of support logs
@@ -570,6 +648,7 @@ components:
 
     Meta:
       type: object
+      required: [page, pageSize, totalItems, totalPages]
       properties:
         page:
           type: integer
@@ -639,7 +718,7 @@ components:
 
     StationCollectionResponse:
       type: object
-      required: [data]
+      required: [data, meta]
       properties:
         data:
           type: array
@@ -669,7 +748,7 @@ components:
 
     StationBasicInfoCollectionResponse:
       type: object
-      required: [data]
+      required: [data, meta]
       properties:
         data:
           type: array
@@ -795,7 +874,7 @@ components:
 
     StationSupportListCollectionResponse:
       type: object
-      required: [data]
+      required: [data, meta]
       properties:
         data:
           type: array
@@ -924,7 +1003,7 @@ components:
 
     SessionDetailedCollectionResponse:
       type: object
-      required: [data]
+      required: [data, meta]
       properties:
         data:
           type: array
@@ -1038,7 +1117,7 @@ components:
 
     SessionHistoryCollectionResponse:
       type: object
-      required: [data]
+      required: [data, meta]
       properties:
         data:
           type: array
@@ -1163,7 +1242,7 @@ components:
 
     SupportLogCollectionResponse:
       type: object
-      required: [data]
+      required: [data, meta]
       properties:
         data:
           type: array
