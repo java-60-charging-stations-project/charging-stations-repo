@@ -24,26 +24,4 @@ Detailed explanation of the task.
 
 ---
 
-## 🔗 Dependencies
-List related issues or blockers.
 
----
-
-## ⏱ Estimated effort
-S / M / L
-
----
-
-## 🧪 How to test
-Describe verification steps.
-
-
----
-
-## ⏱ Estimated effort
-S / M / L
-
----
-
-## 🧪 How to test
-Describe verification steps.
