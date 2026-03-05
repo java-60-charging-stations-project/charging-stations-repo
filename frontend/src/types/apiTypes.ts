@@ -10,12 +10,15 @@ export interface ApiMetadata {
     totalItems: number;
 }
 
-export interface ApiSuccessResponse<T> {
+export interface ApiResponse<T> {
     data: T,
-    meta?: ApiMetadata;
+}
+
+export interface ApiArrayResponse<T> {
+    data: T[];
+    meta: ApiMetadata;
 }
 
 export interface ApiErrorResponse {
     error: ApiError
 }
-
