@@ -12,8 +12,23 @@ const DEFAULT_TIMEOUT: number = 3000;
 const API_BASE_URL: string = config.apiBaseUrl;
 const API_TIMEOUT: number = config.apiTimeout ?? DEFAULT_TIMEOUT;
 
-const DEFAULT_NETWORK_ERROR_CODE = 'NETWORK_ERROR';
-const DEFAULT_CONFIG_ERROR_CODE = 'CONFIG_ERROR';
+const SERVER_ERROR = 'SERVER_ERROR';
+const NETWORK_ERROR = 'NETWORK_ERROR';
+const CONFIG_ERROR = 'CONFIG_ERROR';
+
+function setHeaders(axiosConfig: AxiosRequestConfig, headers?: Record<string, string>): AxiosRequestConfig {
+    if (headers) {
+        return { ...axiosConfig, headers };
+    }
+    return axiosConfig;
+}
+
+function setQueryParams(axiosConfig: AxiosRequestConfig, params?: Record<string, unknown>): AxiosRequestConfig {
+    if (params) {
+        return {...axiosConfig, params};
+    }
+    return axiosConfig;
+}
 
 class ApiClient {
     private readonly client: AxiosInstance;
@@ -51,12 +66,12 @@ class ApiClient {
                     const apiError = data?.error;
                     throw new ApiClientError(
                         apiError?.message ?? 'Server error',
-                        apiError?.code ?? 'SERVER_ERROR',
+                        apiError?.code ?? SERVER_ERROR,
                         status
                     );
                 }
                 logger.debug(request ? 'Network error' : 'Configuration error');
-                const errorCode = request ? DEFAULT_NETWORK_ERROR_CODE: DEFAULT_CONFIG_ERROR_CODE;
+                const errorCode = request ? NETWORK_ERROR: CONFIG_ERROR;
                 throw new ApiClientError(message, errorCode);
             }
         );
@@ -64,12 +79,12 @@ class ApiClient {
 
     async get<T>(
         endpoint: string,
-        config?: AxiosRequestConfig
+        query_params?: Record<string, unknown>,
     ): Promise<T> {
-        logger.debug('GET request', { endpoint, params: config?.params });
+        logger.debug('GET request', { endpoint, params: query_params });
         const response = await this.client.get<T>(
             endpoint,
-            {...config},
+            {params: query_params},
         );
         return response as T;
     }
