@@ -1,39 +1,33 @@
 import { env } from '../../config/env';
 import { AwsLambdaInvoker, type LambdaInvoker } from '../../utils/lambdaInvoker';
+import { createLogger } from '../../utils/logger';
 
 export interface HealthResponse {
   code: number;
   status: string;
 }
 
-export interface HealthService {
-  check(): Promise<HealthResponse>;
-}
+const LAMBDA_INVOKER: LambdaInvoker = new AwsLambdaInvoker(env.awsRegion);
 
-export class MockHealthService implements HealthService {
-  async check(): Promise<HealthResponse> {
-    return { code: 200, status: 'running' };
-  }
-}
+const logger = createLogger('health.service');
 
-export class LambdaHealthService implements HealthService {
-  constructor(private readonly invoker: LambdaInvoker) {}
-
-  async check(): Promise<HealthResponse> {
-    const lambdaResponse = await this.invoker.invokeJson<HealthResponse>(
+export async function invokeHealthLambda(): Promise<HealthResponse> {
+  try {
+    logger.debug(`Invoking health Lambda function: ${env.healthLambdaFunctionName}`);
+    const lambdaResponse = await LAMBDA_INVOKER.invokeJson<HealthResponse>(
       env.healthLambdaFunctionName,
       { action: 'health' }
     );
+    logger.debug(`Lambda response: ${JSON.stringify(lambdaResponse)}`);
 
     if (typeof lambdaResponse?.code !== 'number' || typeof lambdaResponse?.status !== 'string') {
+      logger.error(`Invalid lambda response: ${JSON.stringify(lambdaResponse)}`);
       return { code: 502, status: 'bad-health-response' };
     }
-
+  
     return lambdaResponse;
+  } catch (error) {
+    logger.error(`Error invoking health Lambda function: ${error}`);
+    return { code: 502, status: 'no-lambda-response' };
   }
-}
-
-export function buildHealthService(): HealthService {
-  if (!env.useLambda) return new MockHealthService();
-  return new LambdaHealthService(new AwsLambdaInvoker(env.awsRegion));
 }

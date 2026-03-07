@@ -1,12 +1,18 @@
 import { Router } from 'express';
-import { buildHealthService } from './health.service';
+import { invokeHealthLambda } from './health.service';
 
 export function healthRouter(): Router {
   const router = Router();
-  const service = buildHealthService();
 
+  // Health check for the API itself
   router.get('/health', async (_req, res) => {
-    const result = await service.check();
+    const result =  { code: 200, status: 'running' };
+    res.status(result.code).json(result);
+  });
+
+  // Health check for the API, including lambda functions
+  router.get('/health/api', async (_req, res) => {
+    const result = await invokeHealthLambda();
     res.status(result.code).json(result);
   });
 
