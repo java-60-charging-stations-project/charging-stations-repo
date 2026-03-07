@@ -14,7 +14,7 @@ export class ApiError extends Error {
 export class HttpError extends ApiError {
     status?: number;
 
-    constructor(message: string, code: string, status: number) {
+    constructor(message: string, code: string, status?: number) {
         super(message, code);
         this.name = 'HttpError';
         this.status = status;

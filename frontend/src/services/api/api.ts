@@ -3,7 +3,7 @@ import axios, { AxiosError, type AxiosInstance, type AxiosRequestConfig, type Ax
 import { config } from '@/config/env';
 import { getLogger } from '@/services/logging';
 import { type ApiErrorResponse } from '@/types/apiTypes'
-import { ApiClientError } from '@/types/errors'
+import { ApiError, ForbiddenError, HttpError, UnauthorizedError } from '@/types/errors'
 
 const logger = getLogger("ApiClient");
 
@@ -15,20 +15,6 @@ const API_TIMEOUT: number = config.apiTimeout ?? DEFAULT_TIMEOUT;
 const SERVER_ERROR = 'SERVER_ERROR';
 const NETWORK_ERROR = 'NETWORK_ERROR';
 const CONFIG_ERROR = 'CONFIG_ERROR';
-
-function setHeaders(axiosConfig: AxiosRequestConfig, headers?: Record<string, string>): AxiosRequestConfig {
-    if (headers) {
-        return { ...axiosConfig, headers };
-    }
-    return axiosConfig;
-}
-
-function setQueryParams(axiosConfig: AxiosRequestConfig, params?: Record<string, unknown>): AxiosRequestConfig {
-    if (params) {
-        return {...axiosConfig, params};
-    }
-    return axiosConfig;
-}
 
 class ApiClient {
     private readonly client: AxiosInstance;
@@ -55,7 +41,7 @@ class ApiClient {
                 const { code, message, response, request } = error;
                 logger.debug('Request error: ', {
                     axiosCode: code,
-                    axiosMEssage: message,
+                    axiosMessage: message,
                     hasResponse: !!response,
                     hasRequest: !!request
                 });
@@ -63,16 +49,21 @@ class ApiClient {
                     const { status, data } = response;
                     logger.debug(`Error status ${status}`);
                     logger.debug('Server error response: ', data);
+
                     const apiError = data?.error;
-                    throw new ApiClientError(
-                        apiError?.message ?? 'Server error',
-                        apiError?.code ?? SERVER_ERROR,
-                        status
-                    );
+                    const errorMessage = apiError?.message ?? message;
+                    const errorCode = apiError?.code ?? SERVER_ERROR;
+                    if (status == 401) {
+                        throw new UnauthorizedError(errorMessage);
+                    }
+                    if (status == 403) {
+                        throw new ForbiddenError(errorMessage);
+                    }
+                    throw new HttpError(errorMessage, errorCode, status);
                 }
                 logger.debug(request ? 'Network error' : 'Configuration error');
-                const errorCode = request ? NETWORK_ERROR: CONFIG_ERROR;
-                throw new ApiClientError(message, errorCode);
+                
+                throw new HttpError(message, request ? NETWORK_ERROR : CONFIG_ERROR);
             }
         );
     }
