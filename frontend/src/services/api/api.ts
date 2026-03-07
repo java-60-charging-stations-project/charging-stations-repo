@@ -4,13 +4,18 @@ import { config } from '@/config/env';
 import { getLogger } from '@/services/logging';
 import { type ApiErrorResponse } from '@/types/apiTypes'
 import { ForbiddenError, HttpError, UnauthorizedError } from '@/types/errors'
+import { type HealthResponse } from '@/types/responseTypes';
 
 const logger = getLogger("ApiClient");
 
 const DEFAULT_TIMEOUT: number = 3000;
 
 const API_BASE_URL: string = config.apiBaseUrl;
+const API_PREFIX: string = config.apiPrefix;
 const API_TIMEOUT: number = config.apiTimeout ?? DEFAULT_TIMEOUT;
+
+const API_HEALTH_PATH: string = config?.apiHealthPath ?? '/health';
+const API_HEALTH_URL: string = `${config.apiBaseUrl}${API_HEALTH_PATH}`;
 
 const SERVER_ERROR = 'SERVER_ERROR';
 const NETWORK_ERROR = 'NETWORK_ERROR';
@@ -24,7 +29,7 @@ class ApiClient {
             throw new Error('API base URL is not configured');
         }
         this.client = axios.create({
-            baseURL: baseUrl,
+            baseURL: `${baseUrl}${API_PREFIX}`,
             timeout: timeout,
             headers: {
                 'Content-Type': 'application/json'
@@ -32,11 +37,7 @@ class ApiClient {
         });
         logger.debug(`Created API client. Params: url=${baseUrl}, timeout=${timeout}`);
         this.client.interceptors.response.use(
-            (response) => {
-                const { status, data } = response;
-                logger.debug(`Response status = ${status}`);
-                return data;
-            },
+            (response) => response,
             (error: AxiosError<ApiErrorResponse>) => {
                 const { code, message, response, request } = error;
                 logger.debug('Request error: ', {
@@ -68,6 +69,14 @@ class ApiClient {
         );
     }
 
+    async healthCheck(): Promise<HealthResponse> {
+        logger.debug(`Health check request to ${API_HEALTH_URL}`);
+        const response = await this.client.get<HealthResponse>(API_HEALTH_URL);
+        const { status, data } = response;
+        logger.debug(`Health check response status = ${status}`);
+        return data;
+    }
+
     async get<T>(
         endpoint: string,
         query_params?: Record<string, unknown>,
@@ -77,22 +86,27 @@ class ApiClient {
             endpoint,
             {params: query_params},
         );
-        return response as T;
+        const { status, data } = response;
+        logger.debug(`Response status = ${status}`);
+        return data;
     }
 
     async post<T>(
         endpoint: string,
-        data?: unknown,
+        body?: unknown,
         config?: AxiosRequestConfig
     ): Promise<T> {
         logger.debug('POST request ', { endpoint, params: config?.params });
-        logger.debug(`POST request data: `, data);
+        logger.debug(`POST request data: `, body);
         const response = await this.client.post<T>(
             endpoint,
-            data,
+            body,
             { ...config },
         );
-        return response as T;
+        const { status, data } = response;
+        logger.debug(`POST response status = ${status}`);
+        logger.debug(`POST response data: `, data);
+        return data;
     }
 }
 

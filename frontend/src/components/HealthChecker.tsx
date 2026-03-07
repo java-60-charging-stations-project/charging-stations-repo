@@ -2,7 +2,6 @@ import { apiClient } from "@/services/api";
 import { useCallback, useState } from "react";
 import type { FC } from "react";
 import { getLogger } from "@/services/logging";
-import { type HealthResponse } from '@/types/responseTypes';
 
 const logger = getLogger();
 
@@ -28,7 +27,7 @@ const HealthChecker: FC<HealthCheckerProps> = ({
     async () => {
       try {
         setIsLoading(true);
-        const { status } = await apiClient.get<HealthResponse>(endpoint);
+        const { status } = await apiClient.healthCheck();
         setCheckInfo(`Successfully checked at ${getTime()}. Response: status="${status}"`);
       }
       catch (error) {
