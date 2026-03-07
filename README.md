@@ -15,7 +15,7 @@ Current setup -
 
 ###  Frontend   
 
-Modified `endpoint='/health?deep=true'/` in App.tsx
+Modified `endpoint='/health?deep=true'/` in App.tsx  
 Simple way to point frontend towards deep health check. Should be handled more gracefully later  
 
 ### Backend 
@@ -33,14 +33,13 @@ added handling of  `deep` request parameter
 
 ### Backend
 
-Deploy backend to fargate via `sam build --guided` from /backend folder  
-Provide your own AWS services config as parameters
+#### Prerequisites  
 
-Prerequisites - setup AWS ALB (pass its URL as env variable `apiBaseUrl` in frontend) and Target Group  
+setup AWS ALB (pass its URL as env variable `apiBaseUrl` in frontend) and Target Group  
 **Currently ALB should listen to HTTP requests at port 80 as security features not yet implemented**  
 create log group /ecs/charging-stations-backend  
-create AWS Cognito Pool
-create ECR docker image for fargate 
+create AWS Cognito Pool  
+create ECR docker image for fargate  
 
 Required IAM role permissions: 
 
@@ -120,6 +119,10 @@ Plus these inline policies (maybe some are not required)
     ]
 }  
 
+#### Deployment  
+
+Deploy backend to fargate via `sam build --guided` from /backend folder  
+Provide your own AWS services config as parameters
 
 ### Lambdas deployment  
 
@@ -133,7 +136,11 @@ Optional parameters - `InvokerAccountIdA` and `InvokerAccountIdB` - AWS IDs of a
 
 ### Frontend deployment
 
-Prerequisites: installed vite packages via `npm install`
+#### Prerequisites  
 
-Straightforward `npm run dev` if you passed your ALB URL address as env variable `apiBaseUrl`
-Even simpler `$env:VITE_API_BASE_URL="http://`**Your ALB address**"`; npm run dev` 
+Installed Vite packages via `npm install`
+
+#### Deployment  
+
+Straightforward: run `npm run dev` if you passed your ALB URL address as env variable `apiBaseUrl`  
+Even simpler: run `$env:VITE_API_BASE_URL="http://`**Your ALB address**"`; npm run dev` 
