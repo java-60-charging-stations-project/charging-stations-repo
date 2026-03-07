@@ -3,3 +3,11 @@ version = 0.1
 stack_name = "charging-stations-backend"
 capabilities = "CAPABILITY_IAM"
 region = "il-central-1"
+resolve_s3 = true
+s3_prefix = "charging-stations-backend"
+confirm_changeset = true
+parameter_overrides = "VpcId=\"vpc-0d3987aee1c745343\" PublicSubnets=\"subnet-097b4a2befe615aad, subnet-05bdebc566310d684\" CognitoUserPoolId=\"il-central-1_rIAE4UIiQ\" CognitoClientId=\"2pbvbmldhk3o4iqnrff3vg7d1h\" CognitoRegion=\"il-central-1\" ImageUri=\"773769103104.dkr.ecr.il-central-1.amazonaws.com/charging-stations:latest\" ContainerPort=\"8000\" ContainerCpu=\"256\" ContainerMemory=\"512\" HealthCheckPath=\"/health\" LambdaRegion=\"il-central-1\" LambdaAccountId=\"852215679994\" LambdaHealthName=\"charging-stations-health\" DesiredCount=\"1\""
+image_repositories = []
+
+[default.global.parameters]
+region = "il-central-1"

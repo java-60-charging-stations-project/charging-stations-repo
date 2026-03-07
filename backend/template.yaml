@@ -6,11 +6,11 @@ Parameters:
   VpcId:
     Type: AWS::EC2::VPC::Id
     Description: VPC ID
-    Default: vpc-0d3987aee1c745343
+    Default: vpc-01eb545134560739e
   PublicSubnets:
     Type: List<AWS::EC2::Subnet::Id>
     Description: Public subnets (use at least 2 in different AZs for ALB)
-    Default: subnet-097b4a2befe615aad, subnet-05bdebc566310d684
+    Default: subnet-0d53d5fb3c0a49277, subnet-0ac3863b0b8448d3f
   CognitoUserPoolId:
     Type: String
     Description: Cognito user pool ID
