@@ -6,7 +6,7 @@ export function healthRouter(): Router {
 
   // Health check for the API itself
   router.get('/health', async (_req, res) => {
-    const result =  { code: 200, status: 'running' };
+    const result =  { code: 200, status: 'ok' };
     res.status(result.code).json(result);
   });
 
