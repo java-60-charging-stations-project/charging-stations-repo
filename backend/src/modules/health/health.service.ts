@@ -3,11 +3,11 @@ import { AwsLambdaInvoker, type LambdaInvoker } from '../../utils/lambdaInvoker'
 import type { HealthResponse } from './health.types';
 
 export interface HealthService {
-  check(): Promise<HealthResponse>;
+  check(deep?: boolean): Promise<HealthResponse>;
 }
 
 export class MockHealthService implements HealthService {
-  async check(): Promise<HealthResponse> {
+  async check(_deep?: boolean): Promise<HealthResponse> {
     return { code: 200, status: 'running' };
   }
 }
@@ -15,7 +15,10 @@ export class MockHealthService implements HealthService {
 export class LambdaHealthService implements HealthService {
   constructor(private readonly invoker: LambdaInvoker) {}
 
-  async check(): Promise<HealthResponse> {
+  async check(deep?: boolean): Promise<HealthResponse> {
+    if (!deep) {
+      return { code: 200, status: 'running' };
+    }
     // Contract with lambda: we send a minimal event
     const lambdaResponse = await this.invoker.invokeJson<HealthResponse>(
       env.healthLambdaFunctionName,

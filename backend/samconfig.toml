@@ -1,0 +1,5 @@
+version = 0.1
+[default.deploy.parameters]
+stack_name = "charging-stations-backend"
+capabilities = "CAPABILITY_IAM"
+region = "il-central-1"
