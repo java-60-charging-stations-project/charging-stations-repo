@@ -4,11 +4,7 @@ DO NOT FORGET TO DELETE THE BACKEND STACK YOU DEPLOYED AFTER TESTING!!!!!!!!!!!
 
 `sam delete` should always be your last command  
 
-MAKE SURE YOU DELETE YOUR ALB AFTER TESTING
-
-
-
-Current setup - 
+MAKE SURE YOU DELETE YOUR ALB AFTER TESTING  
 
 
 ## Difference from main 
