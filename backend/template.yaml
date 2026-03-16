@@ -14,11 +14,11 @@ Parameters:
   CognitoUserPoolId:
     Type: String
     Description: Cognito user pool ID
-    Default: il-central-1_dVQbiQE07
+    Default: il-central-1_ANhJWs3sM
   CognitoClientId:
     Type: String
     Description: Cognito client ID
-    Default: 70ct74soj95kqqs4n6kld970m
+    Default: 5qeqem2ah00tonlm2evtoronpk
   CognitoRegion:
     Type: String
     Description: Region
