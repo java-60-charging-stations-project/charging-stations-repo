@@ -3,7 +3,7 @@ import { verifyCognitoJwt, requireGroups } from '../../middlewares/auth';
 import { UsersController } from './users.controller';
 import { buildUsersService } from './users.service';
 
-const ADMIN_GROUP = 'admin';
+const ADMIN_GROUP = 'ADMIN';
 
 export function usersRouter(): Router {
   const router = Router();
