@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { fetchAdminUsers } from '@/services/api/adminApi';
 import type { AdminUser } from '@/types/responseTypes';
+import { getLogger } from '@/services/logging';
+
+const logger = getLogger("admin");
 
 const AdminUsersPage = () => {
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -12,6 +15,7 @@ const AdminUsersPage = () => {
     const loadUsers = async () => {
       try {
         const data = await fetchAdminUsers();
+        logger.debug("data users: ", data);
         setUsers(data);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to load users');
