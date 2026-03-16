@@ -54,6 +54,9 @@ Parameters:
   LambdaUserInfoName:
     Type: String
     Default: charging-stations-get-user-info
+  LambdaUserManagementName:
+    Type: String
+    Default: charging-stations-user-management
   DesiredCount:
     Type: Number
     Default: 1
@@ -95,6 +98,13 @@ Resources:
               - Effect: Allow
                 Action: lambda:InvokeFunction
                 Resource: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaHealthName}"
+        - PolicyName: InvokeUserManagementLambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaUserManagementName}"
         - PolicyName: InvokeUserInfoLambda
           PolicyDocument:
             Version: "2012-10-17"
@@ -186,6 +196,8 @@ Resources:
               Value: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaHealthName}"
             - Name: USER_INFO_LAMBDA_FUNCTION_NAME
               Value: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaUserInfoName}"
+            - Name: USER_MANAGEMENT_LAMBDA_FUNCTION_NAME
+              Value: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaUserManagementName}"
             - Name: AUTH_DISABLED
               Value: false
             - Name: COGNITO_REGION

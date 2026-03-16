@@ -26,7 +26,7 @@ export const env = {
 
   // users / admin
   userManagementLambdaFunctionName: String(
-    process.env.USER_MANAGEMENT_LAMBDA_FUNCTION_NAME ?? 'charging-stations-user-management'
+    process.env.USER_MANAGEMENT_LAMBDA_FUNCTION_NAME ?? 'arn:aws:lambda:il-central-1:852215679994:function:charging-stations-user-management'
   ),
   userInfoLambdaFunctionName: String(
     process.env.USER_INFO_LAMBDA_FUNCTION_NAME ??
