@@ -49,8 +49,8 @@ def extract_payload_from_event(event: dict) -> modify_user_group_payload:
         payload: modify_user_group_payload = {
             "action": event["action"],
             "caller_id": event["caller_id"],
-            "user_email": event["user_email"],
-            "group_name": event["group_name"],
+            "user_id": event["user_id"],
+            "role": event["role"],
             "user_pool_id": event["user_pool_id"],
         }
         logger.info(f"Payload extracted successfully: {payload}")
@@ -64,8 +64,8 @@ def extract_payload_from_event(event: dict) -> modify_user_group_payload:
 
 def is_admin_console_created(event: dict) -> bool:
     res = False
-    trigger_source = event.get("triggerSource", "")
-    if trigger_source.startswith("PostAuthentication_"):
+    name = event.get("name", "")
+    if name == "cognito:default_val":
         res = True
     return res
 
@@ -100,36 +100,36 @@ def extract_user_instance_from_event(event: dict) -> UserInstance:
         raise LambdaResponseError({"error": f"Unhandled error: {e}"})
 
 
-def add_user_to_group(user_pool_id: str, email: str, role: str) -> None:
+def add_user_to_group(user_pool_id: str, user_id: str, role: str) -> None:
     try:
         client = boto3.client("cognito-idp")
         client.admin_add_user_to_group(
             UserPoolId=user_pool_id,
-            Username=email,
+            Username=user_id,
             GroupName=role,
             )
     except Exception as e:
         logger.error(f"Error adding user to group: {e}")
         raise LambdaResponseError({"error": f"Error adding user to group: {e}"})
 
-def remove_user_from_group(user_pool_id: str, email: str, role: str) -> None:
+def remove_user_from_group(user_pool_id: str, user_id: str, role: str) -> None:
     try:
         client = boto3.client("cognito-idp")
         client.admin_remove_user_from_group(
             UserPoolId=user_pool_id,
-            Username=email,
+            Username=user_id,
             GroupName=role,
         )
     except Exception as e:
         logger.error(f"Error removing user from group: {e}")
         raise LambdaResponseError({"error": f"Error removing user from group: {e}"})
 
-def list_user_groups(user_pool_id: str, email: str) -> list[str]:
+def list_user_groups(user_pool_id: str, user_id: str) -> list[str]:
     try:
         client = boto3.client("cognito-idp")
         response = client.admin_list_groups_for_user(
             UserPoolId=user_pool_id,
-            Username=email,
+            Username=user_id,
         )
         return [group.get("GroupName") for group in response.get("Groups", [])]
     except Exception as e:
@@ -174,7 +174,7 @@ def insert_user_to_rds(user: UserInstance) -> None:
         raise LambdaResponseError({"error": str(e)})
 
 def handler(event: dict, context: Any) -> dict:
-    caller_entity = "cognito" if event.get("action") else "user"
+    caller_entity = "user" if event.get("action") else "cognito"
     logger.info(f"Handler called with event: {event}")
     audit_base = {
         "caller_id": event.get("caller_id"),
@@ -189,7 +189,7 @@ def handler(event: dict, context: Any) -> dict:
             insert_user_to_rds(user_instance)
             if is_admin_console_created(event):
                 user_instance["role"] = "ADMIN"
-                add_user_to_group(event["userPoolId"], user_instance["email"], user_instance["role"])
+                add_user_to_group(event["userPoolId"], user_instance["user_id"], user_instance["role"])
             log_audit("INFO", message="user written to RDS successfully", status="SUCCESS", **audit_base)
         except LambdaResponseError as e:
             log_audit("ERROR", message="error writing user to RDS", status="ERROR", errorMessage=e.response.get("error"), **audit_base)
@@ -203,27 +203,19 @@ def handler(event: dict, context: Any) -> dict:
             payload = extract_payload_from_event(event)
             audit_base["event"] = payload["action"]
             audit_base["caller_id"] = payload["caller_id"]
-            audit_base["user_email"] = payload["user_email"]
-            audit_base["group_name"] = payload["group_name"]
-            user_groups = list_user_groups(payload["user_pool_id"], payload["user_email"])
-            match payload["action"]:
-                case "move_user_to_group":
-                    if payload["group_name"] in user_groups:
-                        log_audit("ERROR", message="user already in group", status="ERROR", errorMessage="user already in group", **audit_base)
-                        return {"error": "user already in group"}
-                    for group in user_groups:
-                        if group:
-                            remove_user_from_group(payload["user_pool_id"], payload["user_email"], group)
-                    add_user_to_group(payload["user_pool_id"], payload["user_email"], payload["group_name"])
-                    log_audit("INFO", message="user moved to group successfully", status="SUCCESS", **audit_base)
-                    return {"message": "success"}
-                case "remove_user_from_group":
-                    if payload["group_name"] not in user_groups:
-                        log_audit("ERROR", message="user not in group", status="ERROR", errorMessage="user not in group", **audit_base)
-                        return {"error": "user not in group"}
-                    remove_user_from_group(payload["user_pool_id"], payload["user_email"], payload["group_name"])
-                    log_audit("INFO", message="user removed from group successfully", status="SUCCESS", **audit_base)
-                    return {"message": "success"}
+            audit_base["user_id"] = payload["user_id"]
+            audit_base["role"] = payload["role"]
+            user_groups = list_user_groups(payload["user_pool_id"], payload["user_id"])
+            if payload["role"] in user_groups:
+                log_audit("ERROR", message="user already in group", status="ERROR", errorMessage="user already in group", **audit_base)
+                return {"error": "user already in group"}
+            for group in user_groups:
+                if group:
+                    remove_user_from_group(payload["user_pool_id"], payload["user_id"], group)
+            if payload["role"] != "USER":
+                add_user_to_group(payload["user_pool_id"], payload["user_id"], payload["role"])
+            log_audit("INFO", message="user moved to group successfully", status="SUCCESS", **audit_base)
+            return {"message": "success"}
         except Exception as e:
             log_audit("ERROR", message="error modifying user group", status="ERROR", errorMessage=str(e), **audit_base)
-            return {"error": f"Unhandled error: {e}"}
+            return {"error": f"UNHANDLED_ERROR: {e}"}

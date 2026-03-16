@@ -8,7 +8,7 @@ dotenv.load_dotenv()
 
 AWS_REGION = os.getenv("AWS_REGION", "il-central-1")
 AWS_LAMBDA_HOST_ACCOUNT = os.getenv("AWS_LAMBDA_HOST_ACCOUNT", "852215679994")
-CREATE_RDS_TABLES_FUNCTION_NAME = "charging-stations-get-user-info"
+GET_USERS_FUNCTION_NAME = os.getenv("GET_USERS_FUNCTION_NAME", "charging-stations-get-user-info")
 
 def main():
     client = boto3.client("lambda", region_name=AWS_REGION)
@@ -17,13 +17,22 @@ def main():
         "caller_id": "script_run",
     }
     resp = client.invoke(
-        FunctionName=f"arn:aws:lambda:{AWS_REGION}:{AWS_LAMBDA_HOST_ACCOUNT}:function:{CREATE_RDS_TABLES_FUNCTION_NAME}",
+        FunctionName=f"arn:aws:lambda:{AWS_REGION}:{AWS_LAMBDA_HOST_ACCOUNT}:function:{GET_USERS_FUNCTION_NAME}",
         InvocationType="RequestResponse",
         Payload=json.dumps(payload).encode("utf-8"),
     )
     payload = resp["Payload"].read().decode()
-    print("StatusCode:", resp.get("StatusCode"))
-    print("Payload:", payload)
+    assert resp.get("StatusCode") == 200
+    assert payload is not None
+    assert len(payload) > 0
+    list_users = json.loads(payload)
+    assert isinstance(list_users, list)
+    assert all(isinstance(item, dict) for item in list_users)
+    assert all(item.get("user_id") is not None for item in list_users)
+    assert all(item.get("email") is not None for item in list_users)
+    assert all(item.get("role") is not None for item in list_users)
+    assert all(item.get("full_name") is not None for item in list_users)
+    print(list_users)
     if resp.get("FunctionError"):
         raise SystemExit(f"Lambda error: {resp['FunctionError']}")
 if __name__ == "__main__":

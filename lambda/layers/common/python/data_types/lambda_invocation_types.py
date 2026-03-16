@@ -6,8 +6,8 @@ class get_user_info_payload(TypedDict):
     user_id: Optional[str]
 
 class modify_user_group_payload(TypedDict):
-    action: Literal["move_user_to_group", "remove_user_from_group"]
+    action: Literal["move_user_to_group"]
     caller_id: str
-    user_email: str
-    group_name: Literal["ADMIN", "TECH_SUPPORT"]
+    user_id: str
+    role: Literal["ADMIN", "TECH_SUPPORT", "USER"]
     user_pool_id: str
