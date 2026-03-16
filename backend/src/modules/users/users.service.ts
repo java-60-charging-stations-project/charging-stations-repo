@@ -2,7 +2,7 @@ import { env } from '../../config/env';
 import { AwsLambdaInvoker, type LambdaInvoker } from '../../utils/lambdaInvoker';
 import { createLogger } from '../../utils/logger';
 
-const logger = createLogger('users.service');
+const logger = createLogger('users.service', 'debug');
 const LAMBDA_INVOKER: LambdaInvoker = new AwsLambdaInvoker(env.awsRegion);
 
 export interface UpdateProfilePayload {
@@ -86,7 +86,7 @@ export class LambdaUsersService implements UsersService {
   async listUsers(adminId: string, filters: ListUsersFilters): Promise<ListUsersResult> {
     logger.debug('Invoking userManagement lambda: listUsers', { adminId, filters });
     const result = await LAMBDA_INVOKER.invokeJson<ListUsersResult | UserInfo[]>(
-      env.userManagementLambdaFunctionName,
+      env.userInfoLambdaFunctionName,
       {
         action: 'get_all_users',
         caller_id: adminId,
@@ -97,9 +97,13 @@ export class LambdaUsersService implements UsersService {
       }
     );
 
+    logger.debug("Invoker response: ", { isArray: Array.isArray(result), response: result });
+
     if (Array.isArray(result)) {
+      logger.debug("Returning Array result: ", { data: result, totalItems: result.length });
       return { data: result, totalItems: result.length };
     }
+    logger.debug("Returning: ", result);
     return result;
   }
 
