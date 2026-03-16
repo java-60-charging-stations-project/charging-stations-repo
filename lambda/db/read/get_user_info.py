@@ -44,7 +44,7 @@ def extract_payload_from_event(event: dict) -> get_user_info_payload:
         payload: get_user_info_payload = {
             "action": event["action"],
             "caller_id": event["caller_id"],
-            "user_id": event["user_id"],
+            "user_id": event["user_id"] if event["action"] == "get_user_by_id" else None,
         }
         logger.info(f"Payload extracted successfully: {payload}")
         return payload
@@ -151,7 +151,9 @@ def handler(event: dict, context: Any) -> dict | list[dict]:
                     status="SUCCESS",
                     **audit_base,
                 )
-                return [build_json(user) for user in users_info]
+                return_list = [build_json(user) for user in users_info]
+                logger.info(f"return list: {return_list}")
+                return return_list
             except Exception as e:
                 error_message = f"unhandled error getting all users from Database: {e}"
                 log_audit(

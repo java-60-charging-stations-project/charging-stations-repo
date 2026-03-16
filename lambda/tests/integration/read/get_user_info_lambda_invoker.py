@@ -6,7 +6,7 @@ import sys
 
 load_dotenv()
 
-READ_USER_INFO_LAMBDA_FUNCTION_NAME = os.getenv("READ_USER_INFO_LAMBDA_FUNCTION_NAME", "charging-stations-get-user-info")  # adjust if different
+GET_USERS_FUNCTION_NAME = os.getenv("GET_USERS_FUNCTION_NAME", "charging-stations-get-user-info")  # adjust if different
 REGION = os.getenv("REGION", "il-central-1")
 LAMBDA_CLIENT = boto3.client("lambda", region_name=REGION)
 
@@ -15,7 +15,7 @@ def invoke_get_user_info(account_id: str, user_id: str):
         "user_id": user_id,
     }
     response = LAMBDA_CLIENT.invoke(
-        FunctionName=f"arn:aws:lambda:{REGION}:{account_id}:function:{READ_USER_INFO_LAMBDA_FUNCTION_NAME}",
+        FunctionName=f"arn:aws:lambda:{REGION}:{account_id}:function:{GET_USERS_FUNCTION_NAME}",
         InvocationType="RequestResponse",
         Payload=json.dumps(payload).encode("utf-8"),
     )

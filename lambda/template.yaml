@@ -83,7 +83,6 @@ Resources:
           Required: true
           Mutable: true
       LambdaConfig:
-        PostAuthentication: !GetAtt WriteUserRDSFunction.Arn
         PostConfirmation:  !GetAtt WriteUserRDSFunction.Arn
 
   UserPoolClient:
