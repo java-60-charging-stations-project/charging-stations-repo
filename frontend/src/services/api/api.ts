@@ -97,7 +97,6 @@ class ApiClient {
                         }
                     }
                     if (status === 403) {
-                        store.dispatch(logout());
                         throw new ForbiddenError(errorMessage);
                     }
                     throw new HttpError(errorMessage, errorCode, status);

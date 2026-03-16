@@ -88,7 +88,7 @@ export class LambdaUsersService implements UsersService {
     const result = await LAMBDA_INVOKER.invokeJson<ListUsersResult | UserInfo[]>(
       env.userManagementLambdaFunctionName,
       {
-        action: 'list_users',
+        action: 'get_all_users',
         caller_id: adminId,
         role: filters.role,
         status: filters.status,
@@ -126,12 +126,16 @@ export class LambdaUsersService implements UsersService {
 
   async updateUserRole(adminId: string, userId: string, role: string): Promise<void> {
     logger.debug('Invoking userManagement lambda: updateUserRole', { adminId, userId, role });
+    const user_pool_id = env.cognitoUserPoolId;
+    if (!user_pool_id) {
+      throw new Error("COGNITO_USER_POOL_ID is not configured");
+    }
     await LAMBDA_INVOKER.invokeJson(env.userManagementLambdaFunctionName, {
-      action: 'updateUserRole',
+      action: 'move_user_to_group',
       caller_id: adminId,
-      adminId,
       userId,
-      role
+      role,
+      user_pool_id,
     });
   }
 

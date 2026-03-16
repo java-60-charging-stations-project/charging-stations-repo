@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from 'react-router';
+import { createBrowserRouter } from 'react-router';
 import LoginPage from '@/pages/guest/LoginPage';
 import RegisterPage from '@/pages/guest/RegisterPage';
 import GuestDashboardPage from '@/pages/guest/GuestDashboardPage';
@@ -11,6 +11,7 @@ import SupportStationsPage from '@/pages/support/SupportStationsPage';
 import SupportSessionsPage from '@/pages/support/SupportSessionsPage';
 import AdminDashboardPage from '@/pages/admin/AdminDashboardPage';
 import AdminUsersPage from '@/pages/admin/AdminUsersPage';
+import AdminUserEditPage from '@/pages/admin/AdminUserEditPage';
 import AdminStationsPage from '@/pages/admin/AdminStationsPage';
 import RoleRoute from './RoleRoute';
 import Layout from '@/pages/Layout';
@@ -58,16 +59,17 @@ const router = createBrowserRouter([
                         path: "/admin",
                         element: <RoleRoute role={"ADMIN"} />,
                         children: [
-                        { index: true, element: <AdminDashboardPage /> },
-                        { path: "users", element: <AdminUsersPage /> },
-                        { path: "stations", element: <AdminStationsPage /> }
+                            { index: true, element: <AdminDashboardPage /> },
+                            { path: "users", element: <AdminUsersPage /> },
+                            { path: "users/:userId", element: <AdminUserEditPage /> },
+                            { path: "stations", element: <AdminStationsPage /> }
                         ]
                     }
                 ]
             }
         ]
     },
-    { path: "*", element: <Navigate to={APP_PATH} replace /> }
+    //{ path: "*", element: <Navigate to={APP_PATH} replace /> }
 ]);
 
 export default router;
