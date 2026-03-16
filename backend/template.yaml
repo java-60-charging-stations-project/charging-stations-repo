@@ -56,7 +56,7 @@ Parameters:
     Default: charging-stations-get-user-info
   LambdaUserManagementName:
     Type: String
-    Default: charging-stations-user-management
+    Default: charging-stations-write-user-rds
   DesiredCount:
     Type: Number
     Default: 1
