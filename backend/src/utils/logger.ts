@@ -1,9 +1,17 @@
 import { env } from "../config/env";
-type Level = 'debug' | 'info' | 'warn' | 'error';
+const LOG_LEVELS = ['debug', 'info', 'warn', 'error'] as const;
+type Level = typeof LOG_LEVELS[number];
 
 const levels: Record<Level, number> = { debug: 10, info: 20, warn: 30, error: 40 };
 
-export function createLogger(scope: string, minLevel: Level = 'debug') {
+function parseLogLevel(value: string | undefined): Level {
+  if (LOG_LEVELS.includes(value as Level)) {
+    return value as Level;
+  }
+  return 'info';
+}
+
+export function createLogger(scope: string, minLevel: Level = parseLogLevel(env.logLevel)) {
   const min = levels[minLevel] ?? levels.info;
 
   function should(level: Level) {
