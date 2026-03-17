@@ -1,5 +1,9 @@
 import type { NextFunction, Request, Response } from 'express';
 import { ServiceError } from '../common/serviceErrors';
+import { ZodError, prettifyError } from 'zod';
+import { createLogger } from '../utils/logger';
+const logger = createLogger('errorHandler');
+
 
 export function errorHandler(
   error: unknown,
@@ -7,7 +11,7 @@ export function errorHandler(
   res: Response,
   _next: NextFunction
 ): void {
-  console.error({
+  logger.error("Processing error", {
     message: error instanceof Error ? error.message : 'Unknown error',
     stack: error instanceof Error ? error.stack : undefined,
   });
@@ -21,6 +25,16 @@ export function errorHandler(
       error: {
         code: error.errorCode,
         message: error.message,
+      },
+    });
+    return;
+  }
+
+  if (error instanceof ZodError) {
+    res.status(400).json({
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: prettifyError(error),
       },
     });
     return;
