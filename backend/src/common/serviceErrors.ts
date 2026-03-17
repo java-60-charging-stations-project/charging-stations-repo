@@ -9,6 +9,13 @@ export class ServiceError extends Error {
     }
 };
 
+export class InternalServerError extends ServiceError {
+    constructor() {
+        super("Internal server error", 500, 'INTERNAL_SERVER_ERROR');
+        this.name = 'InternalServerError';
+    }
+};
+
 export class ResourceNotFoundError extends ServiceError {
     constructor(message: string, errorCode: string = 'RESOURCE_NOT_FOUND') {
         super(message, 404, errorCode);
