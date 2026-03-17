@@ -1,37 +1,10 @@
 import { env } from '../../config/env';
 import { AwsLambdaInvoker, type LambdaInvoker } from '../../utils/lambdaInvoker';
 import { createLogger } from '../../utils/logger';
+import { ListUsersFilters, ListUsersResult, UpdateProfilePayload, UserInfo } from './users.types';
 
 const logger = createLogger('users.service', 'debug');
 const LAMBDA_INVOKER: LambdaInvoker = new AwsLambdaInvoker(env.awsRegion);
-
-export interface UpdateProfilePayload {
-  email?: string;
-  address?: string;
-}
-
-export interface UserInfo {
-  userId: string;
-  username: string;
-  email: string;
-  phone: string;
-  role: string;
-  status: string;
-  createdAt: string | null;
-  updatedAt: string | null;
-}
-
-export interface ListUsersFilters {
-  role?: string;
-  status?: string;
-  page?: number;
-  pageSize?: number;
-}
-
-export interface ListUsersResult {
-  data: UserInfo[];
-  totalItems: number;
-}
 
 export interface UsersService {
   getMyInfo(userId: string): Promise<UserInfo>;
