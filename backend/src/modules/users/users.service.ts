@@ -1,37 +1,10 @@
 import { env } from '../../config/env';
 import { AwsLambdaInvoker, type LambdaInvoker } from '../../utils/lambdaInvoker';
 import { createLogger } from '../../utils/logger';
+import { ListUsersFilters, ListUsersResult, UpdateProfilePayload, UserInfo } from './users.types';
 
-const logger = createLogger('users.service');
+const logger = createLogger('users.service', 'debug');
 const LAMBDA_INVOKER: LambdaInvoker = new AwsLambdaInvoker(env.awsRegion);
-
-export interface UpdateProfilePayload {
-  email?: string;
-  address?: string;
-}
-
-export interface UserInfo {
-  userId: string;
-  username: string;
-  email: string;
-  phone: string;
-  role: string;
-  status: string;
-  createdAt: string | null;
-  updatedAt: string | null;
-}
-
-export interface ListUsersFilters {
-  role?: string;
-  status?: string;
-  page?: number;
-  pageSize?: number;
-}
-
-export interface ListUsersResult {
-  data: UserInfo[];
-  totalItems: number;
-}
 
 export interface UsersService {
   getMyInfo(userId: string): Promise<UserInfo>;
@@ -86,7 +59,7 @@ export class LambdaUsersService implements UsersService {
   async listUsers(adminId: string, filters: ListUsersFilters): Promise<ListUsersResult> {
     logger.debug('Invoking userManagement lambda: listUsers', { adminId, filters });
     const result = await LAMBDA_INVOKER.invokeJson<ListUsersResult | UserInfo[]>(
-      env.userManagementLambdaFunctionName,
+      env.userInfoLambdaFunctionName,
       {
         action: 'get_all_users',
         caller_id: adminId,
@@ -97,9 +70,13 @@ export class LambdaUsersService implements UsersService {
       }
     );
 
+    logger.debug("Invoker response: ", { isArray: Array.isArray(result), response: result });
+
     if (Array.isArray(result)) {
+      logger.debug("Returning Array result: ", { data: result, totalItems: result.length });
       return { data: result, totalItems: result.length };
     }
+    logger.debug("Returning: ", result);
     return result;
   }
 

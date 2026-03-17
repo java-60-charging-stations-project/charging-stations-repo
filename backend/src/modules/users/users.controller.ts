@@ -26,12 +26,7 @@ export class UsersController {
   constructor(private readonly service: UsersService) { }
 
   listUsers = async (req: Request, res: Response) => {
-    const adminId = req.user?.sub;
-    if (!adminId) {
-      return res
-        .status(401)
-        .json({ error: { code: 'UNAUTHENTICATED', message: 'Authentication required' } });
-    }
+    const adminId = req.user?.sub!;
 
     const query = listUsersQuerySchema.parse(req.query);
     const { data, totalItems } = await this.service.listUsers(adminId, {
@@ -40,8 +35,10 @@ export class UsersController {
       page: query.page,
       pageSize: query.pageSize
     });
+    logger.debug("Service listUsers response: ", {data, totalItems});
 
     const totalPages = Math.max(1, Math.ceil(totalItems / query.pageSize));
+    logger.debug("totalPages: ", totalPages);
     res.status(200).json(wrapResponseList(data, totalItems, query.pageSize, query.page, totalPages));
   };
 

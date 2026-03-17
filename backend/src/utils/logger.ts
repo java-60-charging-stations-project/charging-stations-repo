@@ -1,8 +1,9 @@
+import { env } from "../config/env";
 type Level = 'debug' | 'info' | 'warn' | 'error';
 
 const levels: Record<Level, number> = { debug: 10, info: 20, warn: 30, error: 40 };
 
-export function createLogger(scope: string, minLevel: Level = 'info') {
+export function createLogger(scope: string, minLevel: Level = 'debug') {
   const min = levels[minLevel] ?? levels.info;
 
   function should(level: Level) {
