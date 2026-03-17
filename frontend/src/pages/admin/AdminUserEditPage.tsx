@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router';
+import { useCallback, useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router';
 import type { AdminUser } from '@/types/responseTypes';
-import { updateUserRole } from '@/services/api/adminApi';
+import { fetchAdminUserById, updateUserRole } from '@/services/api/adminApi';
+import { HttpError } from '@/types/errors';
 
 const ALL_ROLES = ['USER', 'TECH_SUPPORT', 'ADMIN'];
 
@@ -16,27 +17,116 @@ const fields: { label: string; key: keyof AdminUser }[] = [
   { label: 'Updated At', key: 'updatedAt' },
 ];
 
+type ErrorPanelState = {
+  title: string;
+  message: string;
+  details?: string;
+};
+
+const buildErrorPanel = (error: unknown, title: string): ErrorPanelState => {
+  if (error instanceof HttpError) {
+    const details = [`Code: ${error.code}`];
+    if (error.status) {
+      details.push(`Status: ${error.status}`);
+    }
+    return {
+      title,
+      message: error.message,
+      details: details.join(' | '),
+    };
+  }
+
+  if (error instanceof Error) {
+    return { title, message: error.message };
+  }
+
+  return { title, message: 'Unknown error' };
+};
+
 const AdminUserEditPage = () => {
   const { userId } = useParams<{ userId: string }>();
-  const location = useLocation();
   const navigate = useNavigate();
 
-  const initialUser = (location.state as { user?: AdminUser })?.user ?? null;
-
-  const [currentUser, setCurrentUser] = useState<AdminUser | null>(initialUser);
+  const [currentUser, setCurrentUser] = useState<AdminUser | null>(null);
+  const [isLoadingUser, setIsLoadingUser] = useState(true);
+  const [isRefreshingUser, setIsRefreshingUser] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [selectedRole, setSelectedRole] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [messageType, setMessageType] = useState<'success' | 'error'>('success');
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorPanel, setErrorPanel] = useState<ErrorPanelState | null>(null);
+
+  const loadUser = useCallback(async (isManualRefresh: boolean) => {
+    if (!userId) {
+      setCurrentUser(null);
+      setErrorPanel({ title: 'Cannot load user', message: 'Missing userId in route' });
+      setIsLoadingUser(false);
+      setIsRefreshingUser(false);
+      return;
+    }
+
+    if (isManualRefresh) {
+      setIsRefreshingUser(true);
+    } else {
+      setIsLoadingUser(true);
+    }
+
+    try {
+      const user = await fetchAdminUserById(userId);
+      setCurrentUser(user);
+      setErrorPanel(null);
+    } catch (error) {
+      setCurrentUser(null);
+      setErrorPanel(buildErrorPanel(error, 'Failed to load user'));
+    } finally {
+      setIsLoadingUser(false);
+      setIsRefreshingUser(false);
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    void loadUser(false);
+  }, [loadUser]);
+
+  const handleRefetchUser = async () => {
+    setSuccessMessage(null);
+    await loadUser(true);
+  };
+
+  if (isLoadingUser) {
+    return (
+      <div style={styles.container}>
+        <p>Loading user...</p>
+      </div>
+    );
+  }
 
   if (!currentUser) {
     return (
       <div style={styles.container}>
-        <p>User data not available for ID: {userId}</p>
-        <button style={styles.button} onClick={() => navigate('/admin/users')}>
-          Back to Users
-        </button>
+        {errorPanel && (
+          <div style={styles.errorPanel}>
+            <p style={styles.errorPanelTitle}>{errorPanel.title}</p>
+            <p style={styles.errorPanelMessage}>{errorPanel.message}</p>
+            {errorPanel.details && <p style={styles.errorPanelDetails}>{errorPanel.details}</p>}
+          </div>
+        )}
+        <div style={styles.buttonRow}>
+          <button style={styles.button} onClick={() => navigate('/admin/users')}>
+            Back to Users
+          </button>
+          <button
+            style={{
+              ...styles.button,
+              ...styles.updateButton,
+              ...(isRefreshingUser ? styles.disabledButton : {}),
+            }}
+            disabled={isRefreshingUser}
+            onClick={handleRefetchUser}
+          >
+            {isRefreshingUser ? 'Updating...' : 'Update User'}
+          </button>
+        </div>
       </div>
     );
   }
@@ -46,25 +136,29 @@ const AdminUserEditPage = () => {
   const handleCheckboxChange = (checked: boolean) => {
     setIsEditing(checked);
     setSelectedRole('');
-    setMessage(null);
+    setSuccessMessage(null);
+    setErrorPanel(null);
   };
 
   const handleUpdate = async () => {
-    if (!selectedRole || !userId) return;
+    if (!selectedRole || !userId) {
+      return;
+    }
+
     setIsUpdating(true);
-    setMessage(null);
+    setSuccessMessage(null);
+    setErrorPanel(null);
+
     try {
-      const updatedUser = await updateUserRole(userId, selectedRole, currentUser.updatedAt);
-      setCurrentUser(updatedUser);
-      setMessage('Role updated successfully');
-      setMessageType('success');
-    } catch (e) {
-      setMessage(e instanceof Error ? e.message : 'Failed to update role');
-      setMessageType('error');
-    } finally {
-      setIsUpdating(false);
+      await updateUserRole(userId, selectedRole, currentUser.updatedAt);
+      setSuccessMessage('Role updated successfully');
       setIsEditing(false);
       setSelectedRole('');
+      await loadUser(true);
+    } catch (error) {
+      setErrorPanel(buildErrorPanel(error, 'Failed to update role'));
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -97,7 +191,8 @@ const AdminUserEditPage = () => {
     </td>
   );
 
-  const isUpdateEnabled = isEditing && selectedRole !== '' && !isUpdating;
+  const isRoleUpdateEnabled = isEditing && selectedRole !== '' && !isUpdating && !isRefreshingUser;
+  const isRefetchBlocked = isRefreshingUser || isUpdating;
 
   return (
     <div style={styles.container}>
@@ -115,10 +210,14 @@ const AdminUserEditPage = () => {
         </tbody>
       </table>
 
-      {message && (
-        <p style={messageType === 'success' ? styles.success : styles.error}>
-          {message}
-        </p>
+      {successMessage && <p style={styles.success}>{successMessage}</p>}
+
+      {errorPanel && (
+        <div style={styles.errorPanel}>
+          <p style={styles.errorPanelTitle}>{errorPanel.title}</p>
+          <p style={styles.errorPanelMessage}>{errorPanel.message}</p>
+          {errorPanel.details && <p style={styles.errorPanelDetails}>{errorPanel.details}</p>}
+        </div>
       )}
 
       <div style={styles.buttonRow}>
@@ -129,12 +228,23 @@ const AdminUserEditPage = () => {
           style={{
             ...styles.button,
             ...styles.updateButton,
-            ...(isUpdateEnabled ? {} : styles.disabledButton),
+            ...(isRefetchBlocked ? styles.disabledButton : {}),
           }}
-          disabled={!isUpdateEnabled}
+          disabled={isRefetchBlocked}
+          onClick={handleRefetchUser}
+        >
+          {isRefreshingUser ? 'Updating...' : 'Update User'}
+        </button>
+        <button
+          style={{
+            ...styles.button,
+            ...styles.updateButton,
+            ...(isRoleUpdateEnabled ? {} : styles.disabledButton),
+          }}
+          disabled={!isRoleUpdateEnabled}
           onClick={handleUpdate}
         >
-          {isUpdating ? 'Updating...' : 'Update'}
+          {isUpdating ? 'Saving...' : 'Save Role'}
         </button>
       </div>
     </div>
@@ -207,9 +317,26 @@ const styles: Record<string, React.CSSProperties> = {
     marginTop: '12px',
     color: '#2e7d32',
   },
-  error: {
-    marginTop: '12px',
+  errorPanel: {
+    marginTop: '14px',
+    padding: '12px 14px',
+    border: '1px solid #f4b4b4',
+    borderRadius: '6px',
+    backgroundColor: '#fff4f4',
+  },
+  errorPanelTitle: {
+    margin: 0,
+    fontWeight: 700,
     color: '#c00',
+  },
+  errorPanelMessage: {
+    margin: '6px 0 0 0',
+    color: '#5a1a1a',
+  },
+  errorPanelDetails: {
+    margin: '6px 0 0 0',
+    color: '#7a2a2a',
+    fontSize: '13px',
   },
 };
 

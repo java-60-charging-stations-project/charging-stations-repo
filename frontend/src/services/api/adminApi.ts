@@ -10,6 +10,13 @@ export async function fetchAdminUsers(): Promise<AdminUser[]> {
     return response.data;
 }
 
+export async function fetchAdminUserById(userId: string): Promise<AdminUser> {
+    const response = await apiClient.get<ApiResponse<AdminUser>>(
+        `/admin/users/${userId}`,
+    );
+    return response.data;
+}
+
 export async function updateUserRole(
     userId: string,
     role: string,
