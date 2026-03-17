@@ -1,26 +1,30 @@
 @import "tailwindcss";
 
 @layer base {
+  * {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
   html, body, #root {
     height: 100%;
   }
   
   body {
-    @apply bg-slate-50 text-slate-900 antialiased;
+    @apply bg-slate-50 text-slate-900;
   }
 
   button {
-    border: 1px solid rgb(148 163 184);   /* slate-400 */
-    background-color: rgb(51 65 85);      /* slate-700 */
-    color: white;
-    border-radius: 0.375rem;              /* rounded-md */
+    @apply border-slate-400 bg-slate-700 text-white;
+    border: 1px solid;
+    border-radius: 0.375rem;
     padding: 0.5rem 0.875rem;
     font-weight: 500;
     cursor: pointer;
   }
 
   button:hover {
-    background-color: rgb(30 41 59);      /* slate-800 */
+    @apply bg-slate-800;
   }
 
   button:disabled {
@@ -29,13 +33,13 @@
   }
 
   a {
-    color: rgb(37 99 235); /* blue-600 */
+    @apply text-blue-600;
     text-decoration: none;
     transition: color 150ms ease;
   }
 
   a:hover {
-    color: rgb(29 78 216); /* blue-700 */
+    @apply text-blue-700;
     text-decoration: underline;
     text-underline-offset: 2px;
   }
@@ -43,31 +47,28 @@
   input,
   select {
     width: 100%;
-    border: 1px solid rgb(203 213 225); /* slate-300 */
-    background-color: rgb(255 255 255);
-    color: rgb(15 23 42); /* slate-900 */
-    border-radius: 0.375rem; /* rounded-md */
+    @apply border-slate-300 bg-white text-slate-900;
+    border: 1px solid;
+    border-radius: 0.375rem;
     padding: 0.5rem 0.75rem;
-    font-size: 0.875rem; /* text-sm */
+    font-size: 0.875rem;
     line-height: 1.25rem;
     outline: none;
     transition: border-color 150ms ease, box-shadow 150ms ease;
   }
 
   input::placeholder {
-    color: rgb(148 163 184); /* slate-400 */
+    @apply text-slate-400;
   }
 
   input:focus,
   select:focus {
-    border-color: rgb(59 130 246); /* blue-500 */
-    box-shadow: 0 0 0 3px rgb(59 130 246 / 0.2);
+    @apply border-blue-500 ring-3 ring-blue-500/20;
   }
 
   input:disabled,
   select:disabled {
-    background-color: rgb(241 245 249); /* slate-100 */
-    color: rgb(100 116 139); /* slate-500 */
+    @apply bg-slate-100 text-slate-500;
     cursor: not-allowed;
   }
 
@@ -76,7 +77,7 @@
     margin-bottom: 0.375rem;
     font-size: 0.875rem;
     font-weight: 500;
-    color: rgb(51 65 85); /* slate-700 */
+    @apply text-slate-700;
   }
   
   table {
@@ -86,21 +87,21 @@
   }
   
   th, td {
-    border-bottom: 1px solid rgb(226 232 240); /* slate-200 */
+    @apply border-slate-200;
+    border-bottom: 1px solid;
     padding: 0.625rem 0.75rem;
     text-align: left;
   }
   
   th {
     font-weight: 600;
-    color: rgb(51 65 85); /* slate-700 */
-    background-color: rgb(248 250 252); /* slate-50 */
+    @apply text-slate-700 bg-slate-50;
   }
   
   button:focus-visible,
   input:focus-visible,
   select:focus-visible {
     outline: 2px solid transparent;
-    box-shadow: 0 0 0 3px rgb(59 130 246 / 0.25);
+    @apply ring-3 ring-blue-500/25;
   }
 }

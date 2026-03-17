@@ -4,7 +4,7 @@ import NavMenu from "@/components/NavMenu";
 
 const Layout: FC = () => {
   return (
-    <div className="min-h-screen w-full bg-slate-50 text-slate-900 antialiased">
+    <div className="min-h-screen w-full bg-slate-50 text-slate-900">
       <NavMenu />
       <Outlet />
     </div>
