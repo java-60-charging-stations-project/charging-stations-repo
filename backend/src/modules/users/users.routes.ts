@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { verifyCognitoJwt, requireGroups } from '../../middlewares/auth';
 import { UsersController } from './users.controller';
-import { buildUsersService } from './users.service';
+import { buildUsersService } from './users.service.lambda';
 
 const ADMIN_GROUP = 'ADMIN';
 
