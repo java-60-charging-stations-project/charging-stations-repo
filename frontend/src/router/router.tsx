@@ -40,19 +40,19 @@ const router = createBrowserRouter([
                         path: "/user",
                         element: <RoleRoute role={"USER"} />,
                         children: [
-                        { index: true, element: <UserDashboardPage /> },
-                        { path: "session", element: <UserCurrentSessionPage /> },
-                        { path: "profile", element: <UserProfilePage /> }
+                            { index: true, element: <UserDashboardPage /> },
+                            { path: "session", element: <UserCurrentSessionPage /> },
+                            { path: "profile", element: <UserProfilePage /> }
                         ]
                     },
                     {
                         path: "/support",
                         element: <RoleRoute role={"SUPPORT"} />,
                         children: [
-                        { index: true, element: <SupportDashboardPage /> },
-                        { path: "logs", element: <SupportLogsPage /> },
-                        { path: "stations", element: <SupportStationsPage /> },
-                        { path: "sessions", element: <SupportSessionsPage /> }
+                            { index: true, element: <SupportDashboardPage /> },
+                            { path: "logs", element: <SupportLogsPage /> },
+                            { path: "stations", element: <SupportStationsPage /> },
+                            { path: "sessions", element: <SupportSessionsPage /> }
                         ]
                     },
                     {
