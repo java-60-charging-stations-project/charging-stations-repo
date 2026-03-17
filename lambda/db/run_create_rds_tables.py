@@ -8,7 +8,7 @@ dotenv.load_dotenv()
 
 AWS_REGION = os.getenv("AWS_REGION", "il-central-1")
 AWS_LAMBDA_HOST_ACCOUNT = os.getenv("AWS_LAMBDA_HOST_ACCOUNT", "852215679994")
-CREATE_RDS_TABLES_FUNCTION_NAME = "charging-stations-get-user-info"
+CREATE_RDS_TABLES_FUNCTION_NAME = os.getenv("CREATE_RDS_TABLES_FUNCTION_NAME", "charging-stations-create-rds-tables")
 
 def main():
     client = boto3.client("lambda", region_name=AWS_REGION)

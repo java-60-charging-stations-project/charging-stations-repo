@@ -62,24 +62,26 @@ def extract_payload_from_event(event: dict) -> modify_user_group_payload:
         logger.error(f"Unhandled error: {e}")
         raise LambdaResponseError({"error": f"unhandled error: {e}"})
 
-def is_admin_console_created(event: dict) -> bool:
-    res = False
-    name = event.get("name", "")
-    if name == "cognito:default_val":
-        res = True
-    return res
+def is_admin_pre_sign_up(event: dict) -> bool:
+    trigger = event.get("triggerSource", "")
+    return trigger == "PreSignUp_AdminCreateUser"
+
+def is_user_pre_sign_up(event: dict) -> bool:
+    trigger = event.get("triggerSource", "")
+    return trigger == "PreSignUp_SignUp"
 
 def extract_user_instance_from_event(event: dict) -> UserInstance:
+    console_created_ = is_admin_pre_sign_up(event)
     try:
         logger.info(f"Extracting user instance")
         attrs = event['request']['userAttributes']
         email = attrs['email']
-        status = attrs['cognito:user_status']
-        full_name = attrs['name']
+        status = attrs['cognito:user_status'] if not console_created_ else "CONFIRMED"
+        full_name = attrs['name'] if not console_created_ else "Console User"
         if full_name.startswith("cognito:"):
             full_name = "Console User"
         user_instance: UserInstance = {
-            'user_id': attrs['sub'],
+            'user_id': attrs['sub'] if not console_created_ else event["userName"],
             'full_name': full_name,
             'email': email,
             'phone': attrs.get('phone_number'),
@@ -184,12 +186,11 @@ def handler(event: dict, context: Any) -> dict:
         "trigger": event.get("triggerSource"),
     }
     if caller_entity == "cognito":
+        if is_user_pre_sign_up(event):
+            return event
         try:
             user_instance = extract_user_instance_from_event(event)
             insert_user_to_rds(user_instance)
-            if is_admin_console_created(event):
-                user_instance["role"] = "ADMIN"
-                add_user_to_group(event["userPoolId"], user_instance["user_id"], user_instance["role"])
             log_audit("INFO", message="user written to RDS successfully", status="SUCCESS", **audit_base)
         except LambdaResponseError as e:
             log_audit("ERROR", message="error writing user to RDS", status="ERROR", errorMessage=e.response.get("error"), **audit_base)

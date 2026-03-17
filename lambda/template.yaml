@@ -84,6 +84,7 @@ Resources:
           Mutable: true
       LambdaConfig:
         PostConfirmation:  !GetAtt WriteUserRDSFunction.Arn
+        PreSignUp: !GetAtt WriteUserRDSFunction.Arn
 
   UserPoolClient:
     Type: AWS::Cognito::UserPoolClient
