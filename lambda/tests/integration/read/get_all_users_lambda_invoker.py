@@ -13,19 +13,22 @@ GET_USERS_FUNCTION_NAME = os.getenv("GET_USERS_FUNCTION_NAME", "charging-station
 def main():
     client = boto3.client("lambda", region_name=AWS_REGION)
     payload = {
+        "service": {
         "action": "get_all_users",
-        "caller_id": "script_run",
+        "caller_id": "string",
+        }
     }
     resp = client.invoke(
         FunctionName=f"arn:aws:lambda:{AWS_REGION}:{AWS_LAMBDA_HOST_ACCOUNT}:function:{GET_USERS_FUNCTION_NAME}",
         InvocationType="RequestResponse",
         Payload=json.dumps(payload).encode("utf-8"),
     )
-    payload = resp["Payload"].read().decode()
+    raw = resp["Payload"].read().decode()
+    response_json = json.loads(raw)
     assert resp.get("StatusCode") == 200
     assert payload is not None
     assert len(payload) > 0
-    list_users = json.loads(payload)
+    list_users = response_json["data"]
     assert isinstance(list_users, list)
     assert all(isinstance(item, dict) for item in list_users)
     assert all(item.get("user_id") is not None for item in list_users)

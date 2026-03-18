@@ -1,27 +1,23 @@
-from typing import Literal, Optional
+from typing import TypedDict, Optional, Literal
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict
 
-class UserInstance(BaseModel):
-    model_config = ConfigDict(from_attributes=True, extra="ignore")
+class UserInstance(TypedDict):
     user_id: str
     full_name: str
     email: str
     phone: Optional[str]
     role: Literal["USER", "ADMIN", "SUPPORT"]
-    status: Literal["ACTIVE", "BANNED", "DISABLED"] | None
+    status: Optional[Literal["ACTIVE", "BANNED", "DISABLED"]]
     created_at: datetime
     updated_at: Optional[datetime]
 
-class RatePlan(BaseModel):
-    model_config = ConfigDict(from_attributes=True, extra="ignore")
+class RatePlan(TypedDict):
     currencyCode: str
     currencyName: str
     peakRate: float
     offPeakRate: float
 
-class StationInstance(BaseModel):
-    model_config = ConfigDict(from_attributes=True, extra="ignore")
+class StationInstance(TypedDict):
     id: str
     code: str
     name: str
@@ -39,4 +35,3 @@ class StationInstance(BaseModel):
     status: Literal["ACTIVE", "INACTIVE", "OUT_OF_SERVICE"]
     created_at: datetime
     updated_at: Optional[datetime]
-

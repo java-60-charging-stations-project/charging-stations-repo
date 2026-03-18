@@ -177,8 +177,10 @@ Request:
       "peakRate": 2.14,
       "offPeakRate": 1.47
     },
+    "location" : {
     "longitude": 34.7818, (optional)
     "latitude": 32.0853 (optional)
+    }
   }
 }
 ```
