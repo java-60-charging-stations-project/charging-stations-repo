@@ -237,7 +237,7 @@ Resources:
     Properties:
       Runtime: python3.12
       FunctionName: charging-stations-write-user-rds
-      Handler: write_user_rds_move_groups.handler
+      Handler: write_user_rds.handler
       CodeUri: db/write
       Layers:
         - !Ref CommonToolsLayer

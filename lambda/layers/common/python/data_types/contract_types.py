@@ -8,5 +8,5 @@ class SuccessResponsePayload(TypedDict):
     data: dict | list
 
 class ErrorResponsePayload(TypedDict):
-    error: ErrorsList
-    code: str
+    error: str
+    code: ErrorsList

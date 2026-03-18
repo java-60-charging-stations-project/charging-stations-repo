@@ -49,25 +49,25 @@ def extract_station_instance_from_event(event: dict) -> StationInstance:
     try:
         data = event["data"]
         location = data["location"]
-        station_instance: StationInstance = {
-            "id": str(uuid.uuid4()),
-            "code": data["code"],
-            "name": data["name"],
-            "owner": data["owner"],
-            "city": data["city"],
-            "address": data["address"],
-            "ratePlan": data["ratePlan"],
-            "email": data["email"],
-            "phone": data["phone"],
-            "status": data.get("status", "ACTIVE"),
-            "siteTechnician": data["siteTechnician"],
-            "maxPowerKw": data.get("maxPowerKw", 0.0),
-            "longitude": location.get("longitude", 0.0),
-            "latitude": location.get("latitude", 0.0),
-            "ports": data.get("ports", 0),
-            "created_at": datetime.now(),
-            "updated_at": None,
-        }
+        station_instance = StationInstance(
+            id=str(uuid.uuid4()),
+            code=data["code"],
+            name=data["name"],
+            owner=data["owner"],
+            city=data["city"],
+            address=data["address"],
+            ratePlan=data["ratePlan"],
+            email=data["email"],
+            phone=data["phone"],
+            status=data.get("status", "ACTIVE"),
+            siteTechnician=data["siteTechnician"],
+            maxPowerKw=data.get("maxPowerKw", 0.0),
+            longitude=location.get("longitude", 0.0),
+            latitude=location.get("latitude", 0.0),
+            ports=data.get("ports", 0),
+            created_at=datetime.now(),
+            updated_at=None,
+        )
         logger.info(f"Station instance extracted successfully: {station_instance}")
         return station_instance
     except KeyError as e:
@@ -84,6 +84,8 @@ def insert_station_to_rds(station: StationInstance) -> None:
         logger.error(f"Error getting connection: {e}")
         raise LambdaResponseError({"error": f"Error getting connection: {e}", "code": "DATABASE_ERROR"})
     try:
+        rate_plan = station.ratePlan.model_dump() if station.ratePlan else None
+        rate_plan_json = json.dumps(rate_plan) if rate_plan else None
         with conn.cursor() as cur:
             cur.execute(
                 """
@@ -98,22 +100,22 @@ def insert_station_to_rds(station: StationInstance) -> None:
                     )
                 """,
                 (
-                    station["id"],
-                    station["code"],
-                    station["name"],
-                    station["owner"],
-                    station["city"],
-                    station["address"],
-                    station["email"],
-                    station["siteTechnician"],
-                    station["maxPowerKw"],
-                    station["longitude"],
-                    station["latitude"],
-                    station["ports"],
-                    json.dumps(station["ratePlan"]),
-                    station["status"],
-                    station["created_at"],
-                    station["updated_at"],
+                    station.id,
+                    station.code,
+                    station.name,
+                    station.owner,
+                    station.city,
+                    station.address,
+                    station.email,
+                    station.siteTechnician,
+                    station.maxPowerKw,
+                    station.longitude,
+                    station.latitude,
+                    station.ports,
+                    rate_plan_json,
+                    station.status,
+                    station.created_at,
+                    station.updated_at,
                 ),
             )
         conn.commit()
@@ -138,16 +140,16 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
     logger.info(f"Handler called with event: {event}")
     service_data = event.get("service")
     audit_base = {
-    "caller_id": service_data.get("caller_id") if service_data else None,
-    "service": context.function_name,
-    "event": service_data.get("action") if service_data else None,
-    "requestId": context.aws_request_id,
+        "caller_id": service_data.get("caller_id") if service_data else None,
+        "service": context.function_name,
+        "event": service_data.get("action") if service_data else None,
+        "requestId": context.aws_request_id,
         }
     try:
         station_instance = extract_station_instance_from_event(event)
         insert_station_to_rds(station_instance)
         log_audit("INFO", message="station written to RDS successfully", status="SUCCESS", **audit_base)
-        return SuccessResponsePayload(data={"stationId": station_instance["id"]})
+        return SuccessResponsePayload(data={"stationId": station_instance.id})
     except LambdaResponseError as e:
         log_audit("ERROR", message="error writing station to RDS", status="ERROR", errorMessage=e.response.get("error"), **audit_base)
         return ErrorResponsePayload(error=e.response["error"], code=e.response["code"])
