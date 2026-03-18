@@ -36,13 +36,14 @@ const SignInForm: FC<SignInFormProps> = ({isRegister, submitHandler}) => {
   };
 
   return (
-      <div className="loginForm">
+  <div className="bg-gray-100 flex flex-col items-center justify-center min-h-screen w-full">
       <h1>{isRegister?"SIGN UP PAGE": "LOGIN PAGE"}</h1>
       <h4>
           {isRegister ? "Sign up to create an account" : "Sign in to your account"}
       </h4>
-      <form onSubmit={ handleSubmit }>
+    <form onSubmit={ handleSubmit }>
       <div>
+        <label className="block text-gray-700 font-medium mb-1">Email</label>
         <input
           className="inputText"
           id="email"
@@ -55,6 +56,7 @@ const SignInForm: FC<SignInFormProps> = ({isRegister, submitHandler}) => {
       </div>
       {isRegister && (
         <div>
+          <label className="block text-gray-700 font-medium mb-1">First Name</label>
           <input
             className="inputText"
             id="firstName"
