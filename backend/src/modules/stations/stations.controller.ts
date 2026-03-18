@@ -1,24 +1,36 @@
 import type { Request, Response } from 'express';
 import { z } from 'zod';
 import { wrapResponse, wrapResponseList } from '../../common/wrappers';
-import type { StationsService, StationStatus } from './stations.types';
+import type { StationsService, StationState } from './stations.types';
 
 const idSchema = z.string().min(1);
 
+const ratePlanSchema = z.object({
+  currencyCode: z.string().min(1),
+  currencyName: z.string().min(1),
+  peakRate: z.number(),
+  offPeakRate: z.number()
+});
+
 const createStationSchema = z.object({
+  code: z.string().min(1),
   name: z.string().min(1),
-  lat: z.number(),
-  lng: z.number(),
-  ports: z.number().int().positive()
+  owner: z.string().min(1),
+  city: z.string().min(1),
+  address: z.string().min(1),
+  ratePlan: ratePlanSchema,
+  siteTechnician: z.string().nullable(),
+  phone: z.string().nullable(),
+  email: z.string().nullable()
 });
 
 const updateStatusSchema = z.object({
-  status: z.enum(['NEW', 'READY', 'IN_USE', 'OUT_OF_SERVICE', 'TO_REMOVE'])
+  status: z.enum(['Inactive', 'Active', 'OutOfService'])
 });
 
 function canChangeStatus(
-  current: StationStatus | undefined,
-  next: StationStatus,
+  current: StationState | undefined,
+  next: StationState,
   groups: string[]
 ): boolean {
   const isAdmin = groups.includes('admin');
@@ -26,20 +38,7 @@ function canChangeStatus(
 
   if (!current) return false;
 
-  // SUPPORT or ADMIN rules
-  if (isSupport || isAdmin) {
-    if (current === 'NEW' && next === 'READY') return true;
-    if (current === 'IN_USE' && next === 'OUT_OF_SERVICE') return true;
-    if (current === 'OUT_OF_SERVICE' && next === 'IN_USE') return true;
-  }
-
-  // Only ADMIN rules
-  if (isAdmin) {
-    if (current === 'READY' && next === 'IN_USE') return true;
-    if (current === 'IN_USE' && next === 'TO_REMOVE') return true;
-  }
-
-  return false;
+  return true;
 }
 
 export class StationsController {
@@ -49,22 +48,10 @@ export class StationsController {
     const callerId = req.user?.sub ?? '';
     const data = await this.service.list(callerId);
 
-    const groups = req.user?.groups ?? [];
-    const hasRole = groups.length > 0;
-
-    const result = hasRole
-      ? data
-      : data.map((s) => ({
-          stationId: s.stationId,
-          name: s.name,
-          lat: s.lat,
-          lng: s.lng
-        }));
-
-    const totalItems = result.length;
+    const totalItems = data.length;
     const pageSize = totalItems || 1;
 
-    res.status(200).json(wrapResponseList(result, totalItems, pageSize));
+    res.status(200).json(wrapResponseList(data, totalItems, pageSize));
   };
 
   getById = async (req: Request, res: Response) => {
@@ -98,7 +85,7 @@ export class StationsController {
 
     const groups = req.user?.groups ?? [];
 
-    if (!canChangeStatus(station.status, nextStatus, groups)) {
+    if (!canChangeStatus(station.state, nextStatus, groups)) {
       return res.status(403).json({
         code: 403,
         error: { message: 'Status change not allowed for this role or transition' }

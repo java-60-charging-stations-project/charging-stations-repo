@@ -1,5 +1,3 @@
-export type StationStatus = 'NEW' | 'READY' | 'IN_USE' | 'OUT_OF_SERVICE' | 'TO_REMOVE';
-
 /** Station state per API spec (GET /stations, /admin/stations) */
 export type StationState = 'Inactive' | 'Active' | 'OutOfService';
 
@@ -68,26 +66,19 @@ export interface AdminCreateStationRequest {
   email: string | null;
 }
 
-export interface StationDto {
+export interface AdminCreateStationResponse {
   stationId: string;
-  name: string;
-  lat?: number; // широта
-  lng?: number; // долгота
-  ports?: number;
-  freePorts?: number;
-  address?: string;
-  status?: StationStatus;
 }
 
 export interface StationsService {
-  list(callerId: string): Promise<StationDto[]>;
-  getById(stationId: string, callerId: string): Promise<StationDto | null>;
-  create(payload: Omit<StationDto, 'stationId' | 'status'>, callerId: string): Promise<StationDto>;
+  list(callerId: string): Promise<StationBase[]>;
+  getById(stationId: string, callerId: string): Promise<StationBase>;
+  create(payload: AdminCreateStationRequest, callerId: string): Promise<AdminCreateStationResponse>;
   updateStatus(
     stationId: string,
-    status: StationStatus,
+    status: StationState,
     callerId: string,
     callerGroups: string[]
-  ): Promise<StationDto>;
+  ): Promise<StationBase>;
 }
 
