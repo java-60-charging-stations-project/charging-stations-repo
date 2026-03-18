@@ -248,7 +248,10 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/StationBaseSingleResponse'
+                $ref: '#/components/schemas/AdminCreateStationResponse'
+              example:
+                data:
+                  stationId: st-001
         '400':
           $ref: '#/components/responses/BadRequestResponse'
         '401':
@@ -1265,6 +1268,18 @@ components:
             $ref: '#/components/schemas/StationDetailed'
         meta:
           $ref: '#/components/schemas/Meta'
+
+    AdminCreateStationResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [stationId]
+          properties:
+            stationId:
+              type: string
+              description: The created station identifier.
 
     AdminCreateStationRequest:
       type: object
