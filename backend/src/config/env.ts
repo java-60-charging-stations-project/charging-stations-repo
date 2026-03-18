@@ -19,7 +19,7 @@ export const env = {
   healthLambdaFunctionName: String(process.env.HEALTH_LAMBDA_FUNCTION_NAME ?? 'charging-stations-health'),
 
   // auth
-  authDisabled: readBool('AUTH_DISABLED', true),
+  authDisabled: readBool('AUTH_DISABLED', false),
   cognitoRegion: String(process.env.COGNITO_REGION ?? 'il-central-1'),
   cognitoUserPoolId: String(process.env.COGNITO_USER_POOL_ID ?? ''),
   cognitoClientId: String(process.env.COGNITO_CLIENT_ID ?? ''),

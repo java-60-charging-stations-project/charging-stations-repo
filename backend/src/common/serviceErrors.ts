@@ -1,0 +1,31 @@
+export class ServiceError extends Error {
+    readonly statusCode: number;
+    readonly errorCode: string;
+    constructor(message: string, statusCode: number, errorCode: string) {
+        super(message);
+        this.name = 'ServiceError';
+        this.statusCode = statusCode;
+        this.errorCode = errorCode;
+    }
+};
+
+export class InternalServerError extends ServiceError {
+    constructor() {
+        super("Internal server error", 500, 'INTERNAL_SERVER_ERROR');
+        this.name = 'InternalServerError';
+    }
+};
+
+export class ResourceNotFoundError extends ServiceError {
+    constructor(message: string, errorCode: string = 'RESOURCE_NOT_FOUND') {
+        super(message, 404, errorCode);
+        this.name = 'ResourceNotFoundError';
+    }
+};
+
+export class BadRequestError extends ServiceError {
+    constructor(message: string, errorCode: string = 'BAD_REQUEST') {
+        super(message, 400, errorCode);
+        this.name = 'BadRequestError';
+    }
+};

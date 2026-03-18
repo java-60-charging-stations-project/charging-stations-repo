@@ -4,11 +4,7 @@ import NavMenu from "@/components/NavMenu";
 
 const Layout: FC = () => {
   return (
-    <div style={{
-            display: "flex",
-            flexDirection: "row",
-            minHeight: "100vh",
-    }}>
+    <div className="min-h-screen w-full bg-slate-50 text-slate-900">
       <NavMenu />
       <Outlet />
     </div>

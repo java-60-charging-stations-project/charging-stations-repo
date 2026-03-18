@@ -184,6 +184,10 @@ Resources:
           Environment:
             - Name: NODE_ENV
               Value: production
+            - Name: ENVIRONMENT
+              Value: production
+            - Name: LOG_LEVEL
+              Value: info
             - Name: PORT
               Value: !Ref ContainerPort
             - Name: API_PREFIX
@@ -206,10 +210,7 @@ Resources:
               Value: !Ref CognitoUserPoolId
             - Name: COGNITO_CLIENT_ID
               Value: !Ref CognitoClientId
-            - Name: ENVIRONMENT
-              Value: production
-            - Name: LOG_LEVEL
-              Value: info
+            
             # add more env vars here to mirror your .env
           LogConfiguration:
             LogDriver: awslogs

@@ -51,10 +51,10 @@ const AdminUsersPage = () => {
           {users.map((user) => (
             <tr key={user.userId} style={styles.tr}>
               <td style={styles.td}>
-                <Link to={`/admin/users/${user.userId}`} state={{ user }}>{user.email}</Link>
+                <Link to={`/admin/users/${user.userId}`}>{user.email}</Link>
               </td>
               <td style={styles.td}>
-                <Link to={`/admin/users/${user.userId}`} state={{ user }}>{user.fullName}</Link>
+                <Link to={`/admin/users/${user.userId}`}>{user.fullName}</Link>
               </td>
               <td style={styles.td}>{user.role}</td>
               <td style={styles.td}>{user.phone}</td>
