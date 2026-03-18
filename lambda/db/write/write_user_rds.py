@@ -78,16 +78,16 @@ def extract_user_instance_from_event(event: dict) -> UserInstance:
         full_name = attrs['name'] if not console_created else "Console User"
         if full_name.startswith("cognito:"):
             full_name = "Console User"
-        user_instance: UserInstance = UserInstance(
-            user_id=attrs['sub'] if not console_created else event["userName"],
-            full_name=full_name,
-            email=email,
-            phone=attrs.get('phone_number'),
-            role="USER",
-            status="ACTIVE" if status == "CONFIRMED" else None,
-            created_at=datetime.now(),
-            updated_at=None,
-        )
+        user_instance: UserInstance = {
+            "user_id": attrs['sub'] if not console_created else event["userName"],
+            "full_name": full_name,
+            "email": email,
+            "phone": attrs.get('phone_number'),
+            "role": "USER",
+            "status": "ACTIVE" if status == "CONFIRMED" else None,
+            "created_at": datetime.now(),
+            "updated_at": None,
+        }
         logger.info(f"User instance extracted successfully: {user_instance}")
         return user_instance
     except KeyError as e:
@@ -114,13 +114,13 @@ def insert_user_to_rds(user: UserInstance) -> None:
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
-                    user.user_id,
-                    user.full_name,
-                    user.email,
-                    user.phone,
-                    user.role,
-                    user.status,
-                    user.created_at,
+                    user["user_id"],
+                    user["full_name"],
+                    user["email"],
+                    user["phone"],
+                    user["role"],
+                    user["status"],
+                    user["created_at"],
                 ),
             )
         conn.commit()
@@ -152,7 +152,7 @@ def handler(event: dict, context: Any) -> dict:
     if is_user_pre_sign_up(event):
         return event
     try:
-        user_instance = extract_user_instance_from_event(event)
+        user_instance: UserInstance = extract_user_instance_from_event(event)
         insert_user_to_rds(user_instance)
         log_audit("INFO", message="user written to RDS successfully", status="SUCCESS", **audit_base)
     except LambdaResponseError as e:
