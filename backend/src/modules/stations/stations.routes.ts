@@ -1,10 +1,8 @@
 import { Router } from 'express';
 import { verifyCognitoJwt, requireGroups } from '../../middlewares/auth';
+import { ADMIN_GROUP, SUPPORT_GROUP } from '../../common/authRoles';
 import { StationsController } from './stations.controller';
 import { buildStationsService } from './stations.service';
-
-const ADMIN_GROUP = 'admin';
-const SUPPORT_GROUP = 'support';
 
 export function stationsRouter(): Router {
   const router = Router();
