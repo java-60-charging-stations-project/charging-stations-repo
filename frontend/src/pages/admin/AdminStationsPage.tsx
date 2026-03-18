@@ -2,6 +2,7 @@ import { fetchStations } from "@/services/api/adminApi";
 import { getErrorMessage } from "@/services/api/errorUtils";
 import type { StationBase } from "@/types/stations";
 import { useEffect, useState } from "react";
+import { Link } from "react-router";
 
 function StationTableHeader(): React.ReactNode {
   return (
@@ -74,6 +75,7 @@ const AdminStationsPage = () => {
           ))}
         </tbody>
       </table>
+      <Link to="/admin/stations/create">Create a new station</Link>
     </div>
   );
 };
