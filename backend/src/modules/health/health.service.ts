@@ -1,6 +1,7 @@
 import { env } from '../../config/env';
 import { AwsLambdaInvoker, type LambdaInvoker } from '../../utils/lambdaInvoker';
 import { createLogger } from '../../utils/logger';
+import { wrapLambdaRequest } from '../../common/wrappers';
 
 export interface HealthResponse {
   code: number;
@@ -16,7 +17,7 @@ export async function invokeHealthLambda(): Promise<HealthResponse> {
     logger.debug(`Invoking health Lambda function: ${env.healthLambdaFunctionName}`);
     const lambdaResponse = await LAMBDA_INVOKER.invokeJson<HealthResponse>(
       env.healthLambdaFunctionName,
-      { action: 'health' }
+      wrapLambdaRequest('health', 'system', {}, {})
     );
     logger.debug(`Lambda response: ${JSON.stringify(lambdaResponse)}`);
 
@@ -24,7 +25,7 @@ export async function invokeHealthLambda(): Promise<HealthResponse> {
       logger.error(`Invalid lambda response: ${JSON.stringify(lambdaResponse)}`);
       return { code: 502, status: 'bad-health-response' };
     }
-  
+
     return lambdaResponse;
   } catch (error) {
     logger.error(`Error invoking health Lambda function: ${error}`);

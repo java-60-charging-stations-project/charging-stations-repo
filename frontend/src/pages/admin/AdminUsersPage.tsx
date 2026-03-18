@@ -27,71 +27,44 @@ const AdminUsersPage = () => {
   }, []);
 
   if (isLoading) {
-    return <div style={styles.container}><p>Loading...</p></div>;
+    return <div><p>Loading...</p></div>;
   }
 
   if (error) {
-    return <div style={styles.container}><p style={styles.error}>Error: {error}</p></div>;
+    return <div><p>Error: {error}</p></div>;
   }
 
   return (
-    <div style={styles.container}>
+    <div>
       <h1>Users</h1>
-      <table style={styles.table}>
+      <table>
         <thead>
           <tr>
-            <th style={styles.th}>Email</th>
-            <th style={styles.th}>Name</th>
-            <th style={styles.th}>Role</th>
-            <th style={styles.th}>Phone</th>
-            <th style={styles.th}>Status</th>
+            <th>Email</th>
+            <th>Name</th>
+            <th>Role</th>
+            <th>Phone</th>
+            <th>Status</th>
           </tr>
         </thead>
         <tbody>
           {users.map((user) => (
-            <tr key={user.userId} style={styles.tr}>
-              <td style={styles.td}>
+            <tr key={user.userId}>
+              <td>
                 <Link to={`/admin/users/${user.userId}`}>{user.email}</Link>
               </td>
-              <td style={styles.td}>
+              <td>
                 <Link to={`/admin/users/${user.userId}`}>{user.fullName}</Link>
               </td>
-              <td style={styles.td}>{user.role}</td>
-              <td style={styles.td}>{user.phone}</td>
-              <td style={styles.td}>{user.status}</td>
+              <td>{user.role}</td>
+              <td>{user.phone}</td>
+              <td>{user.status}</td>
             </tr>
           ))}
         </tbody>
       </table>
     </div>
   );
-};
-
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    padding: '24px',
-    width: '100%',
-  },
-  table: {
-    width: '100%',
-    borderCollapse: 'collapse',
-    marginTop: '16px',
-  },
-  th: {
-    textAlign: 'left',
-    padding: '12px 16px',
-    borderBottom: '2px solid #ddd',
-    fontWeight: 600,
-  },
-  tr: {
-    borderBottom: '1px solid #eee',
-  },
-  td: {
-    padding: '10px 16px',
-  },
-  error: {
-    color: '#c00',
-  },
 };
 
 export default AdminUsersPage;

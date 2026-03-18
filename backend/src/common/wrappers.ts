@@ -1,7 +1,23 @@
-import { apiResponse, apiResponseList } from "./wrapperTypes";
+import { apiResponse, apiResponseList, LambdaRequest } from "./wrapperTypes";
 
 export function wrapResponse<T>(data: T): apiResponse<T> {
     return { data };
+}
+
+export function wrapLambdaRequest<T, M = unknown>(
+    action: string,
+    callerId: string,
+    data: T,
+    meta?: M
+): LambdaRequest<T, M> {
+    return {
+        service: {
+            action,
+            caller_id: callerId,
+        },
+        data,
+        ...(meta !== undefined ? { meta } : {}),
+    };
 }
 
 export function wrapResponseList<T>(
