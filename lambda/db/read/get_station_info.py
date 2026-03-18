@@ -5,10 +5,19 @@ from typing import Any
 from psycopg2.extras import RealDictCursor
 from utils.logger import logger, log_audit
 from utils.error_handlers import LambdaResponseError
-from data_types.db_instance_types import StationInstance
 from data_types.contract_types import ErrorResponsePayload, SuccessResponsePayload
+from datetime import datetime
 
 _conn = None
+
+def datetime_to_json(v: Any) -> Any:
+    if isinstance(v, datetime):
+        return v.isoformat()
+    if isinstance(v, dict):
+        return {k: datetime_to_json(x) for k, x in v.items()}
+    if isinstance(v, list):
+        return [datetime_to_json(x) for x in v]
+    return v
 
 def get_db_config() -> dict:
     return {
@@ -43,7 +52,7 @@ def extract_payload_from_event(event: dict) -> dict:
     logger.info(f"Extracting payload from event")
     try:
         service_data = event["service"]
-        station_id = event.get("station_id") if service_data["action"] == "get_station_by_id" else None
+        station_id = service_data["station_id"] if service_data["action"] == "get_station_by_id" else None
         payload: dict = {
             "action": service_data["action"],
             "caller_id": service_data["caller_id"],
@@ -89,9 +98,9 @@ def get_all_stations() -> list[dict]:
         raise LambdaResponseError({"error": f"Error getting all stations: {e}", "code": "DATABASE_ERROR"})
 
 def build_json(station_info: dict) -> dict:
-    station_data = StationInstance.model_validate(station_info)
-    station_json = station_data.model_dump(mode="json", exclude={'location'})
-    return station_json
+    station_dict = dict(station_info)
+    station_dict.pop("location", None)
+    return datetime_to_json(station_dict)
 
 def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponsePayload:
     logger.info(f"Handler called with event: {event}")
@@ -116,7 +125,10 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                 station_info = get_station_info(station_id)
                 if not station_info:
                     return ErrorResponsePayload(error="station not found", code="NOT_FOUND")
-                return SuccessResponsePayload(data=build_json(station_info))
+                result = build_json(station_info)
+                logger.info(f"result: {result}")
+                log_audit("INFO", message="station info fetched successfully", status="SUCCESS", **audit_base)
+                return SuccessResponsePayload(data=result)
             except Exception as e:
                 return ErrorResponsePayload(error=f"unhandled error getting station info: {e}", code="UNHANDLED_ERROR")
         case "get_all_stations":

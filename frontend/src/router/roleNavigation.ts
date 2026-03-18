@@ -1,6 +1,7 @@
 import type { UserRole } from "@/types";
 
 export const LOGIN_PATH = "/login";
+export const REGISTER_PATH = "/register";
 export const APP_PATH = "/app";
 
 export const ROLE_HOME: Record<UserRole, string> = {

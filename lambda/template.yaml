@@ -457,3 +457,103 @@ Resources:
       FunctionName: !Ref HealthFunction
       Action: lambda:InvokeFunction
       Principal: !Sub "arn:aws:iam::${InvokerAccountIdB}:root"
+  
+  WriteStationRDSFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: ChargingStationsRDSPostgresDB
+    Properties:
+      Runtime: python3.12
+      FunctionName: charging-stations-write-station-rds
+      Handler: write_station_rds.handler
+      CodeUri: db/write
+      Layers:
+        - !Ref CommonToolsLayer
+        - !Sub "arn:aws:lambda:${AWS::Region}:770693421928:layer:Klayers-p312-psycopg2-binary:2"
+      Description: Write station to RDS
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds:
+          - !Ref PrivateSubnet1Id
+          - !Ref PrivateSubnet2Id
+      Environment:
+        Variables:
+          DB_HOST: !GetAtt ChargingStationsRDSPostgresDB.Endpoint.Address
+          DB_PORT: "5432"
+          DB_NAME: !Ref DBName
+          DB_USER: !Sub "{{resolve:secretsmanager:${DBSecretArn}:SecretString:username}}"
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action: rds-db:connect
+              Resource: !Sub
+                - "arn:aws:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:${DBResourceId}/${DBUser}"
+                - DBResourceId: !GetAtt ChargingStationsRDSPostgresDB.DbiResourceId
+                  DBUser: !Sub "{{resolve:secretsmanager:${DBSecretArn}:SecretString:username}}"
+  
+  WriteStationRDSInvokePermissionA:
+    Type: AWS::Lambda::Permission
+    Condition: UseInvokerAccountA
+    Properties:
+      FunctionName: !Ref WriteStationRDSFunction
+      Action: lambda:InvokeFunction
+      Principal: !Sub "arn:aws:iam::${InvokerAccountIdA}:root"
+  
+  WriteStationRDSInvokePermissionB:
+    Type: AWS::Lambda::Permission
+    Condition: UseInvokerAccountB
+    Properties:
+      FunctionName: !Ref WriteStationRDSFunction
+      Action: lambda:InvokeFunction
+      Principal: !Sub "arn:aws:iam::${InvokerAccountIdB}:root"
+  
+  GetStationInfoFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: ChargingStationsRDSPostgresDB
+    Properties:
+      Runtime: python3.12
+      FunctionName: charging-stations-get-station-info
+      Handler: get_station_info.handler
+      CodeUri: db/read
+      Layers:
+        - !Ref CommonToolsLayer
+        - !Sub "arn:aws:lambda:${AWS::Region}:770693421928:layer:Klayers-p312-psycopg2-binary:2"
+      Description: Get station info from RDS
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds:
+          - !Ref PrivateSubnet1Id
+          - !Ref PrivateSubnet2Id
+      Environment:
+        Variables:
+          DB_HOST: !GetAtt ChargingStationsRDSPostgresDB.Endpoint.Address
+          DB_PORT: "5432"
+          DB_NAME: !Ref DBName
+          DB_USER: !Sub "{{resolve:secretsmanager:${DBSecretArn}:SecretString:username}}"
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action: rds-db:connect
+              Resource: !Sub
+                - "arn:aws:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:${DBResourceId}/${DBUser}"
+                - DBResourceId: !GetAtt ChargingStationsRDSPostgresDB.DbiResourceId
+                  DBUser: !Sub "{{resolve:secretsmanager:${DBSecretArn}:SecretString:username}}"
+
+  GetStationInfoInvokePermissionA:
+    Type: AWS::Lambda::Permission
+    Condition: UseInvokerAccountA
+    Properties:
+      FunctionName: !Ref GetStationInfoFunction
+      Action: lambda:InvokeFunction
+      Principal: !Sub "arn:aws:iam::${InvokerAccountIdA}:root"
+
+  GetStationInfoInvokePermissionB:
+    Type: AWS::Lambda::Permission
+    Condition: UseInvokerAccountB
+    Properties:
+      FunctionName: !Ref GetStationInfoFunction
+      Action: lambda:InvokeFunction
+      Principal: !Sub "arn:aws:iam::${InvokerAccountIdB}:root"
