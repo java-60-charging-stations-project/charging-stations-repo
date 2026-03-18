@@ -11,3 +11,15 @@ export interface StationDto {
   status?: StationStatus;
 }
 
+export interface StationsService {
+  list(callerId: string): Promise<StationDto[]>;
+  getById(stationId: string, callerId: string): Promise<StationDto | null>;
+  create(payload: Omit<StationDto, 'stationId' | 'status'>, callerId: string): Promise<StationDto>;
+  updateStatus(
+    stationId: string,
+    status: StationStatus,
+    callerId: string,
+    callerGroups: string[]
+  ): Promise<StationDto>;
+}
+

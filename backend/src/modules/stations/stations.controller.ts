@@ -1,8 +1,7 @@
 import type { Request, Response } from 'express';
 import { z } from 'zod';
 import { wrapResponse, wrapResponseList } from '../../common/wrappers';
-import type { StationsService } from './stations.service';
-import type { StationStatus } from './stations.types';
+import type { StationsService, StationStatus } from './stations.types';
 
 const idSchema = z.string().min(1);
 
