@@ -29,9 +29,22 @@ const StationEditPage = () => {
 
     const onSubmit: SubmitHandler<AdminCreateStationRequest> = async (data) => {
         logger.debug('Form submitted', data);
+        const currency = currencies.find(c => c.currencyCode === data.ratePlan.currencyCode);
+        if (!currency) {
+            setSubmitError("Invalid currency");
+            return;
+        }
+        const fullData: AdminCreateStationRequest = {
+            ...data,
+            ratePlan: {
+                ...data.ratePlan,
+                currencyName: currency.currencyName,
+            },
+        };
+        logger.debug('Full data', fullData);
         setSubmitError(null);
         try {
-            await createStation(data);
+            await createStation(fullData);
             setSubmitSuccess(true);
         } catch (err) {
             const message = err instanceof Error ? err.message : "An unexpected error occurred";
@@ -84,12 +97,12 @@ const StationEditPage = () => {
                 </div>
                 <div className="mb-1 flex flex-wrap items-center">
                     <label className="w-1/3">Peak Rate</label>
-                    <input type="number" step="0.01" min={0} {...register("ratePlan.peakRate", { valueAsNumber: true })} className="w-2/3" />
+                    <input type="number" step="0.01" min={0} {...register("ratePlan.peakRate", { valueAsNumber: true, required: true })} className="w-2/3" />
                     <FieldError message={errors.ratePlan?.peakRate?.message} />
                 </div>
                 <div className="mb-1 flex flex-wrap items-center">
                     <label className="w-1/3">Off-peak Rate</label>
-                    <input type="number" step="0.01" min={0} {...register("ratePlan.offPeakRate", { valueAsNumber: true })} className="w-2/3" />
+                    <input type="number" step="0.01" min={0} {...register("ratePlan.offPeakRate", { valueAsNumber: true, required: true })} className="w-2/3" />
                     <FieldError message={errors.ratePlan?.offPeakRate?.message} />
                 </div>
                 <div className="mb-1">

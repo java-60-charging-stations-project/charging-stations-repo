@@ -19,7 +19,7 @@ import ConfirmPage from '@/pages/guest/ConfirmPage';
 import AppRedirect from './AppRedirect';
 import AuthRoute from './AuthRoute';
 import { APP_PATH } from './roleNavigation';
-import StationEditPage from '@/components/StationEditPage';
+import StationEditPage from '@/pages/StationEditPage';
 
 const router = createBrowserRouter([
     /* Unprotected GUEST pages */
