@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import { z } from 'zod';
 import { wrapResponse, wrapResponseList } from '../../common/wrappers';
+import { ADMIN_GROUP, SUPPORT_GROUP } from '../../common/authRoles';
 import type { StationsService, StationState } from './stations.types';
 
 const idSchema = z.string().min(1);
@@ -33,8 +34,8 @@ function canChangeStatus(
   next: StationState,
   groups: string[]
 ): boolean {
-  const isAdmin = groups.includes('admin');
-  const isSupport = groups.includes('support');
+  const isAdmin = groups.includes(ADMIN_GROUP);
+  const isSupport = groups.includes(SUPPORT_GROUP);
 
   if (!current) return false;
 

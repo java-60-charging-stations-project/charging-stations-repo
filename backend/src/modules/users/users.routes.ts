@@ -1,9 +1,8 @@
 import { Router } from 'express';
 import { verifyCognitoJwt, requireGroups } from '../../middlewares/auth';
+import { ADMIN_GROUP } from '../../common/authRoles';
 import { UsersController } from './users.controller';
 import { buildUsersService } from './users.service';
-
-const ADMIN_GROUP = 'ADMIN';
 
 export function usersRouter(): Router {
   const router = Router();
