@@ -1,7 +1,7 @@
 import { type FC, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
-import { APP_PATH, LOGIN_PATH } from "@/router/roleNavigation";
+import { LOGIN_PATH, REGISTER_PATH } from "@/router/roleNavigation";
 import type { UserRole } from "@/types";
 
 type NavItem = {
@@ -11,19 +11,27 @@ type NavItem = {
 
 const ROLE_NAV_ITEMS: Record<UserRole, NavItem[]> = {
   USER: [
+    { label: "Home", to: "/user" },
     { label: "Session", to: "/user/session" },
     { label: "Profile", to: "/user/profile" },
   ],
   SUPPORT: [
+    { label: "Home", to: "/support" },
     { label: "Logs", to: "/support/logs" },
     { label: "Stations", to: "/support/stations" },
     { label: "Sessions", to: "/support/sessions" },
   ],
   ADMIN: [
+    { label: "Home", to: "/admin" },
     { label: "Users", to: "/admin/users" },
     { label: "Stations", to: "/admin/stations" },
   ],
 };
+
+const GUEST_NAV_ITEMS: NavItem[] = [
+  { label: "Login", to: LOGIN_PATH },
+  { label: "Register", to: REGISTER_PATH },
+];
 
 const NavMenu: FC = () => {
   const { user, signOut } = useAuth();
@@ -32,7 +40,7 @@ const NavMenu: FC = () => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   const navItems = useMemo(
-    () => (user ? ROLE_NAV_ITEMS[user.userRole] : []),
+    () => (user ? ROLE_NAV_ITEMS[user.userRole] : GUEST_NAV_ITEMS),
     [user],
   );
   const identity = user?.email ?? "Guest";
@@ -56,13 +64,6 @@ const NavMenu: FC = () => {
     <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 backdrop-blur">
       <nav className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3 md:px-6">
         <div className="flex min-w-0 items-center gap-3">
-          <Link
-            className="shrink-0 rounded-md border border-slate-200 px-2.5 py-1 text-sm font-medium text-slate-700 no-underline hover:border-slate-300 hover:text-slate-900 hover:no-underline"
-            to={APP_PATH}
-            onClick={closeMobileMenu}
-          >
-            App
-          </Link>
           <span className="truncate text-sm font-medium text-slate-600">
             {identity}
           </span>
@@ -80,7 +81,7 @@ const NavMenu: FC = () => {
 
         <div className="hidden items-center gap-3 md:flex">
           {navItems.map((item) => {
-            const isActive = location.pathname.startsWith(item.to);
+            const isActive = location.pathname === item.to;
             return (
               <Link
                 key={item.to}
