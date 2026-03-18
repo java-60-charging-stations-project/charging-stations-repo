@@ -1,10 +1,12 @@
 import os
 import boto3
 import psycopg2
+from psycopg2.extras import RealDictCursor
 from utils.logger import logger, log_audit
 from typing import Any
 from utils.error_handlers import LambdaResponseError
-from data_types.lambda_invocation_types import get_user_info_payload
+from data_types.contract_types import SuccessResponsePayload, ErrorResponsePayload
+from data_types.db_instance_types import UserInstance
 
 
 _conn = None
@@ -38,67 +40,74 @@ def get_connection() -> psycopg2.extensions.connection:
         )
     return _conn
 
-def extract_payload_from_event(event: dict) -> get_user_info_payload:
+def extract_payload_from_event(event: dict) -> dict:
     logger.info(f"Extracting payload from event")
     try:
-        payload: get_user_info_payload = {
-            "action": event["action"],
-            "caller_id": event["caller_id"],
-            "user_id": event["user_id"] if event["action"] == "get_user_by_id" else None,
+        service_data = event["service"]
+        user_id = event.get("user_id") if service_data["action"] == "get_user_by_id" else None
+        payload: dict = {
+            "action": service_data["action"],
+            "caller_id": service_data["caller_id"],
+            "user_id": user_id,
         }
         logger.info(f"Payload extracted successfully: {payload}")
         return payload
     except KeyError as e:
         logger.error(f"Missing key: {e}")
-        raise LambdaResponseError({"error": f"missing key: {e}"})
+        raise LambdaResponseError({"error": f"missing key: {e}", "code": "MISSING_KEY"})
     except Exception as e:
         logger.error(f"Unhandled error: {e}")
-        raise LambdaResponseError({"error": f"unhandled error: {e}"})
+        raise LambdaResponseError({"error": f"unhandled error: {e}", "code": "UNHANDLED_ERROR"})
 
-def get_user_info(user_id: str | None) -> tuple | None:
-    conn = get_connection()
-    with conn.cursor() as cur:
-        cur.execute("SELECT * FROM users WHERE user_id = %s", (user_id,))
-        return cur.fetchone()
+def get_user_info(user_id: str | None) -> dict | None:
+    try:
+        conn = get_connection()
+    except Exception as e:
+        logger.error(f"Error getting connection: {e}")
+        raise LambdaResponseError({"error": f"error getting connection: {e}", "code": "DATABASE_ERROR"})
+    try:
+        with conn.cursor(row_factory=RealDictCursor) as cur:
+            cur.execute("SELECT * FROM users WHERE user_id = %s", (user_id,))
+            return cur.fetchone()
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Error getting user info: {e}")
+        raise LambdaResponseError({"error": f"error getting user info: {e}", "code": "DATABASE_ERROR"})
 
-def get_all_users() -> list[tuple]:
-    conn = get_connection()
-    with conn.cursor() as cur:
-        cur.execute("SELECT * FROM users")
-        return cur.fetchall()
+def get_all_users() -> list[dict]:
+    try:
+        conn = get_connection()
+    except Exception as e:
+        logger.error(f"Error getting connection: {e}")
+        raise LambdaResponseError({"error": f"error getting connection: {e}", "code": "DATABASE_ERROR"})
+    try:
+        with conn.cursor(row_factory=RealDictCursor) as cur:
+            cur.execute("SELECT * FROM users")
+            return cur.fetchall()
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Error getting all users: {e}")
+        raise LambdaResponseError({"error": f"error getting all users: {e}", "code": "DATABASE_ERROR"})
 
-def build_json(user_info: tuple) -> dict:
-    return {
-                "user_id": user_info[0],
-                "full_name": user_info[1],
-                "email": user_info[2],
-                "phone": user_info[3],
-                "role": user_info[4],
-                "status": user_info[5],
-                "created_at": user_info[6].isoformat() if user_info[6] else None,
-                "updated_at": user_info[7].isoformat() if user_info[7] else None,
-    }
+def build_json(user_info: dict) -> dict:
+    user = UserInstance.model_validate(user_info)
+    return user.model_dump(mode="json")
 
-def handler(event: dict, context: Any) -> dict | list[dict]:
+def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponsePayload:
     logger.info(f"Handler called with event: {event}")
+    service_data = event.get("service")
     audit_base = {
-        "userId": event.get("caller_id"),
+        "caller_id": service_data.get("caller_id") if service_data else None,
         "service": context.function_name,
-        "event": event.get("action"),
+        "event": service_data.get("action") if service_data else None,
         "requestId": context.aws_request_id,
     }
     try:
         payload = extract_payload_from_event(event)
     except LambdaResponseError as e:
-        log_audit(
-            "ERROR",
-            message="error extracting payload from event",
-            status="ERROR",
-            errorMessage=e.response.get("error"),
-            **audit_base,
-        )
-        return e.response
-    audit_base["userId"] = payload["caller_id"]
+        log_audit("ERROR", message="error extracting payload from event", status="ERROR", errorMessage=e.response.get("error"), **audit_base)
+        return ErrorResponsePayload(error=e.response["error"], code=e.response["code"])
+    audit_base["caller_id"] = payload["caller_id"]
     audit_base["event"] = payload["action"]
     match payload["action"]:
         case "get_user_by_id":
@@ -107,60 +116,28 @@ def handler(event: dict, context: Any) -> dict | list[dict]:
                 user_info = get_user_info(user_id)
                 if not user_info:
                     error_message = "user not found in Database"
-                    log_audit(
-                        "ERROR",
-                        message="user not found",
-                        status="ERROR",
-                        errorMessage=error_message,
-                        **audit_base,
-                    )
-                    return {"error": error_message}
-                log_audit(
-                    "INFO",
-                    message="user info fetched successfully",
-                    status="SUCCESS",
-                    **audit_base,
-                )
-                return build_json(user_info)
+                    log_audit("ERROR", message="user not found", status="ERROR", errorMessage=error_message, **audit_base)
+                    return ErrorResponsePayload(error=error_message, code="NOT_FOUND")
+                log_audit("INFO", message="user info fetched successfully", status="SUCCESS", **audit_base)
+                return SuccessResponsePayload(data=build_json(user_info))
             except Exception as e:
                 error_message = f"unhandled error getting user info from Database: {e}"
-                log_audit(
-                    "ERROR",
-                    message="unhandled error getting user info",
-                    status="ERROR",
-                    errorMessage=error_message,
-                    **audit_base,
-                )
-                return {"error": error_message}
+                log_audit("ERROR", message="unhandled error getting user info", status="ERROR", errorMessage=error_message, **audit_base)
+                return ErrorResponsePayload(error=error_message, code="UNHANDLED_ERROR")
         case "get_all_users":
             try:
                 users_info = get_all_users()
                 if not users_info:
                     error_message = "no users found in Database"
-                    log_audit(
-                        "ERROR",
-                        message="no users found",
-                        status="ERROR",
-                        errorMessage=error_message,
-                        **audit_base,
-                    )
-                    return {"error": error_message}
-                log_audit(
-                    "INFO",
-                    message="all users fetched successfully",
-                    status="SUCCESS",
-                    **audit_base,
-                )
-                return_list = [build_json(user) for user in users_info]
-                logger.info(f"return list: {return_list}")
-                return return_list
+                    log_audit("ERROR", message="no users found", status="ERROR", errorMessage=error_message, **audit_base)
+                    return ErrorResponsePayload(error=error_message, code="NOT_FOUND")
+                log_audit("INFO", message="all users fetched successfully", status="SUCCESS", **audit_base)
+                return SuccessResponsePayload(data=[build_json(user) for user in users_info])
             except Exception as e:
                 error_message = f"unhandled error getting all users from Database: {e}"
-                log_audit(
-                    "ERROR",
-                    message="unhandled error getting all users",
-                    status="ERROR",
-                    errorMessage=error_message,
-                    **audit_base,
-                )
-                return {"error": error_message}
+                log_audit("ERROR", message="unhandled error getting all users", status="ERROR", errorMessage=error_message, **audit_base)
+                return ErrorResponsePayload(error=error_message, code="UNHANDLED_ERROR")
+        case _:
+            error_message = "invalid action"
+            log_audit("ERROR", message="invalid action", status="ERROR", errorMessage=error_message, **audit_base)
+            return ErrorResponsePayload(error=error_message, code="INVALID_REQUEST")

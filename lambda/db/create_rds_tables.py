@@ -45,17 +45,40 @@ def create_tables() -> None:
     try:
         with conn.cursor() as cur:
             cur.execute("""
+                CREATE EXTENSION IF NOT EXISTS "postgis";
+            """)
+            cur.execute("""
                 CREATE TABLE IF NOT EXISTS users (
                     user_id TEXT PRIMARY KEY,
                     full_name TEXT NOT NULL,
                     email TEXT NOT NULL UNIQUE,
                     phone TEXT UNIQUE,
                     role TEXT NOT NULL CHECK (role IN ('USER', 'ADMIN', 'SUPPORT')),
-                    status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'BANNED', 'DISABLED')),
+                    status TEXT NOT NULL,
                     created_at TIMESTAMPTZ NOT NULL,
                     updated_at TIMESTAMPTZ
                 );
             """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS stations (
+                    id TEXT PRIMARY KEY,
+                    code TEXT NOT NULL UNIQUE,
+                    name TEXT NOT NULL,
+                    owner TEXT NOT NULL,
+                    city TEXT NOT NULL,
+                    address TEXT,
+                    email TEXT,
+                    siteTechnician TEXT,
+                    maxPowerKw FLOAT,
+                    location GEOGRAPHY(Point, 4326),
+                    ports INT NOT NULL,
+                    ratePlan JSONB,
+                    status TEXT NOT NULL,
+                    created_at TIMESTAMPTZ NOT NULL,
+                    updated_at TIMESTAMPTZ
+                );
+            """)
+            cur.execute("""CREATE INDEX IF NOT EXISTS idx_stations_location ON stations USING GIST (location);""")
         conn.commit()
     finally:
         conn.close()
