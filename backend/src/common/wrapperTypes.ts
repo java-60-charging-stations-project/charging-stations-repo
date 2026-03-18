@@ -13,3 +13,18 @@ export interface apiResponseList<T> {
     data: T[];
     meta: apiMetadata;
 }
+
+export interface LambdaErrorResponse {
+    error: string;
+    code?: string;
+}
+
+export interface LambdaRequest<T, M = unknown> {
+    service: {
+        action: string;
+        caller_id: string;
+    };
+    data: T;
+    meta?: M;
+}
+
