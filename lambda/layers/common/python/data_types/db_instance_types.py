@@ -38,7 +38,8 @@ class StationInstance(TypedDict):
 
 class PortInstance(TypedDict):
     station_id: str
-    port_id: str
+    code: str
+    entity_key: str
     state: Literal["FREE", "OCCUPIED", "ERROR", "DISABLED"]
     power: float
     last_meter_kw: float

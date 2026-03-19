@@ -22,9 +22,14 @@ def get_dynamo_stations_table():
     return _stations_table
 
 def insert_station_ports(station_id: str, ports: list[dict]) -> list[str]:
+    try:
+        table = get_dynamo_stations_table()
+    except Exception as e:
+        logger.error(f"error getting dynamo stations table: {e}")
+        raise LambdaResponseError({"error": f"error getting dynamo stations table: {e}", "code": "DATABASE_ERROR"})
     created_port_ids: list[str] = []
     try:
-        with _stations_table.batch_writer() as batch:
+        with table.batch_writer() as batch:
             for p in ports:
                 port_item = build_port_item(station_id, p)
                 created_port_ids.append(port_item["port_id"])
@@ -36,14 +41,17 @@ def insert_station_ports(station_id: str, ports: list[dict]) -> list[str]:
 
 def build_port_item(station_id: str, port: dict) -> PortInstance:
     try:
+        port_id = str(uuid.uuid4())
+        timestamp = datetime.now().isoformat()
         port_item: PortInstance = {
             "station_id": station_id,
-            "port_id": str(uuid.uuid4()),
-            "status": port["status"],
+            "code": port["code"],
+            "entity_key": f"PORT#{port_id}",
+            "state": port["state"],
             "power": Decimal(str(port["power"])),
             "last_meter_kw": Decimal(str(port["lastMeterKw"])),
-            "created_at": datetime.now().isoformat(),
-            "updated_at": None,
+            "created_at": timestamp,
+            "updated_at": timestamp,
         }
         logger.info(f"Port item built successfully: {port_item}")
         return port_item
