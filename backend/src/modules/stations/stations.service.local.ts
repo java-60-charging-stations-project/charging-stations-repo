@@ -21,6 +21,7 @@ const STATIONS: StationBase[] = [
     siteTechnician: 'David Cohen',
     location: { latitude: 32.0853, longitude: 34.7818 },
     maxPowerKw: 150,
+    ports: 4,
     state: 'ACTIVE',
     ratePlan: {
       currencyCode: 'ILS',
@@ -43,6 +44,7 @@ const STATIONS: StationBase[] = [
     siteTechnician: 'Sarah Levi',
     location: { latitude: 32.794, longitude: 34.9896 },
     maxPowerKw: 350,
+    ports: 6,
     state: 'ACTIVE',
     ratePlan: {
       currencyCode: 'ILS',
@@ -65,6 +67,7 @@ const STATIONS: StationBase[] = [
     siteTechnician: null,
     location: { latitude: 31.7683, longitude: 35.2137 },
     maxPowerKw: 120,
+    ports: 2,
     state: 'INACTIVE',
     ratePlan: {
       currencyCode: 'USD',
@@ -108,6 +111,7 @@ export class StationsServiceLocal implements StationsService {
       email: payload.email,
       siteTechnician: payload.siteTechnician,
       maxPowerKw: null,
+      ports: 0,
       state: 'INACTIVE',
       ratePlan: payload.ratePlan,
       createdAt: now,

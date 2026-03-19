@@ -23,6 +23,7 @@ export interface StationBase {
     siteTechnician: string | null;
     location?: Location;
     maxPowerKw: number | null;
+    ports: number;
     state: StationState;
     ratePlan?: RatePlan;
     createdAt: string;
