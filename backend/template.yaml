@@ -14,11 +14,11 @@ Parameters:
   CognitoUserPoolId:
     Type: String
     Description: Cognito user pool ID
-    Default: il-central-1_ANhJWs3sM
+    Default: il-central-1_hzcBTQ1A4
   CognitoClientId:
     Type: String
     Description: Cognito client ID
-    Default: 5qeqem2ah00tonlm2evtoronpk
+    Default: 71aq60kcl3qar4ibafenh9hdm7
   CognitoRegion:
     Type: String
     Description: Region
@@ -207,7 +207,7 @@ Resources:
             - Name: ENVIRONMENT
               Value: production
             - Name: LOG_LEVEL
-              Value: info
+              Value: debug
             - Name: PORT
               Value: !Ref ContainerPort
             - Name: API_PREFIX

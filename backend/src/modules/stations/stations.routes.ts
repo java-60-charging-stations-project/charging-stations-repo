@@ -22,6 +22,7 @@ export function stationsRouter(): Router {
   router.post('/admin/stations', verifyCognitoJwt, requireGroups([ADMIN_GROUP]), controller.create);
   router.patch('/admin/stations/:stationId/status', verifyCognitoJwt, requireGroups([ADMIN_GROUP]), controller.updateStatus);
   router.patch('/admin/stations/:stationId/state', verifyCognitoJwt, requireGroups([ADMIN_GROUP]), controller.updateStationState);
+  router.delete('/admin/stations/:stationId', verifyCognitoJwt, requireGroups([ADMIN_GROUP]), controller.deleteStation);
 
   return router;
 }

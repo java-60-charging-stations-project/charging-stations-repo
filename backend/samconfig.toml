@@ -5,7 +5,7 @@ capabilities = "CAPABILITY_IAM"
 resolve_s3 = true
 s3_prefix = "charge-st"
 confirm_changeset = true
-parameter_overrides = "VpcId=\"vpc-01eb545134560739e\" PublicSubnets=\"subnet-0d53d5fb3c0a49277, subnet-0ac3863b0b8448d3f\" CognitoUserPoolId=\"il-central-1_ANhJWs3sM\" CognitoClientId=\"5qeqem2ah00tonlm2evtoronpk\" CognitoRegion=\"il-central-1\" ImageUri=\"773769103104.dkr.ecr.il-central-1.amazonaws.com/charging-stations:latest\" ContainerPort=\"8000\" ContainerCpu=\"256\" ContainerMemory=\"512\" HealthCheckPath=\"/health\" LambdaRegion=\"il-central-1\" LambdaAccountId=\"852215679994\" LambdaHealthName=\"charging-stations-health\" LambdaUserInfoName=\"charging-stations-get-user-info\" LambdaUserManagementName=\"charging-stations-write-user-rds\" DesiredCount=\"1\""
+parameter_overrides = "VpcId=\"vpc-01eb545134560739e\" PublicSubnets=\"subnet-0d53d5fb3c0a49277, subnet-0ac3863b0b8448d3f\" CognitoUserPoolId=\"il-central-1_hzcBTQ1A4\" CognitoClientId=\"71aq60kcl3qar4ibafenh9hdm7\" CognitoRegion=\"il-central-1\" ImageUri=\"773769103104.dkr.ecr.il-central-1.amazonaws.com/charging-stations:latest\" ContainerPort=\"8000\" ContainerCpu=\"256\" ContainerMemory=\"512\" HealthCheckPath=\"/health\" LambdaRegion=\"il-central-1\" LambdaAccountId=\"852215679994\" LambdaHealthName=\"charging-stations-health\" LambdaUserInfoName=\"charging-stations-get-user-info\" LambdaUserManagementName=\"charging-stations-write-user-rds\" LambdaStationsReadName=\"charging-stations-get-station-info\" LambdaStationsWriteName=\"charging-stations-write-station-rds\" DesiredCount=\"1\""
 image_repositories = []
 
 [default.global.parameters]
