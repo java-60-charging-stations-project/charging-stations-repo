@@ -1,8 +1,9 @@
-import { fetchStations } from "@/services/api/adminApi";
+import NavButton from "@/components/NavButton";
+import SimpleButton from "@/components/SimpleButton";
+import { changeStationState, deleteStation, fetchStations } from "@/services/api/adminApi";
 import { getErrorMessage } from "@/services/api/errorUtils";
 import type { StationBase } from "@/types/stations";
 import { useEffect, useState } from "react";
-import { Link } from "react-router";
 
 function StationTableHeader(): React.ReactNode {
   return (
@@ -12,32 +13,10 @@ function StationTableHeader(): React.ReactNode {
         <th>Name</th>
         <th>Owner</th>
         <th>City</th>
-        <th>Address</th>
-        <th>Phone</th>
-        <th>Email</th>
         <th>State</th>
-        <th>Rate</th>
+        <th>Actions</th>
       </tr>
     </thead>
-  );
-}
-
-function StationTableRow({ station }: { station: StationBase }): React.ReactNode {
-  const peakRate = station.ratePlan?.peakRate ?? 0;
-  const offPeakRate = station.ratePlan?.offPeakRate ?? 0;
-  const rate = `${peakRate}/${offPeakRate} ${station.ratePlan?.currencyCode ?? '?'}`;
-  return (
-    <tr>
-      <td>{station.code}</td>
-      <td>{station.name}</td>
-      <td>{station.owner}</td>
-      <td>{station.city}</td>
-      <td>{station.address}</td>
-      <td>{station.phone}</td>
-      <td>{station.email}</td>
-      <td>{station.state}</td>
-      <td>{rate}</td>
-    </tr>
   );
 }
 
@@ -45,6 +24,9 @@ const AdminStationsPage = () => {
   const [stations, setStations] = useState<StationBase[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [updateCount, setUpdateCount] = useState<number>(0);
+  const [updating, setUpdating] = useState<boolean>(false);
   
   const loadStations = async () => {
     try {
@@ -54,19 +36,101 @@ const AdminStationsPage = () => {
     }
     catch (error) {
       setError(getErrorMessage(error));
+      setSuccess(null);
     }
     finally {
       setLoading(false);
     }
   };
+
+  const apiActivate = async (stationId: string, updatedAt: string) => {
+    try {
+      setError(null);
+      setSuccess(null);
+      setUpdating(true);
+      const result = await changeStationState(stationId, {
+        oldState: "Inactive",
+        newState: "OutOfService",
+        updatedAt,
+      });
+      setStations(stations.map((station) => station.id === stationId ? result : station));
+      setUpdateCount((c) => c + 1);
+      setSuccess("Station activated successfully");
+    }
+    catch (error) {
+      setError(getErrorMessage(error));
+    }
+    finally {
+      setUpdating(false);
+    }
+  };
+
+  const apiDelete = async (stationId: string) => {
+    try {
+      setError(null);
+      setSuccess(null);
+      setUpdating(true);
+      await deleteStation(stationId);
+      setStations(stations.filter((station) => station.id !== stationId));
+      setUpdateCount((c) => c + 1);
+      setSuccess("Station deleted successfully");
+    }
+    catch (error) {
+      setError(getErrorMessage(error));
+    }
+    finally {
+      setUpdating(false);
+    }
+  };
+
+  function StationTableRow({ station }: { station: StationBase }): React.ReactNode {
+    return (
+      <tr>
+        <td>{station.code}</td>
+        <td>{station.name}</td>
+        <td>{station.owner}</td>
+        <td>{station.city}</td>
+        <td>{station.state}</td>
+        <td>
+          <div className="w-full flex gap-2 justify-around">
+            <SimpleButton 
+                caption="Activate"
+                color="tertiary"
+                isDisabled={station.state !== "Inactive" || updating}
+                size="xs"
+                handleClick={() => apiActivate(station.id, station.updatedAt)}
+                className="w-full"
+            />
+            <SimpleButton
+                caption="Delete"
+                color="tertiary"
+                isDisabled={station.state !== "Inactive" || updating}
+                size="xs"
+                handleClick={() => apiDelete(station.id)}
+                className="w-full"
+            />
+          </div>
+        </td>
+      </tr>
+    );
+  }
   
-  useEffect(() => { loadStations(); }, []);
+  useEffect(() => { loadStations(); }, [updateCount]);
 
   return (
     <div>
       <h1>Stations</h1>
       {loading && <p>Loading...</p>}
-      {error && <p>Error: {error}</p>}
+      {error && (
+        <p className="text-error-600 font-bold text-lg border-2 border-warning-500 p-4 rounded">
+          Error: {error}
+        </p>
+      )}
+      {success && (
+        <p className="text-success-600 font-bold text-lg border-2 border-success-950 p-4 rounded">
+          {success}
+        </p>
+      )}
       <table>
         <StationTableHeader />
         <tbody>
@@ -75,7 +139,7 @@ const AdminStationsPage = () => {
           ))}
         </tbody>
       </table>
-      <Link to="/admin/stations/create">Create a new station</Link>
+      <NavButton to="/admin/stations/create" caption="Create a new station" color="secondary" size="xs" />
     </div>
   );
 };

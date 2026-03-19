@@ -44,3 +44,9 @@ export interface AdminCreateStationRequest {
 export interface AdminCreateStationResponse {
     stationId: string;
 };
+
+export interface AdminChangeStationStateRequest {
+    oldState: StationState;
+    newState: StationState;
+    updatedAt: string;
+};
