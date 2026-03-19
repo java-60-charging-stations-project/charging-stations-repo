@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router';
 import type { AdminUser } from '@/types/responseTypes';
 import { fetchAdminUserById, updateUserRole } from '@/services/api/adminApi';
 import { HttpError } from '@/types/errors';
+import NavButton from '@/components/NavButton';
 
 const ALL_ROLES = ['USER', 'TECH_SUPPORT', 'ADMIN'];
 
@@ -103,7 +104,7 @@ const AdminUserEditPage = () => {
 
   if (!currentUser) {
     return (
-      <div style={styles.container}>
+      <div className="max-w-md mx-auto mt-10 p-4 rounded-lg shadow-md flex flex-col items-center justify-center space-y-4">
         {errorPanel && (
           <div style={styles.errorPanel}>
             <p style={styles.errorPanelTitle}>{errorPanel.title}</p>
@@ -112,15 +113,8 @@ const AdminUserEditPage = () => {
           </div>
         )}
         <div style={styles.buttonRow}>
-          <button style={styles.button} onClick={() => navigate('/admin/users')}>
-            Back to Users
-          </button>
+          <NavButton to={"/admin/users"} caption="Back to Users" color="secondary" size="xs" />
           <button
-            style={{
-              ...styles.button,
-              ...styles.updateButton,
-              ...(isRefreshingUser ? styles.disabledButton : {}),
-            }}
             disabled={isRefreshingUser}
             onClick={handleRefetchUser}
           >
