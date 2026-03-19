@@ -315,6 +315,76 @@ paths:
           $ref: '#/components/responses/ErrorResponse'
         '503':
           $ref: '#/components/responses/ServiceUnavailableResponse'
+    delete:
+      operationId: deleteAdminStation
+      summary: Delete charging station as admin
+      description: Deletes a charging station. Requires admin privileges. The station can only be deleted when it is in a deletable state.
+      x-roles: [ADMIN]
+      parameters:
+        - name: stationId
+          in: path
+          required: true
+          description: Station identifier
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Charging station deleted successfully
+        '400':
+          $ref: '#/components/responses/BadRequestResponse'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          $ref: '#/components/responses/ErrorResponse'
+        '409':
+          $ref: '#/components/responses/ConflictResponse'
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+
+  /admin/stations/{stationId}/state:
+    patch:
+      operationId: updateAdminStationState
+      summary: Change charging station state as admin
+      description: Changes the state of a charging station. Requires admin privileges. The updatedAt field must match the server value to prevent concurrent modification conflicts.
+      x-roles: [ADMIN]
+      parameters:
+        - name: stationId
+          in: path
+          required: true
+          description: Station identifier
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateStationStateRequest'
+      responses:
+        '200':
+          description: Charging station state updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StationBaseSingleResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestResponse'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          $ref: '#/components/responses/ErrorResponse'
+        '409':
+          $ref: '#/components/responses/ConflictResponse'
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
 
   /sessions:
     post:
@@ -667,6 +737,47 @@ paths:
           $ref: '#/components/responses/ErrorResponse'
         '500':
           $ref: '#/components/responses/ErrorResponse'
+
+  /support/stations/{stationId}/state:
+    patch:
+      operationId: updateSupportStationState
+      summary: Change charging station state as support
+      description: Changes the state of a charging station. Requires technical support privileges. The updatedAt field must match the server value to prevent concurrent modification conflicts.
+      x-roles: [TECH_SUPPORT]
+      parameters:
+        - name: stationId
+          in: path
+          required: true
+          description: Station identifier
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateStationStateRequest'
+      responses:
+        '200':
+          description: Charging station state updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StationBaseSingleResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestResponse'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          $ref: '#/components/responses/ErrorResponse'
+        '409':
+          $ref: '#/components/responses/ConflictResponse'
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
 
   /support/sessions:
     get:
@@ -1317,6 +1428,21 @@ components:
           type: string
           format: email
           nullable: true
+
+    UpdateStationStateRequest:
+      type: object
+      required: [oldState, newState, updatedAt]
+      properties:
+        oldState:
+          type: string
+          enum: [Inactive, Active, OutOfService]
+        newState:
+          type: string
+          enum: [Inactive, Active, OutOfService]
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last known updatedAt value for optimistic concurrency control
 
     Session:
       type: object

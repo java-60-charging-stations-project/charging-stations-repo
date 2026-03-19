@@ -19,6 +19,7 @@ import ConfirmPage from '@/pages/guest/ConfirmPage';
 import AppRedirect from './AppRedirect';
 import AuthRoute from './AuthRoute';
 import { APP_PATH } from './roleNavigation';
+import StationEditPage from '@/pages/StationEditPage';
 
 const router = createBrowserRouter([
     /* Unprotected GUEST pages */
@@ -42,7 +43,7 @@ const router = createBrowserRouter([
                         children: [
                             { index: true, element: <UserDashboardPage /> },
                             { path: "session", element: <UserCurrentSessionPage /> },
-                            { path: "profile", element: <UserProfilePage /> }
+                            { path: "profile", element: <UserProfilePage /> },
                         ]
                     },
                     {
@@ -52,7 +53,7 @@ const router = createBrowserRouter([
                             { index: true, element: <SupportDashboardPage /> },
                             { path: "logs", element: <SupportLogsPage /> },
                             { path: "stations", element: <SupportStationsPage /> },
-                            { path: "sessions", element: <SupportSessionsPage /> }
+                            { path: "sessions", element: <SupportSessionsPage /> },
                         ]
                     },
                     {
@@ -62,9 +63,10 @@ const router = createBrowserRouter([
                             { index: true, element: <AdminDashboardPage /> },
                             { path: "users", element: <AdminUsersPage /> },
                             { path: "users/:userId", element: <AdminUserEditPage /> },
-                            { path: "stations", element: <AdminStationsPage /> }
+                            { path: "stations", element: <AdminStationsPage /> },
+                            { path: "stations/create", element: <StationEditPage /> },
                         ]
-                    }
+                    },
                 ]
             }
         ]

@@ -1,14 +1,14 @@
 import { useState } from "react";
-import { useLocation, useNavigate } from "react-router";
+import { useLocation } from "react-router";
 import { confirmSignUp, resendConfirmationCode } from "@/services/auth/authService";
-
+import SimpleButton from "@/components/SimpleButton";
+import NavButton from "@/components/NavButton";
 import { getLogger } from "@/services/logging";
 
 const logger = getLogger("ConfirmPage");
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const ConfirmPage = () => {
-  const navigate = useNavigate();
   const location = useLocation();
   const [email, setEmail] = useState(location.state?.email || "");
   const [confirmationCode, setConfirmationCode] = useState("");
@@ -27,7 +27,7 @@ const ConfirmPage = () => {
       setSuccessMessage(null);
       await confirmSignUp(email, confirmationCode);
       logger.debug("Confirm Sign Up successful. Navigate to login");
-      navigate("/login");
+      setSuccessMessage("Account confirmed! You can now log in.");
     } catch (error) {
       setErrorMessage(`Confirmation failed: ${(error as Error).message}`);
       logger.error("Confirm SignUp failed: ", error);
@@ -37,10 +37,7 @@ const ConfirmPage = () => {
   };
 
   const handleResendConfirmationCode = async () => {
-    if (!canResendConfirmationCode) {
-      return;
-    }
-
+    if (!canResendConfirmationCode) return;
     try {
       setIsResending(true);
       setErrorMessage(null);
@@ -56,42 +53,46 @@ const ConfirmPage = () => {
   };
 
   return (
-    <div className="loginForm">
-      <h2>Confirm Account</h2>
-      <form onSubmit={handleSubmit}>
-        <div>
-          <input
-            className="inputText"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email"
-            required
-          />
-        </div>
-        <div>
-          <input
-            className="inputText"
-            type="text"
-            value={confirmationCode}
-            onChange={(e) => setConfirmationCode(e.target.value)}
-            placeholder="Confirmation Code"
-            required
-          />
-        </div>
-        <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Confirming..." : "Confirm Account"}
-        </button>
+    <div className="guest-page">
+      <h1>Confirm Account</h1>
+      <form onSubmit={handleSubmit} className="w-full flex flex-col space-y-3">
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Email"
+          required
+        />
+        <input
+          type="text"
+          value={confirmationCode}
+          onChange={(e) => setConfirmationCode(e.target.value)}
+          placeholder="Confirmation Code"
+          required
+        />
+        <SimpleButton
+          buttonType="submit"
+          caption={isSubmitting ? "Confirming..." : "Confirm Account"}
+          isLoading={isSubmitting}
+          loadingCaption="Confirming..."
+          color="primary"
+          className="w-full"
+        />
       </form>
-      <button
-        type="button"
-        onClick={handleResendConfirmationCode}
-        disabled={!canResendConfirmationCode || isResending}
-      >
-        {isResending ? "Resending..." : "Resend confirmation code"}
-      </button>
-      {errorMessage && <p>{errorMessage}</p>}
-      {successMessage && <p>{successMessage}</p>}
+      <SimpleButton
+        handleClick={handleResendConfirmationCode}
+        caption="Resend Confirmation Code"
+        isLoading={isResending}
+        loadingCaption="Resending..."
+        color="tertiary"
+        className="w-full"
+      />
+      {errorMessage && <p className="text-error-600">{errorMessage}</p>}
+      {successMessage && <p className="text-success-600">{successMessage}</p>}
+      <div className="flex gap-2 w-full">
+        <NavButton to="/login" caption="Login" color="secondary" className="flex-1" />
+        <NavButton to="/register" caption="Create Account" color="secondary" className="flex-1" />
+      </div>
     </div>
   );
 };
