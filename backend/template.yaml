@@ -207,7 +207,7 @@ Resources:
             - Name: ENVIRONMENT
               Value: production
             - Name: LOG_LEVEL
-              Value: info
+              Value: debug
             - Name: PORT
               Value: !Ref ContainerPort
             - Name: API_PREFIX
