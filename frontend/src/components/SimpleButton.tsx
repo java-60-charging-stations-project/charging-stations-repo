@@ -24,6 +24,7 @@ export interface SimpleButtonProps {
     caption: string;
     isLoading?: boolean;
     loadingCaption?: string;
+    isDisabled?: boolean;
     color?: ButtonColor;
     size?: ButtonSize;
     underlineOnHover?: boolean;
@@ -36,6 +37,7 @@ const SimpleButton: FC<SimpleButtonProps> = ({
         caption,
         isLoading=false,
         loadingCaption="Requesting...",
+        isDisabled=false,
         color="primary",
         size="small",
         underlineOnHover=false,
@@ -48,7 +50,7 @@ const SimpleButton: FC<SimpleButtonProps> = ({
         <button
             type={buttonType}
             onClick={handleClick}
-            disabled={isLoading}
+            disabled={isLoading || isDisabled}
             className={buttonClass}
             >
             {isLoading? loadingCaption: caption}
