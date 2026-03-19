@@ -52,7 +52,7 @@ def extract_payload_from_event(event: dict) -> dict:
     logger.info(f"Extracting payload from event")
     try:
         service_data = event["service"]
-        user_id = service_data["user_id"] if service_data["action"] == "get_user_by_id" else None
+        user_id = event["data"]["user_id"] if service_data["action"] == "get_user_by_id" else None
         payload: dict = {
             "action": service_data["action"],
             "caller_id": service_data["caller_id"],

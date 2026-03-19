@@ -11,7 +11,6 @@ from utils.error_handlers import LambdaResponseError
 from data_types.db_instance_types import StationInstance
 from data_types.contract_types import SuccessResponsePayload, ErrorResponsePayload
 
-
 _conn = None
 
 def get_db_config() -> dict:
@@ -44,7 +43,7 @@ def get_connection() -> psycopg2.extensions.connection:
         )
     return _conn
 
-def extract_station_instance_from_event(event: dict) -> StationInstance:
+def extract_full_station_instance_from_event(event: dict) -> StationInstance:
     logger.info(f"Extracting station instance from event")
     try:
         data = event["data"]
@@ -76,6 +75,29 @@ def extract_station_instance_from_event(event: dict) -> StationInstance:
     except Exception as e:
         logger.error(f"Unhandled error: {e}")
         raise LambdaResponseError({"error": f"unhandled error: {e}", "code": "UNHANDLED_ERROR"})
+
+def extract_station_status_from_event(event: dict) -> dict:
+    logger.info(f"Extracting station status from event")
+    try:
+        data = event["data"]
+        station_id = data["stationId"]
+        old_status = data["oldState"]
+        new_status = data["newState"]
+        for i in [old_status, new_status]:
+            if not i in ["ACTIVE", "INACTIVE", "OUT_OF_SERVICE"]:
+                logger.error(f"Invalid status: {i}")
+                raise LambdaResponseError({"error": f"invalid status: {i}", "code": "INVALID_REQUEST"})
+        if old_status == new_status:
+            logger.error(f"Old status and new status are the same: {old_status}")
+            raise LambdaResponseError({"error": f"old status and new status are the same: {old_status}", "code": "INVALID_REQUEST"})
+        return {
+            "station_id": station_id,
+            "old_status": old_status,
+            "new_status": new_status,
+        }
+    except KeyError as e:
+        logger.error(f"Missing key: {e}")
+        raise LambdaResponseError({"error": f"missing key: {e}", "code": "MISSING_KEY"})
 
 def insert_station_to_rds(station: StationInstance) -> None:
     try:
@@ -135,24 +157,80 @@ def insert_station_to_rds(station: StationInstance) -> None:
         logger.error(f"Unhandled error inserting station: {e}")
         raise LambdaResponseError({"error": str(e), "code": "UNHANDLED_ERROR"})
 
+def change_station_status(station_id: str, old_status: str, new_status: str) -> None:
+    try:
+        conn = get_connection()
+    except Exception as e:
+        logger.error(f"Error getting connection: {e}")
+        raise LambdaResponseError({"error": f"Error getting connection: {e}", "code": "DATABASE_ERROR"})
+    try:
+        with conn.cursor() as cur:
+            updated_at = datetime.now()
+            cur.execute(
+                """
+                    UPDATE stations SET status = %s, updated_at = %s WHERE id = %s AND status = %s
+                """,
+                (
+                    new_status,
+                    updated_at,
+                    station_id,
+                    old_status,
+                ),
+            )
+        conn.commit()
+        return updated_at
+    except psycopg2.IntegrityError as e:
+        conn.rollback()
+        logger.error(f"Constraint violation updating station status: {e}")
+        raise LambdaResponseError({"error": str(e), "code": "CONSTRAINT_VIOLATION"})
+    except psycopg2.DatabaseError as e:
+        conn.rollback()
+        logger.error(f"Database error updating station status: {e}")
+        raise LambdaResponseError({"error": str(e), "code": "DATABASE_ERROR"})
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Unhandled error updating station status: {e}")
+        raise LambdaResponseError({"error": str(e), "code": "UNHANDLED_ERROR"})
 
 def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponsePayload:
     logger.info(f"Handler called with event: {event}")
-    service_data = event.get("service")
-    audit_base = {
-        "caller_id": service_data.get("caller_id") if service_data else None,
-        "service": context.function_name,
-        "event": service_data.get("action") if service_data else None,
-        "requestId": context.aws_request_id,
-        }
     try:
-        station_instance: StationInstance = extract_station_instance_from_event(event)
-        insert_station_to_rds(station_instance)
-        log_audit("INFO", message="station written to RDS successfully", status="SUCCESS", **audit_base)
-        return SuccessResponsePayload(data={"stationId": station_instance["id"]})
+        caller_id = event["service"]["caller_id"]
+    except KeyError as e:
+        log_audit("ERROR", message="missing caller_id", status="ERROR", errorMessage=f"missing caller_id: {e}", **audit_base)
+        return ErrorResponsePayload(error=f"missing caller_id: {e}", code="UNAUTHORIZED")
+    try:
+        action = event["service"]["action"]
+    except KeyError as e:
+        log_audit("ERROR", message="invalid action", status="ERROR", errorMessage=f"invalid action: {e}", **audit_base)
+        return ErrorResponsePayload(error=f"invalid action: {e}", code="INVALID_REQUEST")
+    audit_base = {
+        "caller_id": caller_id,
+        "service": context.function_name,
+        "event": action,
+        "requestId": context.aws_request_id,
+    }
+    try:
+        match action:
+            case "write_station":
+                station_instance: StationInstance = extract_full_station_instance_from_event(event)
+                insert_station_to_rds(station_instance)
+                log_audit("INFO", message="station written to RDS successfully", status="SUCCESS", **audit_base)
+                return SuccessResponsePayload(data={"stationId": station_instance["id"]})
+            case "change_station_status":
+                station_status = extract_station_status_from_event(event)
+                old_status = station_status["old_status"]
+                new_status = station_status["new_status"]
+                station_id = station_status["station_id"]
+                updated_at = change_station_status(station_id, old_status, new_status)
+                log_audit("INFO", message=f"{station_id} status changed from {old_status} to {new_status}", status="SUCCESS", **audit_base)
+                return SuccessResponsePayload(data={"updatedAt": updated_at.isoformat()})
+            case _:
+                log_audit("ERROR", message="invalid action", status="ERROR", errorMessage=f"invalid action: {action}", **audit_base)
+                return ErrorResponsePayload(error=f"invalid action: {action}", code="INVALID_REQUEST")
     except LambdaResponseError as e:
-        log_audit("ERROR", message="error writing station to RDS", status="ERROR", errorMessage=e.response.get("error"), **audit_base)
+        log_audit("ERROR", message=f"error performing{action} in RDS", status="ERROR", errorMessage=e.response.get("error"), **audit_base)
         return ErrorResponsePayload(error=e.response["error"], code=e.response["code"])
     except Exception as e:
-        log_audit("ERROR", message="error writing station to RDS", status="ERROR", errorMessage=str(e), **audit_base)
+        log_audit("ERROR", message=f"error performing {action} in RDS", status="ERROR", errorMessage=str(e), **audit_base)
         return ErrorResponsePayload(error="UNHANDLED_ERROR", code="UNHANDLED_ERROR")
