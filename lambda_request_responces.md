@@ -171,7 +171,7 @@ Response (success):
     'currencyCode': 'ILS', 
     'currencyName': 'Israeli Shekel'
     }, 
-    'status': 'INACTIVE', 
+    'state': 'INACTIVE', 
     'created_at': '2026-03-19T10:39:29.269144+00:00', 
     'updated_at': '2026-03-19T10:47:29.587575+00:00'
   }

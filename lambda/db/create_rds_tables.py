@@ -73,7 +73,7 @@ def create_tables() -> None:
                     location GEOGRAPHY(Point, 4326),
                     ports INT NOT NULL,
                     ratePlan JSONB,
-                    status TEXT NOT NULL,
+                    state TEXT NOT NULL,
                     created_at TIMESTAMPTZ NOT NULL,
                     updated_at TIMESTAMPTZ
                 );

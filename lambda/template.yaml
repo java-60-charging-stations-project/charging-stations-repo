@@ -10,6 +10,11 @@ Globals:
 
 Parameters:
 
+  DynamoDBRouteTable1Id:
+    Type: String
+    Description: Route table id (rtb-...) used by private subnet 1 for DynamoDB gateway endpoint
+    Default: rtb-0fdf4c197cd94cdef
+
   InvokerAccountIdA:
     Type: String
     Description: AWS account ID that is allowed to invoke this Lambda (e.g. the account that runs Node.js and calls Invoke)
@@ -555,5 +560,83 @@ Resources:
     Condition: UseInvokerAccountB
     Properties:
       FunctionName: !Ref GetStationInfoFunction
+      Action: lambda:InvokeFunction
+      Principal: !Sub "arn:aws:iam::${InvokerAccountIdB}:root"
+  
+  # Single-table design: ports + future sessions
+  StationEntitiesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: charging-stations-station-entities
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: station_id
+          AttributeType: S
+        - AttributeName: entity_key
+          AttributeType: S
+      KeySchema:
+        - AttributeName: station_id
+          KeyType: HASH
+        - AttributeName: entity_key
+          KeyType: RANGE
+      SSESpecification:
+        SSEEnabled: true
+  # Allows private-subnet Lambdas to reach DynamoDB via gateway endpoint (no NAT required)
+  DynamoDBGatewayEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VpcId
+      VpcEndpointType: Gateway
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.dynamodb"
+      RouteTableIds:
+        - !Ref DynamoDBRouteTable1Id
+
+  WriteStationPortsFunction:
+    Type: AWS::Serverless::Function
+    DependsOn:
+      - StationEntitiesTable
+      - DynamoDBGatewayEndpoint
+    Properties:
+      Runtime: python3.12
+      FunctionName: charging-stations-write-station-ports-dynamo
+      Handler: write_ports_dynamo.handler
+      CodeUri: db/write
+      Layers:
+        - !Ref CommonToolsLayer
+      Description: Support writes station ports into DynamoDB (single-table)
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds:
+          - !Ref PrivateSubnet1Id
+          - !Ref PrivateSubnet2Id
+      Environment:
+        Variables:
+          STATIONS_DYNAMO_TABLE: !Ref StationEntitiesTable
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:PutItem
+                - dynamodb:BatchWriteItem
+                - dynamodb:GetItem
+                - dynamodb:Query
+                - dynamodb:UpdateItem
+              Resource: !GetAtt StationEntitiesTable.Arn
+    
+  WriteStationPortsInvokePermissionA:
+    Type: AWS::Lambda::Permission
+    Condition: UseInvokerAccountA
+    Properties:
+      FunctionName: !Ref WriteStationPortsFunction
+      Action: lambda:InvokeFunction
+      Principal: !Sub "arn:aws:iam::${InvokerAccountIdA}:root"
+
+  WriteStationPortsInvokePermissionB:
+    Type: AWS::Lambda::Permission
+    Condition: UseInvokerAccountB
+    Properties:
+      FunctionName: !Ref WriteStationPortsFunction
       Action: lambda:InvokeFunction
       Principal: !Sub "arn:aws:iam::${InvokerAccountIdB}:root"

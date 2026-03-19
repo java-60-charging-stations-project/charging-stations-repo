@@ -35,3 +35,12 @@ class StationInstance(TypedDict):
     status: Literal["ACTIVE", "INACTIVE", "OUT_OF_SERVICE"]
     created_at: datetime
     updated_at: Optional[datetime]
+
+class PortInstance(TypedDict):
+    station_id: str
+    port_id: str
+    status: Literal["FREE", "OCCUPIED", "ERROR", "DISABLED"]
+    power: float
+    last_meter_kw: float
+    created_at: datetime
+    updated_at: Optional[datetime]

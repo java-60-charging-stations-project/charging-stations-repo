@@ -10,10 +10,10 @@ AWS_REGION = os.getenv("AWS_REGION", "il-central-1")
 AWS_LAMBDA_HOST_ACCOUNT = os.getenv("AWS_LAMBDA_HOST_ACCOUNT", "852215679994")
 WRITE_STATION_FUNCTION_NAME = os.getenv("WRITE_STATION_FUNCTION_NAME", "charging-stations-write-station-rds")
 
-def invoke_change_station_status(station_id: str, old_state: str, new_state: str):
+def invoke_change_station_state(station_id: str, old_state: str, new_state: str):
     client = boto3.client("lambda", region_name=AWS_REGION)
     payload = {
-      "service": { "action": "change_station_status", "caller_id": "script" },
+      "service": { "action": "change_station_state", "caller_id": "script" },
         "data": {
             "stationId": station_id,
             "oldState": old_state,
@@ -39,9 +39,9 @@ def invoke_change_station_status(station_id: str, old_state: str, new_state: str
 
 if __name__ == "__main__":
     if len(sys.argv) != 4:
-        print("Usage: python -m tests.integration.write.change_station_status_lambda_invoker <station_id> <old_state> <new_state>")
+        print("Usage: python -m tests.integration.write.change_station_state_lambda_invoker <station_id> <old_state> <new_state>")
         sys.exit(1)
     station_id = sys.argv[1]
     old_state = sys.argv[2]
     new_state = sys.argv[3]
-    invoke_change_station_status(station_id, old_state, new_state)
+    invoke_change_station_state(station_id, old_state, new_state)

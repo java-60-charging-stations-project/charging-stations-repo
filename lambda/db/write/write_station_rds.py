@@ -70,7 +70,7 @@ def extract_full_station_instance_from_event(event: dict) -> StationInstance:
             "ratePlan": data["ratePlan"],
             "email": data["email"],
             "phone": data["phone"],
-            "status": data.get("status", "ACTIVE"),
+            "state": data.get("state", "INACTIVE"),
             "siteTechnician": data["siteTechnician"],
             "maxPowerKw": data.get("maxPowerKw", 0.0),
             "longitude": location.get("longitude", 0.0),
@@ -88,24 +88,24 @@ def extract_full_station_instance_from_event(event: dict) -> StationInstance:
         logger.error(f"Unhandled error: {e}")
         raise LambdaResponseError({"error": f"unhandled error: {e}", "code": "UNHANDLED_ERROR"})
 
-def extract_station_status_from_event(event: dict) -> dict:
-    logger.info(f"Extracting station status from event")
+def extract_station_state_from_event(event: dict) -> dict:
+    logger.info(f"Extracting station state from event")
     try:
         data = event["data"]
         station_id = data["stationId"]
-        old_status = data["oldState"]
-        new_status = data["newState"]
-        for i in [old_status, new_status]:
+        old_state = data["oldState"]
+        new_state = data["newState"]
+        for i in [old_state, new_state]:
             if not i in ["ACTIVE", "INACTIVE", "OUT_OF_SERVICE"]:
-                logger.error(f"Invalid status: {i}")
-                raise LambdaResponseError({"error": f"invalid status: {i}", "code": "INVALID_REQUEST"})
-        if old_status == new_status:
-            logger.error(f"Old status and new status are the same: {old_status}")
-            raise LambdaResponseError({"error": f"old status and new status are the same: {old_status}", "code": "INVALID_REQUEST"})
+                logger.error(f"Invalid state: {i}")
+                raise LambdaResponseError({"error": f"invalid state: {i}", "code": "INVALID_REQUEST"})
+        if old_state == new_state:
+            logger.error(f"Old state and new state are the same: {old_state}")
+            raise LambdaResponseError({"error": f"old state and new state are the same: {old_state}", "code": "INVALID_REQUEST"})
         return {
             "station_id": station_id,
-            "old_status": old_status,
-            "new_status": new_status,
+            "old_state": old_state,
+            "new_state": new_state,
         }
     except LambdaResponseError:
         raise
@@ -128,7 +128,7 @@ def insert_station_to_rds(station: StationInstance) -> None:
                     INSERT INTO stations (
                         id, code, name, owner, city, address, email, 
                         siteTechnician, maxPowerKw, location, ports, 
-                        ratePlan, status, created_at, updated_at
+                        ratePlan, state, created_at, updated_at
                     ) VALUES (
                         %s, %s, %s, %s, %s, %s, %s, %s, %s, 
                         ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography, 
@@ -149,7 +149,7 @@ def insert_station_to_rds(station: StationInstance) -> None:
                     station["latitude"],
                     station["ports"],
                     rate_plan_json,
-                    station["status"],
+                    station["state"],
                     station["created_at"],
                     station["updated_at"],
                 ),
@@ -171,7 +171,7 @@ def insert_station_to_rds(station: StationInstance) -> None:
         logger.error(f"Unhandled error inserting station: {e}")
         raise LambdaResponseError({"error": str(e), "code": "UNHANDLED_ERROR"})
 
-def change_station_status(station_id: str, old_status: str, new_status: str) -> datetime:
+def change_station_state(station_id: str, old_state: str, new_state: str) -> datetime:
     try:
         conn = get_connection()
     except Exception as e:
@@ -182,39 +182,39 @@ def change_station_status(station_id: str, old_status: str, new_status: str) -> 
             updated_at = datetime.now()
             cur.execute(
                 """
-                    UPDATE stations SET status = %s, updated_at = %s WHERE id = %s AND status = %s
+                    UPDATE stations SET state = %s, updated_at = %s WHERE id = %s AND state = %s
                 """,
                 (
-                    new_status,
+                    new_state,
                     updated_at,
                     station_id,
-                    old_status,
+                    old_state,
                 ),
             )
             if cur.rowcount == 0:
-                cur.execute("SELECT status FROM stations WHERE id = %s", (station_id,))
+                cur.execute("SELECT state FROM stations WHERE id = %s", (station_id,))
                 row = cur.fetchone()
                 if row is None:
                     logger.error(f"station not found: {station_id}")
                     raise LambdaResponseError({"error": f"station not found: {station_id}", "code": "NOT_FOUND"})
-                logger.error(f"status mismatch for station {station_id}: expected {old_status}, actual {row[0]}")
-                raise LambdaResponseError({"error": f"status mismatch for station {station_id}: expected {old_status}, actual {row[0]}", "code": "INVALID_STATE"})
+                logger.error(f"state mismatch for station {station_id}: expected {old_state}, actual {row[0]}")
+                raise LambdaResponseError({"error": f"state mismatch for station {station_id}: expected {old_state}, actual {row[0]}", "code": "INVALID_STATE"})
         conn.commit()
         return updated_at
     except psycopg2.IntegrityError as e:
         conn.rollback()
-        logger.error(f"Constraint violation updating station status: {e}")
+        logger.error(f"Constraint violation updating station state: {e}")
         raise LambdaResponseError({"error": str(e), "code": "CONSTRAINT_VIOLATION"})
     except psycopg2.DatabaseError as e:
         conn.rollback()
-        logger.error(f"Database error updating station status: {e}")
+        logger.error(f"Database error updating station state: {e}")
         raise LambdaResponseError({"error": str(e), "code": "DATABASE_ERROR"})
     except LambdaResponseError:
         conn.rollback()
         raise
     except Exception as e:
         conn.rollback()
-        logger.error(f"Unhandled error updating station status: {e}")
+        logger.error(f"Unhandled error updating station state: {e}")
         raise LambdaResponseError({"error": str(e), "code": "UNHANDLED_ERROR"})
 
 def delete_station(station_id: str) -> datetime:
@@ -225,20 +225,20 @@ def delete_station(station_id: str) -> datetime:
         raise LambdaResponseError({"error": f"Error getting connection: {e}", "code": "DATABASE_ERROR"})
     try:
         updated_at = datetime.now()
-        status = "OUT_OF_SERVICE"
+        state = "OUT_OF_SERVICE"
         with conn.cursor() as cur:
-            cur.execute("UPDATE stations SET status = %s, updated_at = %s WHERE id = %s AND (status = 'ACTIVE' OR status = 'INACTIVE')", 
-                (status, updated_at, station_id),
+            cur.execute("UPDATE stations SET state = %s, updated_at = %s WHERE id = %s AND (state = 'ACTIVE' OR state = 'INACTIVE')", 
+                (state, updated_at, station_id),
             )
             if cur.rowcount == 0:
-                cur.execute("SELECT status FROM stations WHERE id = %s", (station_id,))
+                cur.execute("SELECT state FROM stations WHERE id = %s", (station_id,))
                 row = cur.fetchone()
                 if row is None:
                     logger.error(f"station not found: {station_id}")
                     raise LambdaResponseError({"error": f"station not found: {station_id}", "code": "NOT_FOUND"})
-                logger.error(f"status mismatch for station {station_id}: expected 'ACTIVE' or 'INACTIVE', actual {row[0]}")
+                logger.error(f"state mismatch for station {station_id}: expected 'ACTIVE' or 'INACTIVE', actual {row[0]}")
                 raise LambdaResponseError(
-                    {"error": f"status mismatch for station {station_id}: expected 'ACTIVE' or 'INACTIVE', actual {row[0]}", 
+                    {"error": f"state mismatch for station {station_id}: expected 'ACTIVE' or 'INACTIVE', actual {row[0]}", 
                     "code": "INVALID_REQUEST"})
         conn.commit()
         return updated_at
@@ -283,13 +283,13 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                 insert_station_to_rds(station_instance)
                 log_audit("INFO", message="station written to RDS successfully", status="SUCCESS", **audit_base)
                 return SuccessResponsePayload(data={"stationId": station_instance["id"]})
-            case "change_station_status":
-                station_status = extract_station_status_from_event(event)
-                old_status = station_status["old_status"]
-                new_status = station_status["new_status"]
-                station_id = station_status["station_id"]
-                updated_at = change_station_status(station_id, old_status, new_status)
-                log_audit("INFO", message=f"{station_id} status changed from {old_status} to {new_status}", status="SUCCESS", **audit_base)
+            case "change_station_state":
+                station_state = extract_station_state_from_event(event)
+                old_state = station_state["old_state"]
+                new_state = station_state["new_state"]
+                station_id = station_state["station_id"]
+                updated_at = change_station_state(station_id, old_state, new_state)
+                log_audit("INFO", message=f"{station_id} state changed from {old_state} to {new_state}", status="SUCCESS", **audit_base)
                 return SuccessResponsePayload(data={"updatedAt": updated_at.isoformat()})
             case "delete_station":
                 station_id = event["data"]["stationId"]

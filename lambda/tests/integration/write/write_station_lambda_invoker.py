@@ -24,7 +24,7 @@ def main():
         "email": None,
         "phone": None,
         "siteTechnician": None,
-        "status": "ACTIVE",
+        "state": "ACTIVE",
         "ratePlan": {
           "currencyCode": "ILS",
           "currencyName": "Israeli Shekel",
