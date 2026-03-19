@@ -2,6 +2,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from 'react-router';
 import { useState } from "react";
 import SignInForm from "@/components/SignInForm";
+import NavButton from "@/components/NavButton";
 import { getLogger } from "@/services/logging";
 import { APP_PATH } from "@/router/roleNavigation";
 
@@ -31,10 +32,14 @@ const LoginPage = () => {
   }
 
   return (
-    <>
+    <div className="guest-page">
       <SignInForm submitHandler={signInHandler} isRegister={false} />
-      {errorMessage && <p>{errorMessage}</p>}
-    </>
+      {errorMessage && <p className="text-error-600">{errorMessage}</p>}
+      <div className="flex gap-2 w-full">
+        <NavButton to="/register" caption="Create Account" color="secondary" className="flex-1" />
+        <NavButton to="/confirm" caption="Confirm Account" color="secondary" className="flex-1" />
+      </div>
+    </div>
   );
 };
 
