@@ -1,7 +1,8 @@
-import { BadRequestError, ResourceNotFoundError } from '../../common/serviceErrors';
+import { BadRequestError, ConflictError, ResourceNotFoundError } from '../../common/serviceErrors';
 import type {
   AdminCreateStationRequest,
   AdminCreateStationResponse,
+  AdminUpdateStationStateResponse,
   StationBase,
   StationState,
   StationsService
@@ -20,7 +21,7 @@ const STATIONS: StationBase[] = [
     siteTechnician: 'David Cohen',
     location: { latitude: 32.0853, longitude: 34.7818 },
     maxPowerKw: 150,
-    state: 'Active',
+    state: 'ACTIVE',
     ratePlan: {
       currencyCode: 'ILS',
       currencyName: 'Israeli New Shekel',
@@ -42,7 +43,7 @@ const STATIONS: StationBase[] = [
     siteTechnician: 'Sarah Levi',
     location: { latitude: 32.794, longitude: 34.9896 },
     maxPowerKw: 350,
-    state: 'Active',
+    state: 'ACTIVE',
     ratePlan: {
       currencyCode: 'ILS',
       currencyName: 'Israeli New Shekel',
@@ -64,7 +65,7 @@ const STATIONS: StationBase[] = [
     siteTechnician: null,
     location: { latitude: 31.7683, longitude: 35.2137 },
     maxPowerKw: 120,
-    state: 'Inactive',
+    state: 'INACTIVE',
     ratePlan: {
       currencyCode: 'USD',
       currencyName: 'US Dollar',
@@ -107,7 +108,7 @@ export class StationsServiceLocal implements StationsService {
       email: payload.email,
       siteTechnician: payload.siteTechnician,
       maxPowerKw: null,
-      state: 'Inactive',
+      state: 'INACTIVE',
       ratePlan: payload.ratePlan,
       createdAt: now,
       updatedAt: now
@@ -134,5 +135,27 @@ export class StationsServiceLocal implements StationsService {
     station.state = status;
     station.updatedAt = new Date().toISOString();
     return station;
+  }
+
+  async updateStationState(
+    stationId: string,
+    oldState: StationState,
+    newState: StationState,
+    _callerId: string
+  ): Promise<AdminUpdateStationStateResponse> {
+    const station = STATIONS.find((s) => s.id === stationId);
+    if (!station) {
+      throw new ResourceNotFoundError('Station not found');
+    }
+    if (station.state !== oldState) {
+      throw new ConflictError('Station state has changed; please refresh and try again');
+    }
+    if (oldState === newState) {
+      throw new BadRequestError('Old state and new state are the same');
+    }
+
+    station.state = newState;
+    station.updatedAt = new Date().toISOString();
+    return { updatedAt: station.updatedAt };
   }
 }

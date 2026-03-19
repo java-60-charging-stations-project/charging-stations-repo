@@ -6,6 +6,7 @@ import { wrapLambdaRequest } from '../../common/wrappers';
 import type {
   AdminCreateStationRequest,
   AdminCreateStationResponse,
+  AdminUpdateStationStateResponse,
   StationBase,
   StationState,
   StationsService
@@ -17,44 +18,42 @@ const LAMBDA_INVOKER: LambdaInvoker = new AwsLambdaInvoker(env.awsRegion);
 export class StationsServiceLambda implements StationsService {
   async list(callerId: string): Promise<StationBase[]> {
     logger.debug('Invoking stations lambda: list', { callerId });
-    const result = await LAMBDA_INVOKER.invokeJson<StationBase[]>(
+    const result = await LAMBDA_INVOKER.invokeJson<{ data: StationBase[] }>(
       env.stationsLambdaFunctionName,
-      wrapLambdaRequest('list_stations', callerId, {})
+      wrapLambdaRequest('get_all_stations', callerId, {})
     );
-    return result;
+    return result.data;
   }
 
   async getById(stationId: string, callerId: string): Promise<StationBase> {
     logger.debug('Invoking stations lambda: getById', { stationId, callerId });
-    const result = await LAMBDA_INVOKER.invokeJson<StationBase | null>(
+    const result = await LAMBDA_INVOKER.invokeJson<{ data: StationBase | null }>(
       env.stationsLambdaFunctionName,
       wrapLambdaRequest(
         'get_station_by_id',
         callerId,
         {
-          stationId
+          station_id: stationId
         }
       )
     );
-    if (!result) {
+    if (!result.data) {
       throw new ResourceNotFoundError('Station not found');
     }
-    return result;
+    return result.data;
   }
 
   async create(payload: AdminCreateStationRequest, callerId: string): Promise<AdminCreateStationResponse> {
     logger.debug('Invoking stations lambda: create', { payload, callerId });
-    const result = await LAMBDA_INVOKER.invokeJson<AdminCreateStationResponse>(
-      env.stationsLambdaFunctionName,
+    const result = await LAMBDA_INVOKER.invokeJson<{ data: AdminCreateStationResponse }>(
+      env.stationsLambdaWriteFunctionName,
       wrapLambdaRequest(
-        'create_station',
+        'write_station',
         callerId,
-        {
-          payload
-        }
+        payload
       )
     );
-    return result;
+    return result.data;
   }
 
   async updateStatus(
@@ -69,7 +68,7 @@ export class StationsServiceLambda implements StationsService {
       callerId,
       callerGroups
     });
-    const result = await LAMBDA_INVOKER.invokeJson<StationBase>(
+    const result = await LAMBDA_INVOKER.invokeJson<{ data: StationBase }>(
       env.stationsLambdaFunctionName,
       wrapLambdaRequest(
         'update_station_status',
@@ -81,6 +80,32 @@ export class StationsServiceLambda implements StationsService {
         }
       )
     );
-    return result;
+    return result.data;
+  }
+
+  async updateStationState(
+    stationId: string,
+    oldState: StationState,
+    newState: StationState,
+    callerId: string
+  ): Promise<AdminUpdateStationStateResponse> {
+    logger.debug('Invoking stations write lambda: updateStationState', {
+      stationId,
+      oldState,
+      newState,
+      callerId
+    });    
+    const result = await LAMBDA_INVOKER.invokeJson<{ data: AdminUpdateStationStateResponse }>(
+      env.stationsLambdaWriteFunctionName,
+      {
+        service: { action: 'change_station_status', caller_id: callerId },
+        data: {
+          stationId,
+          oldState,
+          newState,
+        }
+      }
+    );
+    return result.data;
   }
 }

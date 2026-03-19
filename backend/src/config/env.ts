@@ -35,7 +35,13 @@ export const env = {
 
   // stations
   stationsLambdaFunctionName: String(
-    process.env.STATIONS_LAMBDA_FUNCTION_NAME ?? 'charging-stations-station-service'
+    process.env.STATIONS_LAMBDA_FUNCTION_NAME ?? 
+    'arn:aws:lambda:il-central-1:852215679994:function:charging-stations-get-station-info'
+  ),
+
+  stationsLambdaWriteFunctionName: String(
+    process.env.STATIONS_LAMBDA_WRITE_FUNCTION_NAME ?? 
+    'arn:aws:lambda:il-central-1:852215679994:function:charging-stations-write-station-rds'
   ),
 
   // misc

@@ -17,7 +17,7 @@ export function welcomeRouter(): Router {
 
         const all = await service.list('');
         const filtered = all
-          .filter((s) => s.state === 'Active')
+          .filter((s) => s.state === 'ACTIVE')
           .filter((s) => (city ? s.city.toLowerCase().includes(city.toLowerCase()) : true))
           .filter((s) =>
             provider ? s.owner.toLowerCase().includes(provider.toLowerCase()) : true

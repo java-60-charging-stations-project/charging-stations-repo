@@ -26,7 +26,13 @@ const createStationSchema = z.object({
 });
 
 const updateStatusSchema = z.object({
-  status: z.enum(['Inactive', 'Active', 'OutOfService'])
+  status: z.enum(['INACTIVE', 'ACTIVE', 'OUT_OF_SERVICE'])
+});
+
+const updateStationStateSchema = z.object({
+  oldState: z.enum(['INACTIVE', 'ACTIVE', 'OUT_OF_SERVICE']),
+  newState: z.enum(['INACTIVE', 'ACTIVE', 'OUT_OF_SERVICE']),
+  updatedAt: z.string().min(1),
 });
 
 function canChangeStatus(
@@ -86,14 +92,17 @@ export class StationsController {
 
     const groups = req.user?.groups ?? [];
 
-    if (!canChangeStatus(station.state, nextStatus, groups)) {
-      return res.status(403).json({
-        code: 403,
-        error: { message: 'Status change not allowed for this role or transition' }
-      });
-    }
-
     const updated = await this.service.updateStatus(stationId, nextStatus, callerId, groups);
     res.json({ code: 200, data: updated });
+  };
+
+  updateStationState = async (req: Request, res: Response) => {
+    const stationId = idSchema.parse(req.params.stationId);
+    const { oldState, newState } = updateStationStateSchema.parse(req.body);
+
+    const callerId = req.user?.sub ?? '';
+
+    const result = await this.service.updateStationState(stationId, oldState, newState, callerId);
+    res.json({ code: 200, data: result });
   };
 }
