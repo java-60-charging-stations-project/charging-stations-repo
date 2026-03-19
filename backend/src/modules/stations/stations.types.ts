@@ -1,5 +1,5 @@
 /** Station state per API spec (GET /stations, /admin/stations) */
-export type StationState = 'Inactive' | 'Active' | 'OutOfService';
+export type StationState = 'INACTIVE' | 'ACTIVE' | 'OUT_OF_SERVICE';
 
 /** ISO 4217 currency code, peak/off-peak rates */
 export interface RatePlan {
@@ -70,6 +70,11 @@ export interface AdminCreateStationResponse {
   stationId: string;
 }
 
+/** Response for PATCH /admin/stations/{stationId}/state */
+export interface AdminUpdateStationStateResponse {
+  updatedAt: string;
+}
+
 export interface StationsService {
   list(callerId: string): Promise<StationBase[]>;
   getById(stationId: string, callerId: string): Promise<StationBase>;
@@ -80,5 +85,11 @@ export interface StationsService {
     callerId: string,
     callerGroups: string[]
   ): Promise<StationBase>;
+  updateStationState(
+    stationId: string,
+    oldState: StationState,
+    newState: StationState,
+    callerId: string
+  ): Promise<AdminUpdateStationStateResponse>;
 }
 

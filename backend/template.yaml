@@ -57,6 +57,12 @@ Parameters:
   LambdaUserManagementName:
     Type: String
     Default: charging-stations-write-user-rds
+  LambdaStationsReadName:
+    Type: String
+    Default: charging-stations-get-station-info
+  LambdaStationsWriteName:
+    Type: String
+    Default: charging-stations-write-station-rds
   DesiredCount:
     Type: Number
     Default: 1
@@ -112,6 +118,20 @@ Resources:
               - Effect: Allow
                 Action: lambda:InvokeFunction
                 Resource: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaUserInfoName}"
+        - PolicyName: InvokeStationsReadLambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaStationsReadName}"
+        - PolicyName: InvokeStationsWriteLambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaStationsWriteName}"
 
   TaskLogGroup:
     Type: AWS::Logs::LogGroup
@@ -202,6 +222,10 @@ Resources:
               Value: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaUserInfoName}"
             - Name: USER_MANAGEMENT_LAMBDA_FUNCTION_NAME
               Value: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaUserManagementName}"
+            - Name: STATIONS_LAMBDA_FUNCTION_NAME
+              Value: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaStationsReadName}"
+            - Name: STATIONS_LAMBDA_WRITE_FUNCTION_NAME
+              Value: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaStationsWriteName}"
             - Name: AUTH_DISABLED
               Value: false
             - Name: COGNITO_REGION

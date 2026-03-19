@@ -29,3 +29,10 @@ export class BadRequestError extends ServiceError {
         this.name = 'BadRequestError';
     }
 };
+
+export class ConflictError extends ServiceError {
+    constructor(message: string, errorCode: string = 'CONFLICT') {
+        super(message, 409, errorCode);
+        this.name = 'ConflictError';
+    }
+}

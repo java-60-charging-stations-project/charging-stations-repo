@@ -2,8 +2,11 @@ import NavButton from "@/components/NavButton";
 import SimpleButton from "@/components/SimpleButton";
 import { changeStationState, deleteStation, fetchStations } from "@/services/api/adminApi";
 import { getErrorMessage } from "@/services/api/errorUtils";
+import { getLogger } from "@/services/logging";
 import type { StationBase } from "@/types/stations";
 import { useEffect, useState } from "react";
+
+const logger = getLogger("AdminStationsPage");
 
 function StationTableHeader(): React.ReactNode {
   return (
@@ -32,9 +35,11 @@ const AdminStationsPage = () => {
     try {
       setLoading(true);
       const data = await fetchStations();
+      logger.debug("data", data);
       setStations(data);
     }
     catch (error) {
+      logger.error("error", error);
       setError(getErrorMessage(error));
       setSuccess(null);
     }
@@ -49,15 +54,21 @@ const AdminStationsPage = () => {
       setSuccess(null);
       setUpdating(true);
       const result = await changeStationState(stationId, {
-        oldState: "Inactive",
-        newState: "OutOfService",
+        oldState: "INACTIVE",
+        newState: "OUT_OF_SERVICE",
         updatedAt,
       });
-      setStations(stations.map((station) => station.id === stationId ? result : station));
+      logger.debug("result", result);
+      //setStations(stations.map((station) =>
+      //  station.id === stationId
+      //    ? { ...station, state: "OUT_OF_SERVICE" as const, updatedAt: result.updatedAt }
+      //    : station
+      //));
       setUpdateCount((c) => c + 1);
       setSuccess("Station activated successfully");
     }
     catch (error) {
+      logger.error("error", error);
       setError(getErrorMessage(error));
     }
     finally {
@@ -71,11 +82,13 @@ const AdminStationsPage = () => {
       setSuccess(null);
       setUpdating(true);
       await deleteStation(stationId);
+      logger.debug("DELETED SUCCESSFULLY");
       setStations(stations.filter((station) => station.id !== stationId));
       setUpdateCount((c) => c + 1);
       setSuccess("Station deleted successfully");
     }
     catch (error) {
+      logger.error("error", error);
       setError(getErrorMessage(error));
     }
     finally {
@@ -96,7 +109,7 @@ const AdminStationsPage = () => {
             <SimpleButton 
                 caption="Activate"
                 color="tertiary"
-                isDisabled={station.state !== "Inactive" || updating}
+                isDisabled={station.state !== "INACTIVE" || updating}
                 size="xs"
                 handleClick={() => apiActivate(station.id, station.updatedAt)}
                 className="w-full"
@@ -104,7 +117,7 @@ const AdminStationsPage = () => {
             <SimpleButton
                 caption="Delete"
                 color="tertiary"
-                isDisabled={station.state !== "Inactive" || updating}
+                isDisabled={station.state !== "INACTIVE" || updating}
                 size="xs"
                 handleClick={() => apiDelete(station.id)}
                 className="w-full"

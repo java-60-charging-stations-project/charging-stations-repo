@@ -6,6 +6,7 @@ import { wrapLambdaRequest } from '../../common/wrappers';
 import type {
   AdminCreateStationRequest,
   AdminCreateStationResponse,
+  AdminUpdateStationStateResponse,
   StationBase,
   StationState,
   StationsService
@@ -45,9 +46,9 @@ export class StationsServiceLambda implements StationsService {
   async create(payload: AdminCreateStationRequest, callerId: string): Promise<AdminCreateStationResponse> {
     logger.debug('Invoking stations lambda: create', { payload, callerId });
     const result = await LAMBDA_INVOKER.invokeJson<AdminCreateStationResponse>(
-      env.stationsLambdaFunctionName,
+      env.stationsLambdaWriteFunctionName,
       wrapLambdaRequest(
-        'create_station',
+        'write_station',
         callerId,
         {
           payload
@@ -82,5 +83,31 @@ export class StationsServiceLambda implements StationsService {
       )
     );
     return result;
+  }
+
+  async updateStationState(
+    stationId: string,
+    oldState: StationState,
+    newState: StationState,
+    callerId: string
+  ): Promise<AdminUpdateStationStateResponse> {
+    logger.debug('Invoking stations write lambda: updateStationState', {
+      stationId,
+      oldState,
+      newState,
+      callerId
+    });    
+    const result = await LAMBDA_INVOKER.invokeJson<{ data: AdminUpdateStationStateResponse }>(
+      env.stationsLambdaWriteFunctionName,
+      {
+        service: { action: 'change_station_status', caller_id: callerId },
+        data: {
+          stationId,
+          oldState,
+          newState,
+        }
+      }
+    );
+    return result.data;
   }
 }
