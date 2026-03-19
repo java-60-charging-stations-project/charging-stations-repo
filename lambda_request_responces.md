@@ -8,7 +8,7 @@ This document describes the JSON **shape** of the payloads sent to (and returned
 ```json
 {
   "error": "Human readable message",
-  "code": "UNHANDLED_ERROR | ALREADY_EXISTS | NOT_FOUND | UNAUTHORIZED | INVALID_REQUEST | CONSTRAINT_VIOLATION | DATABASE_ERROR | MISSING_KEY"
+  "code": "UNHANDLED_ERROR | ALREADY_EXISTS | NOT_FOUND | UNAUTHORIZED | INVALID_REQUEST | CONSTRAINT_VIOLATION | DATABASE_ERROR"
 }
 ```
 
@@ -250,6 +250,39 @@ Response (success):
 {
   'data': {
   'updatedAt': '2026-03-19T10:47:29.587575+00:00'
+  }
+}
+```
+
+Response (error):
+
+```json
+{ "error": "Human readable message", "code": "NOT_FOUND|UNHANDLED_ERROR|..." }
+```
+
+Delete station
+
+Lambda function name: charging-stations-write-station-rds
+
+Request:
+
+```json
+{
+      "service": { 
+        "action": "delete_station", 
+        "caller_id": <str> },
+      "data": {
+            "stationId": station_id,
+      }
+}
+```
+
+Response (success):
+
+```json
+{
+  'data': {
+  'deletedAt': '2026-03-19T10:47:29.587575+00:00'
   }
 }
 ```
