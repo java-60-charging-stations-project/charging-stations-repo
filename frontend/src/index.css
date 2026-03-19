@@ -106,6 +106,12 @@
   }
 }
 
+@layer components {
+  .guest-page {
+    @apply max-w-md mx-auto mt-10 p-4 rounded-lg flex flex-col items-center justify-center space-y-4;
+  }
+}
+
 @theme {
   --color-primary-50: #f5f3ff;
   --color-primary-100: #ede9fe;
