@@ -88,12 +88,12 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
     try:
         caller_id = event["service"]["caller_id"]
     except KeyError as e:
-        log_audit("ERROR", message="missing caller_id", status="ERROR", errorMessage=f"missing caller_id: {e}", **audit_base)
+        log_audit("ERROR", message="missing caller_id", status="ERROR", errorMessage=f"missing caller_id: {e}")
         return ErrorResponsePayload(error=f"missing caller_id: {e}", code="UNAUTHORIZED")
     try:
         action = event["service"]["action"]
     except KeyError as e:
-        log_audit("ERROR", message="missing action", status="ERROR", errorMessage=f"missing action: {e}", **audit_base)
+        log_audit("ERROR", message="missing action", status="ERROR", errorMessage=f"missing action: {e}")
         return ErrorResponsePayload(error=f"missing action: {e}", code="INVALID_REQUEST")
     audit_base = {
         "caller_id": caller_id,

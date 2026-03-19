@@ -43,23 +43,12 @@ def get_connection() -> psycopg2.extensions.connection:
         )
     return _conn
 
-def extract_delete_station_data_from_event(event: dict) -> str:
-    logger.info(f"Extracting station id from event")
-    try:
-        data = event["data"]
-        station_id = data["stationId"]
-        return {
-            "station_id": station_id,
-        }
-    except KeyError as e:
-        logger.error(f"Missing key: {e}")
-        raise LambdaResponseError({"error": f"missing key: {e}", "code": "INVALID_REQUEST"})
-
 def extract_full_station_instance_from_event(event: dict) -> StationInstance:
     logger.info(f"Extracting station instance from event")
     try:
         data = event["data"]
         location = data["location"] if data.get("location") else {"longitude": 0.0, "latitude": 0.0}
+        timestamp = datetime.now()
         station_instance: StationInstance = {
             "id": str(uuid.uuid4()),
             "code": data["code"],
@@ -76,8 +65,8 @@ def extract_full_station_instance_from_event(event: dict) -> StationInstance:
             "longitude": location.get("longitude", 0.0),
             "latitude": location.get("latitude", 0.0),
             "ports": data.get("ports", 0),
-            "created_at": datetime.now(),
-            "updated_at": None,
+            "created_at": timestamp,
+            "updated_at": timestamp,
         }
         logger.info(f"Station instance extracted successfully: {station_instance}")
         return station_instance
@@ -225,9 +214,12 @@ def delete_station(station_id: str) -> datetime:
         raise LambdaResponseError({"error": f"Error getting connection: {e}", "code": "DATABASE_ERROR"})
     try:
         updated_at = datetime.now()
-        state = "OUT_OF_SERVICE"
+        state = "DELETED"
         with conn.cursor() as cur:
-            cur.execute("UPDATE stations SET state = %s, updated_at = %s WHERE id = %s AND (state = 'ACTIVE' OR state = 'INACTIVE')", 
+            cur.execute("""
+            UPDATE stations SET state = %s, updated_at = %s WHERE id = %s 
+            AND state IN ('ACTIVE', 'INACTIVE', 'OUT_OF_SERVICE')
+            """, 
                 (state, updated_at, station_id),
             )
             if cur.rowcount == 0:
@@ -263,12 +255,12 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
     try:
         caller_id = event["service"]["caller_id"]
     except KeyError as e:
-        log_audit("ERROR", message="missing caller_id", status="ERROR", errorMessage=f"missing caller_id: {e}", **audit_base)
+        log_audit("ERROR", message="missing caller_id", status="ERROR", errorMessage=f"missing caller_id: {e}")
         return ErrorResponsePayload(error=f"missing caller_id: {e}", code="UNAUTHORIZED")
     try:
         action = event["service"]["action"]
     except KeyError as e:
-        log_audit("ERROR", message="missing action", status="ERROR", errorMessage=f"missing action: {e}", **audit_base)
+        log_audit("ERROR", message="missing action", status="ERROR", errorMessage=f"missing action: {e}")
         return ErrorResponsePayload(error=f"missing action: {e}", code="INVALID_REQUEST")
     audit_base = {
         "caller_id": caller_id,

@@ -76,6 +76,7 @@ def extract_user_instance_from_event(event: dict) -> UserInstance:
         email = attrs['email']
         status = attrs['cognito:user_status'] if not console_created else "CONFIRMED"
         full_name = attrs['name'] if not console_created else "Console User"
+        timestamp = datetime.now()
         if full_name.startswith("cognito:"):
             full_name = "Console User"
         user_instance: UserInstance = {
@@ -85,8 +86,8 @@ def extract_user_instance_from_event(event: dict) -> UserInstance:
             "phone": attrs.get('phone_number'),
             "role": "USER",
             "status": "ACTIVE" if status == "CONFIRMED" else None,
-            "created_at": datetime.now(),
-            "updated_at": None,
+            "created_at": timestamp,
+            "updated_at": timestamp,
         }
         logger.info(f"User instance extracted successfully: {user_instance}")
         return user_instance

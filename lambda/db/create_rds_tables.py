@@ -1,4 +1,3 @@
-import json
 import os
 import boto3
 import psycopg2
@@ -56,7 +55,7 @@ def create_tables() -> None:
                     role TEXT NOT NULL CHECK (role IN ('USER', 'ADMIN', 'SUPPORT')),
                     status TEXT NOT NULL,
                     created_at TIMESTAMPTZ NOT NULL,
-                    updated_at TIMESTAMPTZ
+                    updated_at TIMESTAMPTZ NOT NULL
                 );
             """)
             cur.execute("""
@@ -75,7 +74,7 @@ def create_tables() -> None:
                     ratePlan JSONB,
                     state TEXT NOT NULL,
                     created_at TIMESTAMPTZ NOT NULL,
-                    updated_at TIMESTAMPTZ
+                    updated_at TIMESTAMPTZ NOT NULL
                 );
             """)
             cur.execute("""CREATE INDEX IF NOT EXISTS idx_stations_location ON stations USING GIST (location);""")

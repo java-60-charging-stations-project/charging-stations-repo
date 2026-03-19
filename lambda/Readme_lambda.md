@@ -9,7 +9,7 @@ Lambda functions for the Charging Stations Control System. They are invoked dire
 | Path | Purpose |
 |------|---------|
 | `lambda/` | Single SAM template (`template.yaml`) and `samconfig.toml`; deploy from here. |
-| `lambda/db` | DB and auth Lambdas (RDS, Cognito), run scripts, RDS table creation. |
+| `lambda/db` | DB and auth Lambdas (RDS, DynamoDB), run scripts, RDS table creation. |
 | `lambda/routes` | Route Lambdas (e.g. health). |
 | `lambda/layers/common` | Shared layer: logger, `log_audit`, data types, utils. |
 | `lambda/tests/integration` | Integration tests that invoke deployed Lambdas. |
@@ -23,7 +23,7 @@ Lambda functions for the Charging Stations Control System. They are invoked dire
 - **AWS CLI v2** – installed and IDE logged in to AWS IAM role with Admin permissions. Run `aws configure` once and configure credentials.
 - **Docker Desktop** – installed and running (needed for `sam build --use-container` so dependencies such as psycopg2 build correctly).
 - **AWS Secrets Manager** – a secret with at least `username` and `password`. The template uses **DBSecretArn** only to **initialise the RDS instance** at create time (CloudFormation resolves it). Lambdas use **IAM database authentication** at runtime (no secret at runtime).
-- **VPC and private subnets** – template parameters: **VpcId**, **PrivateSubnet1Id**, **PrivateSubnet2Id** (same subnets for RDS, Lambdas, and VPC endpoints).
+- **VPC and private subnets** – template parameters: **VpcId**, **PrivateSubnet1Id**, **PrivateSubnet2Id** (same subnets for RDS, Lambdas, and VPC endpoints), **DynamoDBRouteTable1Id** (route table IDs from default **VPC** `rtb-...`).
 - **pgAdmin** (or any PostgreSQL client) – to connect to RDS once to run `GRANT rds_iam` for the DB user (one-time setup).
 - **Pyhon packages** - `pip install boto3 mypy` - boto3 for lambda invocations from IDE, myoy optional for type checking
 
@@ -102,7 +102,7 @@ python -m tests.integration.routes.health_invoker <account_id>
 
 ### DB stack – functions
 
-The template provisions **RDS** (PostgreSQL, IAM auth), **VPC endpoints** (RDS API for `generate_db_auth_token`, **Cognito IdP** so the write Lambda can call `AdminAddUserToGroup` from inside the VPC without NAT), and these Lambdas. DB Lambdas run in the VPC and use IAM database authentication (no Secrets Manager at runtime).
+The template provisions **RDS** (PostgreSQL, IAM auth), **VPC endpoints** (RDS API for `generate_db_auth_token`, **DynamoDB VPC gateway endpoint** so private subnets can access DynamoDB (if no NAT is available). DB Lambdas run in the VPC and use IAM database authentication (no Secrets Manager at runtime).
 
 | Function | Purpose | Invoker |
 |----------|---------|--------|
@@ -110,10 +110,27 @@ The template provisions **RDS** (PostgreSQL, IAM auth), **VPC endpoints** (RDS A
 | **charging-stations-write-user-rds** | Write user to RDS and add to Cognito group. | Cognito (PostConfirmation + PostAuthentication). |
 | **charging-stations-get-user-info** | Return user by `user_id` from RDS. | Backend or cross-account. |
 | **charging-stations-confirm-console-created-admin** | Cognito auth (InitiateAuth, NEW_PASSWORD_REQUIRED with `name`). | Script or backend. |
+| **charging-stations-write-station-rds** | Write station to RDS; change station state; delete (soft) station. | Admin (write/delete/state) or cross-account. |
+| **charging-stations-get-station-info** | Read station(s) from RDS. | Backend or cross-account. |
+| **charging-stations-write-station-ports-dynamo** | Write station ports into DynamoDB (single-table design; ports today, sessions later). | Support (ports). |
 
 **WriteUserRDS** – Triggered by Cognito PostConfirmation and PostAuthentication. Inserts the user into RDS (from `request.userAttributes`: sub, email, name, etc.) and calls Cognito `AdminAddUserToGroup` (role **USER** by default, **ADMIN** when `triggerSource` is PostAuthentication - for console-created user). **full_name** - if missing or Cognito sends the placeholder `cognito:default_val`, it is stored as **"Console User"**. Must return the same event to Cognito.
 
 **ConfirmConsoleCreatedAdmin** – For first login (NEW_PASSWORD_REQUIRED), the Lambda sends `userAttributes.name` in the challenge response (default **"Console User"**) because console-created user by default does not have `name`. 
+
+**WriteStationRDS** – Action-based single handler:
+- `write_station`: creates a station row in RDS. Payload fields come from `event["data"]` (e.g. `code`, `name`, `owner`, `city`, `address`, `siteTechnician`, `ratePlan`, optional `email`, `phone`, `state`, `maxPowerKw`, `ports`, `location`).
+- `change_station_state`: payload fields `stationId`, `oldState`, `newState`. Updates only when current state matches `oldState`.
+- `delete_station`: payload `data.stationId`. Soft-deletes by setting state to `DELETED` when previous state is `ACTIVE`, `INACTIVE` or `OUT_OF_SERVICE`.
+
+**GetStationInfo** – Action-based single handler:
+- `get_station_by_id`: payload `data.station_id`.
+- `get_all_stations`: no extra payload required.
+
+**WriteStationPortsDynamo** – Support writes station ports:
+- `insert_station_ports`: payload `data.stationId` and `data.ports` (array of `{ status, power, lastMeterKw }`).
+- Ports are stored in DynamoDB using the single-table key pattern `station_id` (PK) + `entity_key` (SK), where port items use `entity_key = "PORT#<port_id>"` (sessions can be added later as `SESSION#...`). Make sure the writer sets `entity_key` when inserting port items.
+
 
 ### Request/response (plain JSON)
 
@@ -121,6 +138,15 @@ The template provisions **RDS** (PostgreSQL, IAM auth), **VPC endpoints** (RDS A
 - **WriteUserRDS** – Event from Cognito. Returns the same event.
 - **GetUserInfo** – Payload: `{"user_id": "<uuid>"}`. Response: `{"userId", "username", "email", "phone", "role", "status", "createdAt", "updatedAt"}` or `{"error": "..."}`.
 - **ConfirmConsoleCreatedAdmin** – Payload: `{"username", "password", "new_password", "name"}` (`new_password` when NEW_PASSWORD_REQUIRED; `name` optional, default "Console User"). Response: `{"message", "accessToken", "idToken", "refreshToken"}` or exception.
+- **WriteStationRDS** (`charging-stations-write-station-rds`) – action-based:
+  - `write_station`: returns `{"stationId": "<str>"}` on success
+  - `change_station_state`: returns `{"updatedAt": "<iso datetime>"}` on success
+  - `delete_station`: returns `{"deletedAt": "<iso datetime>"}` on success
+- **GetStationInfo** (`charging-stations-get-station-info`) – action-based:
+  - `get_station_by_id`: returns station record(s) with timestamps converted to JSON (ISO strings)
+  - `get_all_stations`: returns list of stations
+- **WriteStationPortsDynamo** (`charging-stations-write-station-ports-dynamo`) – action-based:
+  - `insert_station_ports`: returns array of created port ids
 
 ### Run scripts
 
@@ -135,7 +161,7 @@ python run_create_rds_tables.py
 **Confirm console-created admin (first login or password change):**
 
 ```bash
-python run_confirm_console_created_admin.py <account_id> <username> <password> <new_password>
+python run_confirm_console_created_admin.py <username> <password> <new_password>
 ```
 
 ### Integration tests
@@ -148,11 +174,27 @@ From **`lambda`** (with boto3 and IAM allowing `lambda:InvokeFunction` on the ta
 python -m tests.integration.routes.health_invoker <invoker account_id>
 ```
 
-**GetUserInfo** – requires a real `user_id` in RDS; asserts `StatusCode == 200` and `response_json['userId'] == user_id`:
+**GetUserInfo** – requires a real `user_id` in RDS; asserts `StatusCode == 200` and `response_json['data']['user_id'] == user_id`:
 
 ```bash
-python -m tests.integration.read.get_user_info_lambda_invoker <invoker account_id> <user_id>
+python -m tests.integration.read.get_user_info_lambda_invoker <user_id>
 ```
+
+**Stations (write/change/list/read/delete)**:
+
+```bash
+# Create a station (prints stationId)
+python -m tests.integration.write.write_station_lambda_invoker
+
+# Replace <station_id> with the printed value above
+python -m tests.integration.write.change_station_state_lambda_invoker <station_id> <old state> <new state>
+python -m tests.integration.read.get_all_stations_lambda_invoker
+python -m tests.integration.read.get_station_info_lambda_invoker <station_id>
+python -m tests.integration.write.delete_station_lambda_invoker <station_id>
+# List users
+python -m tests.integration.read.get_all_users_lambda_invoker
+```
+
 
 ---
 
@@ -162,10 +204,15 @@ Copy **`lambda/.env.example`** to **`lambda/.env`** and set values for local run
 
 | Variable | Use |
 |----------|-----|
-| **REGION** / **AWS_REGION** | AWS region (e.g. `il-central-1`). |
+| **AWS_REGION** | AWS region (e.g. `il-central-1`). |
 | **AWS_LAMBDA_HOST_ACCOUNT** | Account where DB Lambdas are deployed (for scripts). |
-| **CREATE_RDS_TABLES_FUNCTION_NAME**, **CONFIRM_CONSOLE_CREATED_ADMIN_FUNCTION_NAME**, **HEALTH_FUNCTION_NAME**, **READ_USER_INFO_LAMBDA_FUNCTION_NAME** | Function names; defaults match the templates. |
-| **DB_HOST**, **DB_PORT**, **DB_NAME**, **DB_USER** | Set by the SAM template for DB Lambdas: RDS endpoint, port, database name, and DB user used with IAM auth. |
+| **CREATE_RDS_TABLES_FUNCTION_NAME**, **CONFIRM_CONSOLE_CREATED_ADMIN_FUNCTION_NAME**| Function names for setting up RDS, confirming console-created admins|
+**HEALTH_FUNCTION_NAME** | Health function name |
+| **GET_USERS_FUNCTION_NAME**, **GET_STATIONS_FUNCTION_NAME** | Function names for read lambdas. |
+| **WRITE_STATION_FUNCTION_NAME** | Function name for writing stations to RDS. |
+| **RDS_DB_SECRET_NAME** | Name of your secret used by the SAM template for DB credentials creation Lambdas and (DB requests with IAM tokens). |
+| **STATIONS_DYNAMO_TABLE** | Optional for local invocation of `charging-stations-write-station-ports-dynamo` (single-table name/ARN). |
+
 
 ---
 
