@@ -17,24 +17,27 @@ const sizeToClass: Record<ButtonSize, string> = {
     large: "px-6 py-3 text-lg",
 }
 
-interface ButtonTProps {
+export interface SimpleButtonProps {
     handleClick: () => void;
     caption: string;
     isLoading?: boolean;
     loadingCaption?: string;
     color?: ButtonColor;
     size?: ButtonSize;
+    underlineOnHover?: boolean;
 }
 
-const ButtonT: FC<ButtonTProps> = ({ 
+const SimpleButton: FC<SimpleButtonProps> = ({ 
         handleClick,
         caption,
         isLoading=false,
         loadingCaption="Requesting...",
         color="primary",
-        size="medium",
+        size="small",
+        underlineOnHover=false,
 }) => {
-    const buttonClass = `${colorToClass[color]} ${sizeToClass[size]}`;
+    const hoverUnderline = underlineOnHover ? " hover:underline" : "";
+    const buttonClass = `${colorToClass[color]} ${sizeToClass[size]}${hoverUnderline}`;
     return (
         <button
             type="button"
@@ -47,4 +50,4 @@ const ButtonT: FC<ButtonTProps> = ({
     );
 }
 
-export default ButtonT;
+export default SimpleButton;

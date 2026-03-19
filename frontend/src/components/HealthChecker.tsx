@@ -4,7 +4,7 @@ import type { FC } from "react";
 import { getLogger } from "@/services/logging";
 import type { HealthResponse } from "@/types/responseTypes";
 import { config } from "@/config/env";
-import ButtonT, { type ButtonColor, type ButtonSize } from "./ButtonT";
+import SimpleButton, { type ButtonColor, type ButtonSize } from "./SimpleButton";
 
 const API_BASE_URL = config.apiBaseUrl;
 
@@ -12,24 +12,25 @@ const logger = getLogger();
 
 function getTime(): string {
   const now = new Date();
-  return now.toTimeString();
+  return now.toLocaleTimeString("en-GB");
 }
 
 interface HealthCheckerProps {
   defaultInfo: string,
   endpoint: string,
+  caption?: string,
   checkerName?: string,
   buttonColor?: ButtonColor,
   buttonSize?: ButtonSize,
 }
 
 const HealthChecker: FC<HealthCheckerProps> = ({
-  defaultInfo, endpoint, checkerName, buttonColor="primary", buttonSize="small"
+  defaultInfo, endpoint, caption, checkerName, buttonColor="primary", buttonSize="small"
 }) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [checkInfo, setCheckInfo] = useState<string>(defaultInfo);
   
-  const buttonCaption = `Check ${endpoint}`;
+  const buttonCaption = caption ?? `Check ${endpoint}`;
   const healthCheckUrl = `${API_BASE_URL}${endpoint}`;
 
   const handleClick = useCallback(
@@ -52,7 +53,7 @@ const HealthChecker: FC<HealthCheckerProps> = ({
   return (
     <div>
       <p>{checkerName ?? `Health checker for ${endpoint}`}</p>
-      <ButtonT handleClick={handleClick} caption={buttonCaption} isLoading={isLoading} color={buttonColor} size={buttonSize} />
+      <SimpleButton handleClick={handleClick} caption={buttonCaption} isLoading={isLoading} color={buttonColor} size={buttonSize} />
       <p>{checkInfo}</p>
     </div>
   )

@@ -1,7 +1,8 @@
-import { NavLink } from 'react-router';
 import HealthChecker from '@/components/HealthChecker';
 import WelcomeTable from '@/components/WelcomeTable';
 import NavMenu from '@/components/NavMenu';
+import NavButton from '@/components/NavButton';
+import { LOGIN_PATH, REGISTER_PATH } from '@/router/roleNavigation';
 
 const GuestDashboardPage = () => {
   return (
@@ -10,23 +11,29 @@ const GuestDashboardPage = () => {
         <NavMenu />
         <div className="flex flex-col items-center justify-center h-screen">
           <h1 className="text-4xl font-bold">Welcome to the Charging stations application</h1>
-          <p className="text-lg">You can <NavLink to="/login">Login</NavLink> or <NavLink to="/register">join us</NavLink></p>
+          <p className="text-lg">
+            You can <NavButton to={LOGIN_PATH} caption='Login' color="secondary" size="xs"/> or <NavButton to={REGISTER_PATH} caption="Join us" color="secondary" size="xs"/>
+          </p>
           <div>
-            <HealthChecker 
-              defaultInfo="Click to check!" 
-              endpoint='/health' 
-              checkerName='Check backend service'
-              buttonColor="secondary"
-              buttonSize="small"
-            />
-            <HealthChecker 
-              defaultInfo="Click to check!"
-              endpoint='/health/api'
-              checkerName='Check backend + lambda'
-              buttonColor="tertiary"
-              buttonSize="xs"
-            />
             <WelcomeTable />
+            <div className="flex flex-row justify-around items-center gap-4 pt-7">
+              <HealthChecker 
+                defaultInfo="Click to check!" 
+                endpoint='/health' 
+                checkerName='Check backend service'
+                buttonColor="tertiary"
+                buttonSize="xs"
+                caption="Check backend"
+              />
+              <HealthChecker 
+                defaultInfo="Click to check!"
+                endpoint='/health/api'
+                checkerName='Check backend + lambda'
+                buttonColor="tertiary"
+                buttonSize="xs"
+                caption="Check lambdas"
+              />
+            </div>
           </div>
         </div>
       </div>
