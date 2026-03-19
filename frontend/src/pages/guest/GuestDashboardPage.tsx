@@ -12,8 +12,20 @@ const GuestDashboardPage = () => {
           <h1 className="text-4xl font-bold">Welcome to the Charging stations application</h1>
           <p className="text-lg">You can <NavLink to="/login">Login</NavLink> or <NavLink to="/register">join us</NavLink></p>
           <div>
-            <HealthChecker defaultInfo="Click to check!" endpoint='/health' checkerName='Check backend service'/>
-            <HealthChecker defaultInfo="Click to check!" endpoint='/health/api' checkerName='Check backend + lambda'/>
+            <HealthChecker 
+              defaultInfo="Click to check!" 
+              endpoint='/health' 
+              checkerName='Check backend service'
+              buttonColor="secondary"
+              buttonSize="small"
+            />
+            <HealthChecker 
+              defaultInfo="Click to check!"
+              endpoint='/health/api'
+              checkerName='Check backend + lambda'
+              buttonColor="tertiary"
+              buttonSize="xs"
+            />
             <WelcomeTable />
           </div>
         </div>

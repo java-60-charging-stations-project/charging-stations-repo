@@ -4,6 +4,7 @@ import type { FC } from "react";
 import { getLogger } from "@/services/logging";
 import type { HealthResponse } from "@/types/responseTypes";
 import { config } from "@/config/env";
+import ButtonT, { type ButtonColor, type ButtonSize } from "./ButtonT";
 
 const API_BASE_URL = config.apiBaseUrl;
 
@@ -18,10 +19,13 @@ interface HealthCheckerProps {
   defaultInfo: string,
   endpoint: string,
   checkerName?: string,
+  buttonColor?: ButtonColor,
+  buttonSize?: ButtonSize,
 }
 
 const HealthChecker: FC<HealthCheckerProps> = ({
-  defaultInfo, endpoint, checkerName}) => {
+  defaultInfo, endpoint, checkerName, buttonColor="primary", buttonSize="small"
+}) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [checkInfo, setCheckInfo] = useState<string>(defaultInfo);
   
@@ -48,9 +52,7 @@ const HealthChecker: FC<HealthCheckerProps> = ({
   return (
     <div>
       <p>{checkerName ?? `Health checker for ${endpoint}`}</p>
-      <button type="button" onClick={handleClick} disabled={isLoading}>
-        {isLoading? "Requesting...": buttonCaption}
-      </button>
+      <ButtonT handleClick={handleClick} caption={buttonCaption} isLoading={isLoading} color={buttonColor} size={buttonSize} />
       <p>{checkInfo}</p>
     </div>
   )
