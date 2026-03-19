@@ -2,6 +2,7 @@ import { BadRequestError, ConflictError, ResourceNotFoundError } from '../../com
 import type {
   AdminCreateStationRequest,
   AdminCreateStationResponse,
+  AdminDeleteStationResponse,
   AdminUpdateStationStateResponse,
   StationBase,
   StationState,
@@ -161,5 +162,22 @@ export class StationsServiceLocal implements StationsService {
     station.state = newState;
     station.updatedAt = new Date().toISOString();
     return { updatedAt: station.updatedAt };
+  }
+
+  async deleteStation(
+    stationId: string,
+    _callerId: string
+  ): Promise<AdminDeleteStationResponse> {
+    const stationIndex = STATIONS.findIndex((s) => s.id === stationId);
+    if (stationIndex === -1) {
+      throw new ResourceNotFoundError('Station not found');
+    }
+    const station = STATIONS[stationIndex];
+    if (station.state !== 'INACTIVE') {
+      throw new BadRequestError('Station cannot be deleted in state: ' + station.state);
+    }
+    STATIONS.splice(stationIndex, 1);
+    
+    return { deletedAt: new Date().toISOString() };
   }
 }

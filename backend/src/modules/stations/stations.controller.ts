@@ -105,4 +105,12 @@ export class StationsController {
     const result = await this.service.updateStationState(stationId, oldState, newState, callerId);
     res.json({ code: 200, data: result });
   };
+
+  deleteStation = async (req: Request, res: Response) => {
+    const stationId = idSchema.parse(req.params.stationId);
+    const callerId = req.user?.sub ?? '';
+
+    const result = await this.service.deleteStation(stationId, callerId);
+    res.json({ code: 200, data: result });
+  };
 }

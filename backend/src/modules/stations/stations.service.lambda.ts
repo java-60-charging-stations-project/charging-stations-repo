@@ -6,6 +6,7 @@ import { wrapLambdaRequest } from '../../common/wrappers';
 import type {
   AdminCreateStationRequest,
   AdminCreateStationResponse,
+  AdminDeleteStationResponse,
   AdminUpdateStationStateResponse,
   LambdaStation,
   StationBase,
@@ -107,6 +108,27 @@ export class StationsServiceLambda implements StationsService {
           newState,
         }
       }
+    );
+    return result.data;
+  }
+
+  async deleteStation(
+    stationId: string,
+    callerId: string
+  ): Promise<AdminDeleteStationResponse> {
+    logger.debug('Invoking stations write lambda: deleteStation', {
+      stationId,
+      callerId
+    });
+    const result = await LAMBDA_INVOKER.invokeJson<{ data: AdminDeleteStationResponse }>(
+      env.stationsLambdaWriteFunctionName,
+      wrapLambdaRequest(
+        'delete_station',
+        callerId,
+        {
+          stationId
+        }
+      )
     );
     return result.data;
   }

@@ -130,21 +130,32 @@ export interface AdminUpdateStationStateResponse {
   updatedAt: string;
 }
 
+/** Response for DELETE /admin/stations/{stationId} */
+export interface AdminDeleteStationResponse {
+  deletedAt: string;
+}
+
 export interface StationsService {
   list(callerId: string): Promise<StationBase[]>;
+  
   getById(stationId: string, callerId: string): Promise<StationBase>;
+  
   create(payload: AdminCreateStationRequest, callerId: string): Promise<AdminCreateStationResponse>;
+  
   updateStatus(
     stationId: string,
     status: StationState,
     callerId: string,
     callerGroups: string[]
   ): Promise<StationBase>;
+  
   updateStationState(
     stationId: string,
     oldState: StationState,
     newState: StationState,
     callerId: string
   ): Promise<AdminUpdateStationStateResponse>;
+
+  deleteStation(stationId: string, callerId: string): Promise<AdminDeleteStationResponse>;
 }
 
