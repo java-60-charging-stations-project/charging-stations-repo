@@ -16,7 +16,7 @@ const GuestDashboardPage = () => {
           </p>
           <div>
             <WelcomeTable />
-            <div className="flex flex-row justify-around items-center gap-4 pt-7">
+            <div className="flex flex-col md:flex-row justify-around md:justify-center items-center gap-4 pt-7">
               <HealthChecker 
                 defaultInfo="Click to check!" 
                 endpoint='/health' 
