@@ -48,25 +48,6 @@ def get_connection() -> psycopg2.extensions.connection:
         )
     return _conn
 
-def extract_payload_from_event(event: dict) -> dict:
-    logger.info(f"Extracting payload from event")
-    try:
-        service_data = event["service"]
-        user_id = event["data"]["user_id"] if service_data["action"] == "get_user_by_id" else None
-        payload: dict = {
-            "action": service_data["action"],
-            "caller_id": service_data["caller_id"],
-            "user_id": user_id,
-        }
-        logger.info(f"Payload extracted successfully: {payload}")
-        return payload
-    except KeyError as e:
-        logger.error(f"Missing key: {e}")
-        raise LambdaResponseError({"error": f"missing key: {e}", "code": "MISSING_KEY"})
-    except Exception as e:
-        logger.error(f"Unhandled error: {e}")
-        raise LambdaResponseError({"error": f"unhandled error: {e}", "code": "UNHANDLED_ERROR"})
-
 def get_user_info(user_id: str | None) -> dict | None:
     try:
         conn = get_connection()
@@ -103,53 +84,52 @@ def build_json(user_info: dict) -> dict:
 
 def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponsePayload:
     logger.info(f"Handler called with event: {event}")
-    service_data = event.get("service")
+    try:
+        caller_id = event["service"]["caller_id"]
+    except KeyError as e:
+        log_audit("ERROR", message="missing caller_id", status="ERROR", errorMessage=f"missing caller_id: {e}", **audit_base)
+        return ErrorResponsePayload(error=f"missing caller_id: {e}", code="UNAUTHORIZED")
+    try:
+        action = event["service"]["action"]
+    except KeyError as e:
+        log_audit("ERROR", message="missing action", status="ERROR", errorMessage=f"missing action: {e}", **audit_base)
+        return ErrorResponsePayload(error=f"missing action: {e}", code="INVALID_REQUEST")
     audit_base = {
-        "caller_id": service_data.get("caller_id") if service_data else None,
+        "caller_id": caller_id,
         "service": context.function_name,
-        "event": service_data.get("action") if service_data else None,
+        "event": action,
         "requestId": context.aws_request_id,
     }
     try:
-        payload = extract_payload_from_event(event)
-    except LambdaResponseError as e:
-        log_audit("ERROR", message="error extracting payload from event", status="ERROR", errorMessage=e.response.get("error"), **audit_base)
-        return ErrorResponsePayload(error=e.response["error"], code=e.response["code"])
-    audit_base["caller_id"] = payload["caller_id"]
-    audit_base["event"] = payload["action"]
-    match payload["action"]:
-        case "get_user_by_id":
-            try:
-                user_id = payload["user_id"]
+        match action:
+            case "get_user_by_id":
+                user_id = event["data"]["user_id"]
                 user_info = get_user_info(user_id)
                 if not user_info:
-                    error_message = "user not found in Database"
-                    log_audit("ERROR", message="user not found", status="ERROR", errorMessage=error_message, **audit_base)
-                    return ErrorResponsePayload(error=error_message, code="NOT_FOUND")
+                    log_audit("ERROR", message="user not found in Database", status="ERROR", errorMessage="user not found in RDS", **audit_base)
+                    return ErrorResponsePayload(error="user not found in Database", code="NOT_FOUND")
                 result = build_json(user_info)
                 logger.info(f"result: {result}")
                 log_audit("INFO", message="user info fetched successfully", status="SUCCESS", **audit_base)
                 return SuccessResponsePayload(data=result)
-            except Exception as e:
-                error_message = f"unhandled error getting user info from Database: {e}"
-                log_audit("ERROR", message="unhandled error getting user info", status="ERROR", errorMessage=error_message, **audit_base)
-                return ErrorResponsePayload(error=error_message, code="UNHANDLED_ERROR")
-        case "get_all_users":
-            try:
+            case "get_all_users":
                 users_info = get_all_users()
                 if not users_info:
-                    error_message = "no users found in Database"
-                    log_audit("ERROR", message="no users found", status="ERROR", errorMessage=error_message, **audit_base)
-                    return ErrorResponsePayload(error=error_message, code="NOT_FOUND")
+                    log_audit("ERROR", message="no users found in Database", status="ERROR", errorMessage="no users found in Database", **audit_base)
+                    return ErrorResponsePayload(error="no users found in Database", code="NOT_FOUND")
                 return_list = [build_json(user) for user in users_info]
                 logger.info(f"return list: {return_list}")
                 log_audit("INFO", message="all users fetched successfully", status="SUCCESS", **audit_base)
                 return SuccessResponsePayload(data=return_list)
-            except Exception as e:
-                error_message = f"unhandled error getting all users from Database: {e}"
-                log_audit("ERROR", message="unhandled error getting all users", status="ERROR", errorMessage=error_message, **audit_base)
-                return ErrorResponsePayload(error=error_message, code="UNHANDLED_ERROR")
-        case _:
-            error_message = "invalid action"
-            log_audit("ERROR", message="invalid action", status="ERROR", errorMessage=error_message, **audit_base)
-            return ErrorResponsePayload(error=error_message, code="INVALID_REQUEST")
+            case _:
+                log_audit("ERROR", message=f"invalid action {action}", status="ERROR", errorMessage=f"invalid action {action}", **audit_base)
+                return ErrorResponsePayload(error=f"invalid action {action}", code="INVALID_REQUEST")
+    except KeyError as e:
+        log_audit("ERROR", message="missing data", status="ERROR", errorMessage=f"missing data: {e}", **audit_base)
+        return ErrorResponsePayload(error=f"missing data: {e}", code="INVALID_REQUEST")
+    except LambdaResponseError as e:
+        log_audit("ERROR", message=f"error performing {action}", status="ERROR", errorMessage=e.response.get("error"), **audit_base)
+        return ErrorResponsePayload(error=e.response["error"], code=e.response["code"])
+    except Exception as e:
+        log_audit("ERROR", message=f"unhandled error performing {action}", status="ERROR", errorMessage=str(e), **audit_base)
+        return ErrorResponsePayload(error=f"unhandled error performing {action}: {e}", code="UNHANDLED_ERROR")

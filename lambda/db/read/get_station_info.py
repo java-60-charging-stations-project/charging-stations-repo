@@ -3,10 +3,10 @@ import boto3
 import psycopg2
 from typing import Any
 from psycopg2.extras import RealDictCursor
+from datetime import datetime
 from utils.logger import logger, log_audit
 from utils.error_handlers import LambdaResponseError
 from data_types.contract_types import ErrorResponsePayload, SuccessResponsePayload
-from datetime import datetime
 
 _conn = None
 
@@ -48,25 +48,6 @@ def get_connection() -> psycopg2.extensions.connection:
         )
     return _conn
 
-def extract_payload_from_event(event: dict) -> dict:
-    logger.info(f"Extracting payload from event")
-    try:
-        service_data = event["service"]
-        station_id = event["data"]["station_id"] if service_data["action"] == "get_station_by_id" else None
-        payload: dict = {
-            "action": service_data["action"],
-            "caller_id": service_data["caller_id"],
-            "station_id": station_id,
-        }
-        logger.info(f"Payload extracted successfully: {payload}")
-        return payload
-    except KeyError as e:
-        logger.error(f"Missing key: {e}")
-        raise LambdaResponseError({"error": f"missing key: {e}", "code": "MISSING_KEY"})
-    except Exception as e:
-        logger.error(f"Unhandled error: {e}")
-        raise LambdaResponseError({"error": f"unhandled error: {e}", "code": "UNHANDLED_ERROR"})
-
 def get_station_info(station_id: str) -> dict:
     try:
         conn = get_connection()
@@ -104,45 +85,52 @@ def build_json(station_info: dict) -> dict:
 
 def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponsePayload:
     logger.info(f"Handler called with event: {event}")
-    service_data = event.get("service")
+    try:
+        caller_id = event["service"]["caller_id"]
+    except KeyError as e:
+        log_audit("ERROR", message="missing caller_id", status="ERROR", errorMessage=f"missing caller_id: {e}", **audit_base)
+        return ErrorResponsePayload(error=f"missing caller_id: {e}", code="UNAUTHORIZED")
+    try:
+        action = event["service"]["action"]
+    except KeyError as e:
+        log_audit("ERROR", message="missing action", status="ERROR", errorMessage=f"missing action: {e}", **audit_base)
+        return ErrorResponsePayload(error=f"missing action: {e}", code="INVALID_REQUEST")
     audit_base = {
-        "caller_id": service_data.get("caller_id") if service_data else None,
+        "caller_id": caller_id,
         "service": context.function_name,
-        "event": service_data.get("action") if service_data else None,
+        "event": action,
         "requestId": context.aws_request_id,
     }
     try:
-        payload = extract_payload_from_event(event)
+        match action:
+            case "get_station_by_id":
+                    station_id = event["data"]["station_id"]
+                    station_info = get_station_info(station_id)
+                    if not station_info:
+                        log_audit("ERROR", message="station not found in Database", status="ERROR", errorMessage="station not found in Database", **audit_base)
+                        return ErrorResponsePayload(error="station not found in Database", code="NOT_FOUND")
+                    result = build_json(station_info)
+                    logger.info(f"result: {result}")
+                    log_audit("INFO", message="station info fetched successfully", status="SUCCESS", **audit_base)
+                    return SuccessResponsePayload(data=result)
+            case "get_all_stations":
+                    stations_info = get_all_stations()
+                    if not stations_info:
+                        log_audit("ERROR", message="no stations found in Database", status="ERROR", errorMessage="no stations found in Database", **audit_base)
+                        return ErrorResponsePayload(error="no stations found in Database", code="NOT_FOUND")
+                    log_audit("INFO", message="all stations fetched successfully", status="SUCCESS", **audit_base)
+                    return_list = [build_json(station) for station in stations_info]
+                    logger.info(f"return list: {return_list}")
+                    return SuccessResponsePayload(data=return_list)
+            case _:
+                log_audit("ERROR", message=f"invalid action {action}", status="ERROR", errorMessage=f"invalid action {action}", **audit_base)
+                return ErrorResponsePayload(error=f"invalid action {action}", code="INVALID_REQUEST")
+    except KeyError as e:
+        log_audit("ERROR", message="missing data", status="ERROR", errorMessage=f"missing data: {e}", **audit_base)
+        return ErrorResponsePayload(error=f"missing data: {e}", code="INVALID_REQUEST")
     except LambdaResponseError as e:
-        log_audit("ERROR", message="error extracting payload from event", status="ERROR", errorMessage=e.response.get("error"), **audit_base)
+        log_audit("ERROR", message=f"error performing {action}", status="ERROR", errorMessage=e.response.get("error"), **audit_base)
         return ErrorResponsePayload(error=e.response["error"], code=e.response["code"])
-    audit_base["userId"] = payload["caller_id"]
-    audit_base["event"] = payload["action"]
-    match payload["action"]:
-        case "get_station_by_id":
-            try:
-                station_id = payload["station_id"]
-                station_info = get_station_info(station_id)
-                if not station_info:
-                    return ErrorResponsePayload(error="station not found", code="NOT_FOUND")
-                result = build_json(station_info)
-                logger.info(f"result: {result}")
-                log_audit("INFO", message="station info fetched successfully", status="SUCCESS", **audit_base)
-                return SuccessResponsePayload(data=result)
-            except Exception as e:
-                return ErrorResponsePayload(error=f"unhandled error getting station info: {e}", code="UNHANDLED_ERROR")
-        case "get_all_stations":
-            try:
-                stations_info = get_all_stations()
-                if not stations_info:
-                    return ErrorResponsePayload(error="no stations found", code="NOT_FOUND")
-                log_audit("INFO", message="all stations fetched successfully", status="SUCCESS", **audit_base)
-                return_list = [build_json(station) for station in stations_info]
-                logger.info(f"return list: {return_list}")
-                return SuccessResponsePayload(data=return_list)
-            except Exception as e:
-                log_audit("ERROR", message="unhandled error getting all stations", status="ERROR", errorMessage=str(e), **audit_base)
-                return ErrorResponsePayload(error=f"unhandled error getting all stations: {e}", code="UNHANDLED_ERROR")
-        case _:
-            log_audit("ERROR", message=f"invalid action {payload['action']}", status="ERROR", errorMessage=f"invalid action {payload['action']}", **audit_base)
-            return ErrorResponsePayload(error=f"invalid action {payload['action']}", code="INVALID_REQUEST")
+    except Exception as e:
+        log_audit("ERROR", message=f"unhandled error performing {action}", status="ERROR", errorMessage=str(e), **audit_base)
+        return ErrorResponsePayload(error=f"unhandled error performing {action}: {e}", code="UNHANDLED_ERROR")

@@ -43,6 +43,18 @@ def get_connection() -> psycopg2.extensions.connection:
         )
     return _conn
 
+def extract_delete_station_data_from_event(event: dict) -> str:
+    logger.info(f"Extracting station id from event")
+    try:
+        data = event["data"]
+        station_id = data["stationId"]
+        return {
+            "station_id": station_id,
+        }
+    except KeyError as e:
+        logger.error(f"Missing key: {e}")
+        raise LambdaResponseError({"error": f"missing key: {e}", "code": "INVALID_REQUEST"})
+
 def extract_full_station_instance_from_event(event: dict) -> StationInstance:
     logger.info(f"Extracting station instance from event")
     try:
@@ -71,7 +83,7 @@ def extract_full_station_instance_from_event(event: dict) -> StationInstance:
         return station_instance
     except KeyError as e:
         logger.error(f"Missing key: {e}")
-        raise LambdaResponseError({"error": f"missing key: {e}", "code": "MISSING_KEY"})
+        raise LambdaResponseError({"error": f"missing key: {e}", "code": "INVALID_REQUEST"})
     except Exception as e:
         logger.error(f"Unhandled error: {e}")
         raise LambdaResponseError({"error": f"unhandled error: {e}", "code": "UNHANDLED_ERROR"})
@@ -95,9 +107,11 @@ def extract_station_status_from_event(event: dict) -> dict:
             "old_status": old_status,
             "new_status": new_status,
         }
+    except LambdaResponseError:
+        raise
     except KeyError as e:
         logger.error(f"Missing key: {e}")
-        raise LambdaResponseError({"error": f"missing key: {e}", "code": "MISSING_KEY"})
+        raise LambdaResponseError({"error": f"missing key: {e}", "code": "INVALID_REQUEST"})
 
 def insert_station_to_rds(station: StationInstance) -> None:
     try:
@@ -157,7 +171,7 @@ def insert_station_to_rds(station: StationInstance) -> None:
         logger.error(f"Unhandled error inserting station: {e}")
         raise LambdaResponseError({"error": str(e), "code": "UNHANDLED_ERROR"})
 
-def change_station_status(station_id: str, old_status: str, new_status: str) -> None:
+def change_station_status(station_id: str, old_status: str, new_status: str) -> datetime:
     try:
         conn = get_connection()
     except Exception as e:
@@ -177,6 +191,14 @@ def change_station_status(station_id: str, old_status: str, new_status: str) -> 
                     old_status,
                 ),
             )
+            if cur.rowcount == 0:
+                cur.execute("SELECT status FROM stations WHERE id = %s", (station_id,))
+                row = cur.fetchone()
+                if row is None:
+                    logger.error(f"station not found: {station_id}")
+                    raise LambdaResponseError({"error": f"station not found: {station_id}", "code": "NOT_FOUND"})
+                logger.error(f"status mismatch for station {station_id}: expected {old_status}, actual {row[0]}")
+                raise LambdaResponseError({"error": f"status mismatch for station {station_id}: expected {old_status}, actual {row[0]}", "code": "INVALID_STATE"})
         conn.commit()
         return updated_at
     except psycopg2.IntegrityError as e:
@@ -187,9 +209,53 @@ def change_station_status(station_id: str, old_status: str, new_status: str) -> 
         conn.rollback()
         logger.error(f"Database error updating station status: {e}")
         raise LambdaResponseError({"error": str(e), "code": "DATABASE_ERROR"})
+    except LambdaResponseError:
+        conn.rollback()
+        raise
     except Exception as e:
         conn.rollback()
         logger.error(f"Unhandled error updating station status: {e}")
+        raise LambdaResponseError({"error": str(e), "code": "UNHANDLED_ERROR"})
+
+def delete_station(station_id: str) -> datetime:
+    try:
+        conn = get_connection()
+    except Exception as e:
+        logger.error(f"Error getting connection: {e}")
+        raise LambdaResponseError({"error": f"Error getting connection: {e}", "code": "DATABASE_ERROR"})
+    try:
+        updated_at = datetime.now()
+        status = "OUT_OF_SERVICE"
+        with conn.cursor() as cur:
+            cur.execute("UPDATE stations SET status = %s, updated_at = %s WHERE id = %s AND (status = 'ACTIVE' OR status = 'INACTIVE')", 
+                (status, updated_at, station_id),
+            )
+            if cur.rowcount == 0:
+                cur.execute("SELECT status FROM stations WHERE id = %s", (station_id,))
+                row = cur.fetchone()
+                if row is None:
+                    logger.error(f"station not found: {station_id}")
+                    raise LambdaResponseError({"error": f"station not found: {station_id}", "code": "NOT_FOUND"})
+                logger.error(f"status mismatch for station {station_id}: expected 'ACTIVE' or 'INACTIVE', actual {row[0]}")
+                raise LambdaResponseError(
+                    {"error": f"status mismatch for station {station_id}: expected 'ACTIVE' or 'INACTIVE', actual {row[0]}", 
+                    "code": "INVALID_REQUEST"})
+        conn.commit()
+        return updated_at
+    except psycopg2.IntegrityError as e:
+        conn.rollback()
+        logger.error(f"Constraint violation deleting station: {e}")
+        raise LambdaResponseError({"error": str(e), "code": "CONSTRAINT_VIOLATION"})
+    except psycopg2.DatabaseError as e:
+        conn.rollback()
+        logger.error(f"Database error deleting station: {e}")
+        raise LambdaResponseError({"error": str(e), "code": "DATABASE_ERROR"})
+    except LambdaResponseError:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Unhandled error deleting station: {e}")
         raise LambdaResponseError({"error": str(e), "code": "UNHANDLED_ERROR"})
 
 def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponsePayload:
@@ -202,8 +268,8 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
     try:
         action = event["service"]["action"]
     except KeyError as e:
-        log_audit("ERROR", message="invalid action", status="ERROR", errorMessage=f"invalid action: {e}", **audit_base)
-        return ErrorResponsePayload(error=f"invalid action: {e}", code="INVALID_REQUEST")
+        log_audit("ERROR", message="missing action", status="ERROR", errorMessage=f"missing action: {e}", **audit_base)
+        return ErrorResponsePayload(error=f"missing action: {e}", code="INVALID_REQUEST")
     audit_base = {
         "caller_id": caller_id,
         "service": context.function_name,
@@ -225,12 +291,20 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                 updated_at = change_station_status(station_id, old_status, new_status)
                 log_audit("INFO", message=f"{station_id} status changed from {old_status} to {new_status}", status="SUCCESS", **audit_base)
                 return SuccessResponsePayload(data={"updatedAt": updated_at.isoformat()})
+            case "delete_station":
+                station_id = event["data"]["stationId"]
+                updated_at = delete_station(station_id)
+                log_audit("INFO", message=f"{station_id} deleted successfully", status="SUCCESS", **audit_base)
+                return SuccessResponsePayload(data={"deletedAt": updated_at.isoformat()})
             case _:
-                log_audit("ERROR", message="invalid action", status="ERROR", errorMessage=f"invalid action: {action}", **audit_base)
-                return ErrorResponsePayload(error=f"invalid action: {action}", code="INVALID_REQUEST")
+                log_audit("ERROR", message=f"invalid action {action}", status="ERROR", errorMessage=f"invalid action {action}", **audit_base)
+                return ErrorResponsePayload(error=f"invalid action {action}", code="INVALID_REQUEST")
+    except KeyError as e:
+        log_audit("ERROR", message="missing data", status="ERROR", errorMessage=f"missing data: {e}", **audit_base)
+        return ErrorResponsePayload(error=f"missing data: {e}", code="INVALID_REQUEST")
     except LambdaResponseError as e:
-        log_audit("ERROR", message=f"error performing{action} in RDS", status="ERROR", errorMessage=e.response.get("error"), **audit_base)
+        log_audit("ERROR", message=f"error performing {action}", status="ERROR", errorMessage=e.response.get("error"), **audit_base)
         return ErrorResponsePayload(error=e.response["error"], code=e.response["code"])
     except Exception as e:
-        log_audit("ERROR", message=f"error performing {action} in RDS", status="ERROR", errorMessage=str(e), **audit_base)
-        return ErrorResponsePayload(error="UNHANDLED_ERROR", code="UNHANDLED_ERROR")
+        log_audit("ERROR", message=f"error performing {action}", status="ERROR", errorMessage=str(e), **audit_base)
+        return ErrorResponsePayload(error=f"unhandled error performing {action}: {e}", code="UNHANDLED_ERROR")

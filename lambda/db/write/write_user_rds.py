@@ -55,7 +55,7 @@ def extract_payload_from_event(event: dict) -> dict:
         return payload
     except KeyError as e:
         logger.error(f"Missing key: {e}")
-        raise LambdaResponseError({"error": f"missing key: {e}", "code": "MISSING_KEY"})
+        raise LambdaResponseError({"error": f"missing key: {e}", "code": "INVALID_REQUEST"})
     except Exception as e:
         logger.error(f"Unhandled error: {e}")
         raise LambdaResponseError({"error": f"unhandled error: {e}", "code": "UNHANDLED_ERROR"})
@@ -92,10 +92,7 @@ def extract_user_instance_from_event(event: dict) -> UserInstance:
         return user_instance
     except KeyError as e:
         logger.error(f"Missing key: {e}")
-        raise LambdaResponseError({"error": f"missing key: {e}", "code": "MISSING_KEY"})
-    except TypeError as e:
-        logger.error(f"Event type error: {e}")
-        raise LambdaResponseError({"error": f"Event type error: {e}", "code": "EVENT_TYPE_ERROR"})
+        raise LambdaResponseError({"error": f"missing key: {e}", "code": "INVALID_REQUEST"})
     except Exception as e:
         logger.error(f"Unhandled error: {e}")
         raise LambdaResponseError({"error": f"Unhandled error: {e}", "code": "UNHANDLED_ERROR"})
