@@ -3,15 +3,37 @@ import { AwsLambdaInvoker, type LambdaInvoker } from '../../utils/lambdaInvoker'
 import { createLogger } from '../../utils/logger';
 import { wrapLambdaRequest } from '../../common/wrappers';
 import { type LambdaErrorResponse } from '../../common/wrapperTypes';
-import { ListUsersFilters, ListUsersResult, UpdateProfilePayload, UserInfo, UsersService } from './users.types';
+import {
+  LambdaUserInfo,
+  ListUsersFilters,
+  ListUsersResult,
+  UpdateProfilePayload,
+  UserInfo,
+  UsersService,
+  mapLambdaUser,
+  mapLambdaUsers
+} from './users.types';
 
 const logger = createLogger('users.service', 'debug');
 const LAMBDA_INVOKER: LambdaInvoker = new AwsLambdaInvoker(env.awsRegion);
 
+interface LambdaUserResponse {
+  data: LambdaUserInfo;
+}
+
+interface LambdaListUsersResponse {
+  data: LambdaUserInfo[];
+  totalItems?: number;
+}
+
+function isLambdaErrorResponse(result: unknown): result is LambdaErrorResponse {
+  return !!result && typeof result === 'object' && 'error' in result;
+}
+
 export class UsersServiceLambda implements UsersService {
   async getMyInfo(userId: string): Promise<UserInfo> {
     logger.debug('Invoking userInfo lambda: getMyInfo', { userId });
-    const result = await LAMBDA_INVOKER.invokeJson<UserInfo | LambdaErrorResponse>(
+    const result = await LAMBDA_INVOKER.invokeJson<LambdaUserResponse | LambdaErrorResponse>(
       env.userInfoLambdaFunctionName,
       wrapLambdaRequest(
         'get_user_by_id',
@@ -22,16 +44,16 @@ export class UsersServiceLambda implements UsersService {
       )
     );
 
-    if ('error' in result) {
+    if (isLambdaErrorResponse(result)) {
       throw new Error(`userInfo lambda error: ${result.error}`);
     }
 
-    return result as UserInfo;
+    return mapLambdaUser(result.data);
   }
 
   async getUserById(adminId: string, userId: string): Promise<UserInfo | null> {
     logger.debug('Invoking userInfo lambda: getUserById (admin)', { adminId, userId });
-    const result = await LAMBDA_INVOKER.invokeJson<UserInfo | LambdaErrorResponse>(
+    const result = await LAMBDA_INVOKER.invokeJson<LambdaUserResponse | LambdaErrorResponse>(
       env.userInfoLambdaFunctionName,
       wrapLambdaRequest(
         'get_user_by_id',
@@ -42,19 +64,19 @@ export class UsersServiceLambda implements UsersService {
       )
     );
 
-    if ('error' in result) {
-      if (result.code === 'USER_NOT_FOUND' || result.error.toLowerCase().includes('not found')) {
+    if (isLambdaErrorResponse(result)) {
+      if (result.code === 'USER_NOT_FOUND' || result.code === 'NOT_FOUND' || result.error.toLowerCase().includes('not found')) {
         return null;
       }
       throw new Error(`userInfo lambda error: ${result.error}`);
     }
 
-    return result as UserInfo;
+    return mapLambdaUser(result.data);
   }
 
   async listUsers(adminId: string, filters: ListUsersFilters): Promise<ListUsersResult> {
     logger.debug('Invoking userManagement lambda: listUsers', { adminId, filters });
-    const result = await LAMBDA_INVOKER.invokeJson<ListUsersResult | UserInfo[] | LambdaErrorResponse>(
+    const result = await LAMBDA_INVOKER.invokeJson<LambdaListUsersResponse | LambdaUserInfo[] | LambdaErrorResponse>(
       env.userManagementLambdaFunctionName,
       wrapLambdaRequest(
         'get_all_users',
@@ -70,17 +92,21 @@ export class UsersServiceLambda implements UsersService {
       )
     );
 
-    if ('error' in (result as LambdaErrorResponse)) {
-      const err = result as LambdaErrorResponse;
-      throw new Error(`userManagement lambda error: ${err.error}`);
+    if (isLambdaErrorResponse(result)) {
+      throw new Error(`userManagement lambda error: ${result.error}`);
     }
 
     if (Array.isArray(result)) {
-      logger.debug('Returning Array result: ', { data: result, totalItems: result.length });
-      return { data: result, totalItems: result.length };
+      const data = mapLambdaUsers(result);
+      logger.debug('Returning Array result: ', { data, totalItems: data.length });
+      return { data, totalItems: data.length };
     }
-    logger.debug('Returning: ', result);
-    return result as ListUsersResult;
+
+    const data = mapLambdaUsers(result.data);
+    const totalItems = result.totalItems ?? data.length;
+
+    logger.debug('Returning wrapped result: ', { data, totalItems });
+    return { data, totalItems };
   }
 
   async updateOwnProfile(userId: string, payload: UpdateProfilePayload): Promise<void> {
