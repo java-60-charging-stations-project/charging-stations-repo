@@ -16,6 +16,8 @@ This document describes the JSON **shape** of the payloads sent to (and returned
 
 ### Get all users
 
+Lambda function name: charging-stations-get-user-info
+
 Request:
 
 ```json
@@ -57,13 +59,17 @@ Response (error):
 
 ### Get user by id
 
+Lambda function name: charging-stations-get-user-info
+
 Request:
 
 ```json
 {
   "service": {
     "action": "get_user_by_id",
-    "caller_id": "string",
+    "caller_id": "string"
+    },
+  "data": {
     "user_id": "string"
   }
 }
@@ -73,7 +79,7 @@ Response (success):
 
 ```json
 {
-  "user_id": "uuid",
+  "user_id": "string",
   "full_name": "string",
   "email": "string",
   "phone": "string|null",
@@ -93,6 +99,8 @@ Response (error):
 ## Stations
 
 ### Get all stations
+
+Lambda function name: charging-stations-get-station-info
 
 Request:
 
@@ -124,13 +132,17 @@ Response (error):
 
 ### Get station by id
 
+Lambda function name: charging-stations-get-station-info
+
 Request:
 
 ```json
 {
   "service": {
     "action": "get_station_by_id",
-    "caller_id": "string",
+    "caller_id": "string"
+    }
+  "data":{
     "station_id": "string"
   }
 }
@@ -140,10 +152,28 @@ Response (success):
 
 ```json
 {
-  "data": {
-    "id": "string",
-    "code": "string",
-    "name": "string"
+  'data': 
+{
+  'id': 'f8c5b22e-e8c7-448b-a9a7-5bf00171b8de', 
+  code': 'TLV-FAST-5778', 
+  'name': 'Skyline Hub', 
+  'owner': 'ElectroNet Services Ltd.', 
+  'city': 'Tel Aviv', 
+  'address': '44 Ibn Gabirol St', 
+  'email': None, 
+  'sitetechnician': None, 
+  'maxpowerkw': 0.0, 
+  'ports': 0, 
+  'rateplan': 
+    {
+    'peakRate': 2.14, 
+    'offPeakRate': 1.47, 
+    'currencyCode': 'ILS', 
+    'currencyName': 'Israeli Shekel'
+    }, 
+    'status': 'INACTIVE', 
+    'created_at': '2026-03-19T10:39:29.269144+00:00', 
+    'updated_at': '2026-03-19T10:47:29.587575+00:00'
   }
 }
 ```
@@ -155,6 +185,8 @@ Response (error):
 ```
 
 ## Write station
+
+Lambda function name: charging-stations-write-station-rds
 
 Request:
 
@@ -191,4 +223,39 @@ Response (success):
 {
   "data": { "stationId": "string" }
 }
+```
+
+Change station state
+
+Lambda function name: charging-stations-write-station-rds
+
+Request:
+
+```json
+{
+      "service": { 
+        "action": "change_station_status", 
+        "caller_id": <str> },
+      "data": {
+            "stationId": station_id,
+            "oldState": "ACTIVE" or "INACTIVE" or "OUT_OF_SERVICE",
+            "newState": "ACTIVE" or "INACTIVE" or "OUT_OF_SERVICE",
+      }
+}
+```
+
+Response (success):
+
+```json
+{
+  'data': {
+  'updatedAt': '2026-03-19T10:47:29.587575+00:00'
+  }
+}
+```
+
+Response (error):
+
+```json
+{ "error": "Human readable message", "code": "NOT_FOUND|UNHANDLED_ERROR|..." }
 ```

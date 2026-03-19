@@ -6,20 +6,24 @@ import sys
 
 load_dotenv()
 
-GET_USERS_FUNCTION_NAME = os.getenv("GET_USERS_FUNCTION_NAME", "charging-stations-get-user-info")  # adjust if different
-REGION = os.getenv("REGION", "il-central-1")
-LAMBDA_CLIENT = boto3.client("lambda", region_name=REGION)
+GET_USERS_FUNCTION_NAME = os.getenv("GET_USERS_FUNCTION_NAME", "charging-stations-get-user-info")
+AWS_REGION = os.getenv("AWS_REGION", "il-central-1")
+AWS_LAMBDA_HOST_ACCOUNT = os.getenv("AWS_LAMBDA_HOST_ACCOUNT", "852215679994")
+LAMBDA_CLIENT = boto3.client("lambda", region_name=AWS_REGION)
 
-def invoke_get_user_info(account_id: str, user_id: str):
+
+def invoke_get_user_info(user_id: str):
     payload = {
         "service": {
         "action": "get_user_by_id",
         "caller_id": "string",
-        "user_id": user_id,
+        },
+        "data": {
+            "user_id": user_id,
         }
     }
     response = LAMBDA_CLIENT.invoke(
-        FunctionName=f"arn:aws:lambda:{REGION}:{account_id}:function:{GET_USERS_FUNCTION_NAME}",
+        FunctionName=f"arn:aws:lambda:{AWS_REGION}:{AWS_LAMBDA_HOST_ACCOUNT}:function:{GET_USERS_FUNCTION_NAME}",
         InvocationType="RequestResponse",
         Payload=json.dumps(payload).encode("utf-8"),
     )
@@ -36,9 +40,8 @@ def invoke_get_user_info(account_id: str, user_id: str):
     print(response_json)
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("Usage: python -m tests.integration.read.get_user_info_lambda_invoker <account_id> <user_id>")
+    if len(sys.argv) != 2:
+        print("Usage: python -m tests.integration.read.get_user_info_lambda_invoker <user_id>")
         sys.exit(1)
-    account_id = sys.argv[1]
-    user_id = sys.argv[2]
-    invoke_get_user_info(account_id, user_id)
+    user_id = sys.argv[1]
+    invoke_get_user_info(user_id)
