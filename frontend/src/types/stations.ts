@@ -1,4 +1,4 @@
-export type StationState = 'Inactive' | 'Active' | 'OutOfService';
+export type StationState = 'INACTIVE' | 'ACTIVE' | 'OUT_OF_SERVICE';
 
 export interface RatePlan {
     currencyCode: string;
@@ -50,3 +50,7 @@ export interface AdminChangeStationStateRequest {
     newState: StationState;
     updatedAt: string;
 };
+
+export interface AdminUpdateStationStateResponse {
+    updatedAt: string;
+}

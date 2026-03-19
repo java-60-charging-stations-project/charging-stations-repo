@@ -1,7 +1,7 @@
 import { apiClient } from './api';
 import type { ApiArrayResponse, ApiResponse } from '@/types/apiTypes';
 import type { AdminUser } from '@/types/responseTypes';
-import type { AdminChangeStationStateRequest, AdminCreateStationRequest, AdminCreateStationResponse, StationBase } from '@/types/stations';
+import type { AdminChangeStationStateRequest, AdminCreateStationRequest, AdminCreateStationResponse, AdminUpdateStationStateResponse, StationBase } from '@/types/stations';
 
 export async function fetchAdminUsers(): Promise<AdminUser[]> {
     const response = await apiClient.get<ApiArrayResponse<AdminUser>>(
@@ -52,8 +52,8 @@ export async function createStation(stationCreateRequest: AdminCreateStationRequ
     return response.data;
 };
 
-export async function changeStationState(stationId: string, request: AdminChangeStationStateRequest): Promise<StationBase> {
-    const response = await apiClient.patch<ApiResponse<StationBase>>(
+export async function changeStationState(stationId: string, request: AdminChangeStationStateRequest): Promise<AdminUpdateStationStateResponse> {
+    const response = await apiClient.patch<ApiResponse<AdminUpdateStationStateResponse>>(
         `/admin/stations/${stationId}/state`,
         request,
     );
