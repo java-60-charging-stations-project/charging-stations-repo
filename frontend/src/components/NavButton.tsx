@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import SimpleButton from "./SimpleButton";
 import type { SimpleButtonProps } from "./SimpleButton";
 
-interface NavButtonProps extends Omit<SimpleButtonProps, "handleClick"> {
+interface NavButtonProps extends Omit<SimpleButtonProps, "handleClick" | "buttonType"> {
     to: string;
 }
 

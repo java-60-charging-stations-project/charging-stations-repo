@@ -17,14 +17,18 @@ const sizeToClass: Record<ButtonSize, string> = {
     large: "px-6 py-3 text-lg",
 }
 
+export type ButtonType = "button" | "submit" | "reset";
+
 export interface SimpleButtonProps {
-    handleClick: () => void;
+    handleClick?: () => void;
     caption: string;
     isLoading?: boolean;
     loadingCaption?: string;
     color?: ButtonColor;
     size?: ButtonSize;
     underlineOnHover?: boolean;
+    className?: string;
+    buttonType?: ButtonType;
 }
 
 const SimpleButton: FC<SimpleButtonProps> = ({ 
@@ -35,12 +39,14 @@ const SimpleButton: FC<SimpleButtonProps> = ({
         color="primary",
         size="small",
         underlineOnHover=false,
+        className="",
+        buttonType="button",
 }) => {
     const hoverUnderline = underlineOnHover ? " hover:underline" : "";
-    const buttonClass = `${colorToClass[color]} ${sizeToClass[size]}${hoverUnderline}`;
+    const buttonClass = `${colorToClass[color]} ${sizeToClass[size]}${hoverUnderline} ${className}`;
     return (
         <button
-            type="button"
+            type={buttonType}
             onClick={handleClick}
             disabled={isLoading}
             className={buttonClass}
