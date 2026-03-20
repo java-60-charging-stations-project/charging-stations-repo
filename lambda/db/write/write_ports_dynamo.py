@@ -47,7 +47,7 @@ def build_port_item(station_id: str, port: dict) -> PortInstance:
             "station_id": station_id,
             "code": port["code"],
             "entity_key": f"PORT#{port_id}",
-            "state": port["state"],
+            "state": "DISABLED",
             "power": Decimal(str(port["power"])),
             "last_meter_kw": Decimal(str(port["lastMeterKw"])),
             "created_at": timestamp,
@@ -58,6 +58,8 @@ def build_port_item(station_id: str, port: dict) -> PortInstance:
     except KeyError as e:
         logger.error(f"missing key: {e}")
         raise LambdaResponseError({"error": f"missing key: {e}", "code": "INVALID_REQUEST"})
+    except LambdaResponseError:
+        raise
     except Exception as e:
         logger.error(f"error building port item: {e}")
         raise LambdaResponseError({"error": f"error building port item: {e}", "code": "UNHANDLED_ERROR"})

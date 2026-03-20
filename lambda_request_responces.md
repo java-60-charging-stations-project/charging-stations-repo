@@ -109,6 +109,57 @@ Response (error):
 
 ## Stations (RDS) - `charging-stations-get-station-info`
 
+### Write station (RDS) - `charging-stations-write-station-rds`
+
+This Lambda is **action-based**; it expects `event.service.action`.  
+
+For newly created stations state is always `"INACTIVE"`
+
+Request:
+
+```json
+{
+  "service": { "action": "write_station", "caller_id": "string" },
+  "data": {
+    "code": "string",
+    "name": "string",
+    "owner": "string",
+    "city": "string",
+    "address": "string",
+    "email": null,
+    "phone": null,
+    "siteTechnician": null,
+    "ratePlan": {
+      "currencyCode": "ILS",
+      "currencyName": "Israeli Shekel",
+      "peakRate": 2.14,
+      "offPeakRate": 1.47
+    },
+    "location": { "longitude": 34.7818, "latitude": 32.0853 },
+    "state": "ACTIVE|INACTIVE|OUT_OF_SERVICE",
+    "maxPowerKw": 0.0,
+    "ports": 0
+  }
+}
+```
+
+Response (success):
+
+```json
+{
+  "data": { "stationId": "station-uuid" }
+}
+```
+
+Response (error):
+
+```json
+{
+  "error": "Human readable message",
+  "code": "ALREADY_EXISTS|INVALID_REQUEST|DATABASE_ERROR|..."
+}
+```
+
 ### Get all stations
 
 Request:
@@ -211,57 +262,6 @@ Response (error):
 }
 ```
 
-## Write station (RDS) - `charging-stations-write-station-rds`
-
-This Lambda is **action-based**; it expects `event.service.action`.
-
-### Write station
-
-Request:
-
-```json
-{
-  "service": { "action": "write_station", "caller_id": "string" },
-  "data": {
-    "code": "string",
-    "name": "string",
-    "owner": "string",
-    "city": "string",
-    "address": "string",
-    "email": null,
-    "phone": null,
-    "siteTechnician": null,
-    "ratePlan": {
-      "currencyCode": "ILS",
-      "currencyName": "Israeli Shekel",
-      "peakRate": 2.14,
-      "offPeakRate": 1.47
-    },
-    "location": { "longitude": 34.7818, "latitude": 32.0853 },
-    "state": "ACTIVE|INACTIVE|OUT_OF_SERVICE",
-    "maxPowerKw": 0.0,
-    "ports": 0
-  }
-}
-```
-
-Response (success):
-
-```json
-{
-  "data": { "stationId": "station-uuid" }
-}
-```
-
-Response (error):
-
-```json
-{
-  "error": "Human readable message",
-  "code": "ALREADY_EXISTS|INVALID_REQUEST|DATABASE_ERROR|..."
-}
-```
-
 ### Change station state (optimistic update)
 
 Request:
@@ -331,7 +331,9 @@ Your DynamoDB writer currently uses:
 - `SK` (sort key): `entity_key`
 - each port item is written with `entity_key = "PORT#<generated-port_id-uuid>"`
 
-It also stores the frontend’s unique port `code` inside the item as attribute `code`.
+It also stores the frontend’s unique port code inside the item as attribute `code`.  
+
+For newly created ports state is always `"DISABLED"`  
 
 Request:
 
@@ -343,7 +345,6 @@ Request:
     "ports": [
       {
         "code": "PORT-CODE-FROM-FRONTEND",
-        "state": "DISABLED",
         "power": 22.0,
         "lastMeterKw": 0.0
       }

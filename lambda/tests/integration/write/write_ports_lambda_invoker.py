@@ -20,7 +20,6 @@ def invoke_write_ports(station_id: str):
         "ports": [
           {
             "code": f"PORT-{random.randint(1000, 9999)}",
-            "status": "DISABLED",
             "power": 10.0,
             "lastMeterKw": 100.0
           }
