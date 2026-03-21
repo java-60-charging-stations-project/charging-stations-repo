@@ -59,14 +59,15 @@ def extract_full_station_instance_from_event(event: dict) -> StationInstance:
             "ratePlan": data["ratePlan"],
             "email": data["email"],
             "phone": data["phone"],
-            "state": data.get("state", "INACTIVE"),
+            "state": "INACTIVE",
             "siteTechnician": data["siteTechnician"],
             "maxPowerKw": data.get("maxPowerKw", 0.0),
             "longitude": location.get("longitude", 0.0),
             "latitude": location.get("latitude", 0.0),
             "ports": data.get("ports", 0),
-            "created_at": timestamp,
-            "updated_at": timestamp,
+            "hasFreePorts": False,
+            "createdAt": timestamp,
+            "updatedAt": timestamp,
         }
         logger.info(f"Station instance extracted successfully: {station_instance}")
         return station_instance
@@ -117,11 +118,11 @@ def insert_station_to_rds(station: StationInstance) -> None:
                     INSERT INTO stations (
                         id, code, name, owner, city, address, email, 
                         siteTechnician, maxPowerKw, location, ports, 
-                        ratePlan, state, created_at, updated_at
+                        ratePlan, state, hasFreePorts, createdAt, updatedAt
                     ) VALUES (
                         %s, %s, %s, %s, %s, %s, %s, %s, %s, 
                         ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography, 
-                        %s, %s, %s, %s, %s
+                        %s, %s, %s, %s, %s, %s
                     )
                 """,
                 (
@@ -139,8 +140,9 @@ def insert_station_to_rds(station: StationInstance) -> None:
                     station["ports"],
                     rate_plan_json,
                     station["state"],
-                    station["created_at"],
-                    station["updated_at"],
+                    station["hasFreePorts"],
+                    station["createdAt"],
+                    station["updatedAt"],
                 ),
             )
         conn.commit()
@@ -217,7 +219,7 @@ def delete_station(station_id: str) -> datetime:
         state = "DELETED"
         with conn.cursor() as cur:
             cur.execute("""
-            UPDATE stations SET state = %s, updated_at = %s WHERE id = %s 
+            UPDATE stations SET state = %s, updatedAt = %s WHERE id = %s 
             AND state IN ('ACTIVE', 'INACTIVE', 'OUT_OF_SERVICE')
             """, 
                 (state, updated_at, station_id),
@@ -250,15 +252,67 @@ def delete_station(station_id: str) -> datetime:
         logger.error(f"Unhandled error deleting station: {e}")
         raise LambdaResponseError({"error": str(e), "code": "UNHANDLED_ERROR"})
 
+def update_station_ports_count_in_rds(station_id: str, ports_delta: int) -> tuple[int, datetime]:
+    try:
+        conn = get_connection()
+    except Exception as e:
+        logger.error(f"Error getting connection: {e}")
+        raise LambdaResponseError({"error": f"Error getting connection: {e}", "code": "DATABASE_ERROR"})
+    try:
+        with conn.cursor() as cur:
+            updated_at = datetime.now()
+            cur.execute(
+                """
+                    UPDATE stations SET ports = ports + %s, updatedAt = %s WHERE id = %s RETURNING ports
+                """,
+                (
+                    ports_delta,
+                    updated_at,
+                    station_id,
+                ),
+            )
+            row = cur.fetchone()
+            if row is None:
+                logger.error(f"station not found: {station_id}")
+                raise LambdaResponseError({"error": f"station not found: {station_id}", "code": "NOT_FOUND"})
+            ports = row[0]
+        conn.commit()
+        return ports, updated_at
+    except psycopg2.IntegrityError as e:
+        conn.rollback()
+        logger.error(f"Constraint violation updating station state: {e}")
+        raise LambdaResponseError({"error": str(e), "code": "CONSTRAINT_VIOLATION"})
+    except psycopg2.DatabaseError as e:
+        conn.rollback()
+        logger.error(f"Database error updating station state: {e}")
+        raise LambdaResponseError({"error": str(e), "code": "DATABASE_ERROR"})
+    except LambdaResponseError:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Unhandled error updating station state: {e}")
+        raise LambdaResponseError({"error": str(e), "code": "UNHANDLED_ERROR"})
+
 def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponsePayload:
     logger.info(f"Handler called with event: {event}")
+    if event["Records"]:
+        try:
+            sqs_request_id = event["Records"][0]["body"]["correlationId"]
+            sqs_caller_id = event["Records"][0]["body"]["callerId"]
+            sqs_action = event["Records"][0]["body"]["action"]
+            sqs_ports_delta = event["Records"][0]["body"]["portsDelta"]
+            sqs_station_id = event["Records"][0]["body"]["stationId"]
+        except KeyError as e:
+            log_audit("ERROR", message="missing SQS records keys", status="ERROR", errorMessage=f"missing SQS records keys: {e}")
+            return ErrorResponsePayload(error=f"missing SQS records keys: {e}", code="INVALID_REQUEST")
     try:
-        caller_id = event["service"]["caller_id"]
+        caller_id = event["service"]["caller_id"] if event["service"] else sqs_caller_id
     except KeyError as e:
         log_audit("ERROR", message="missing caller_id", status="ERROR", errorMessage=f"missing caller_id: {e}")
         return ErrorResponsePayload(error=f"missing caller_id: {e}", code="UNAUTHORIZED")
     try:
-        action = event["service"]["action"]
+        action = event["service"]["action"] if event["service"] else sqs_action
     except KeyError as e:
         log_audit("ERROR", message="missing action", status="ERROR", errorMessage=f"missing action: {e}")
         return ErrorResponsePayload(error=f"missing action: {e}", code="INVALID_REQUEST")
@@ -266,7 +320,7 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
         "caller_id": caller_id,
         "service": context.function_name,
         "event": action,
-        "requestId": context.aws_request_id,
+        "requestId": sqs_request_id if sqs_request_id else context.aws_request_id,
     }
     try:
         match action:
@@ -288,6 +342,12 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                 updated_at = delete_station(station_id)
                 log_audit("INFO", message=f"{station_id} deleted successfully", status="SUCCESS", **audit_base)
                 return SuccessResponsePayload(data={"deletedAt": updated_at.isoformat()})
+            case "update_station_ports_count":
+                station_id = sqs_station_id
+                ports_delta = sqs_ports_delta
+                update_station_ports_count_in_rds(station_id, ports_delta)
+                log_audit("INFO", message=f"{station_id} ports count updated to {ports_delta}", status="SUCCESS", **audit_base)
+                return event
             case _:
                 log_audit("ERROR", message=f"invalid action {action}", status="ERROR", errorMessage=f"invalid action {action}", **audit_base)
                 return ErrorResponsePayload(error=f"invalid action {action}", code="INVALID_REQUEST")

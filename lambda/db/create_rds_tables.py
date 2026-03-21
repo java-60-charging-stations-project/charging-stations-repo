@@ -73,8 +73,9 @@ def create_tables() -> None:
                     ports INT NOT NULL,
                     ratePlan JSONB,
                     state TEXT NOT NULL,
-                    created_at TIMESTAMPTZ NOT NULL,
-                    updated_at TIMESTAMPTZ NOT NULL
+                    hasFreePorts BOOLEAN NOT NULL,
+                    createdAt TIMESTAMPTZ NOT NULL,
+                    updatedAt TIMESTAMPTZ NOT NULL
                 );
             """)
             cur.execute("""CREATE INDEX IF NOT EXISTS idx_stations_location ON stations USING GIST (location);""")

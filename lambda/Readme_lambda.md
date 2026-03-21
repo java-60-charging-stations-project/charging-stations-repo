@@ -212,6 +212,7 @@ Copy **`lambda/.env.example`** to **`lambda/.env`** and set values for local run
 | **WRITE_STATION_FUNCTION_NAME** | Function name for writing stations to RDS. |
 | **RDS_DB_SECRET_NAME** | Name of your secret used by the SAM template for DB credentials creation Lambdas and (DB requests with IAM tokens). |
 | **STATIONS_DYNAMO_TABLE** | Optional for local invocation of `charging-stations-write-station-ports-dynamo` (single-table name/ARN). |
+| **SYNC_RDS_QUEUE_URL** | Optional for local tests: SQS queue URL for async RDS port-count sync (deployed Lambda gets this from `lambda/template.yaml`; copy from stack output **StationPortsRdsSyncQueueUrl**). |
 
 
 ---

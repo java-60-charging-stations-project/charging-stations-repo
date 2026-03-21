@@ -591,11 +591,73 @@ Resources:
       RouteTableIds:
         - !Ref DynamoDBRouteTable1Id
 
+  # SQS API (interface) — required for VPC Lambdas without NAT to call SendMessage
+  SqsApiEndpointSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for SQS API VPC endpoint
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          SourceSecurityGroupId: !Ref LambdaSecurityGroup
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+
+  SqsVpcEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VpcId
+      VpcEndpointType: Interface
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.sqs"
+      SubnetIds:
+        - !Ref PrivateSubnet1Id
+        - !Ref PrivateSubnet2Id
+      SecurityGroupIds:
+        - !Ref SqsApiEndpointSecurityGroup
+      PrivateDnsEnabled: true
+
+  StationPortsRdsSyncDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: charging-stations-station-ports-rds-sync-dlq
+      MessageRetentionPeriod: 1209600
+
+  StationPortsRdsSyncQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: charging-stations-station-ports-rds-sync
+      VisibilityTimeout: 120
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt StationPortsRdsSyncDLQ.Arn
+        maxReceiveCount: 5
+
+  # Allow main queue to redrive failed messages to DLQ
+  StationPortsRdsSyncDLQPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref StationPortsRdsSyncDLQ
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: "*"
+            Action: sqs:SendMessage
+            Resource: !GetAtt StationPortsRdsSyncDLQ.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !GetAtt StationPortsRdsSyncQueue.Arn
+
   WriteStationPortsFunction:
     Type: AWS::Serverless::Function
     DependsOn:
       - StationEntitiesTable
       - DynamoDBGatewayEndpoint
+      - SqsVpcEndpoint
+      - StationPortsRdsSyncQueue
     Properties:
       Runtime: python3.12
       FunctionName: charging-stations-write-station-ports-dynamo
@@ -613,6 +675,7 @@ Resources:
       Environment:
         Variables:
           STATIONS_DYNAMO_TABLE: !Ref StationEntitiesTable
+          SYNC_RDS_QUEUE_URL: !Ref StationPortsRdsSyncQueue
       Policies:
         - Version: '2012-10-17'
           Statement:
@@ -624,6 +687,10 @@ Resources:
                 - dynamodb:Query
                 - dynamodb:UpdateItem
               Resource: !GetAtt StationEntitiesTable.Arn
+            - Effect: Allow
+              Action:
+                - sqs:SendMessage
+              Resource: !GetAtt StationPortsRdsSyncQueue.Arn
     
   WriteStationPortsInvokePermissionA:
     Type: AWS::Lambda::Permission
@@ -640,3 +707,14 @@ Resources:
       FunctionName: !Ref WriteStationPortsFunction
       Action: lambda:InvokeFunction
       Principal: !Sub "arn:aws:iam::${InvokerAccountIdB}:root"
+
+Outputs:
+  StationPortsRdsSyncQueueUrl:
+    Description: URL for station ports → RDS sync (SendMessage from write-station-ports-dynamo)
+    Value: !Ref StationPortsRdsSyncQueue
+  StationPortsRdsSyncQueueArn:
+    Description: ARN for event source mapping / IAM
+    Value: !GetAtt StationPortsRdsSyncQueue.Arn
+  StationPortsRdsSyncDLQArn:
+    Description: Dead-letter queue when consumer fails maxReceiveCount times
+    Value: !GetAtt StationPortsRdsSyncDLQ.Arn

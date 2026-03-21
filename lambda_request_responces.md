@@ -247,8 +247,9 @@ Response (success):
       "offPeakRate": 0.0
     },
     "state": "ACTIVE|INACTIVE|OUT_OF_SERVICE|DELETED",
-    "created_at": "ISO-8601-string",
-    "updated_at": "ISO-8601-string"
+    "hasFreePorts" : False,
+    "createdAt": "ISO-8601-string",
+    "updatedAt": "ISO-8601-string"
   }
 }
 ```
@@ -358,7 +359,7 @@ Response (success):
 
 ```json
 {
-  "data": ["generated-port-id-uuid", "generated-port-id-uuid"]
+  "data": ["generated-port-key", "generated-port-key"]
 }
 ```
 
