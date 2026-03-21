@@ -1,6 +1,7 @@
 import { ResourceNotFoundError } from '../../common/serviceErrors';
 import { createLogger } from '../../utils/logger';
 import { ListUsersFilters, ListUsersResult, UpdateProfilePayload, UserInfo, UsersService } from './users.types';
+import { applyListFiltersAndPage } from './users.listHelpers';
 
 const logger = createLogger('users.service.local', 'debug');
 
@@ -56,12 +57,9 @@ export class UsersServiceLocal implements UsersService {
         return user;
     }
 
-    async listUsers(_adminId: string, _filters: ListUsersFilters): Promise<ListUsersResult> {
-        logger.debug('UsersServiceLocal listUsers', { _adminId, _filters });
-        return {
-            data: USERS,
-            totalItems: USERS.length,
-        }
+    async listUsers(_adminId: string, filters: ListUsersFilters): Promise<ListUsersResult> {
+        logger.debug('UsersServiceLocal listUsers', { _adminId, filters });
+        return applyListFiltersAndPage(USERS, filters);
     }
 
     async updateOwnProfile(_userId: string, _payload: UpdateProfilePayload): Promise<void> {

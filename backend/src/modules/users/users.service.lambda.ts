@@ -13,6 +13,7 @@ import {
   mapLambdaUser,
   mapLambdaUsers
 } from './users.types';
+import { applyListFiltersAndPage } from './users.listHelpers';
 
 const logger = createLogger('users.service', 'debug');
 const LAMBDA_INVOKER: LambdaInvoker = new AwsLambdaInvoker(env.awsRegion);
@@ -75,9 +76,13 @@ export class UsersServiceLambda implements UsersService {
   }
 
   async listUsers(adminId: string, filters: ListUsersFilters): Promise<ListUsersResult> {
-    logger.debug('Invoking userManagement lambda: listUsers', { adminId, filters });
+    /**
+     * Must use **get-user-info** (`charging-stations-get-user-info`), same Lambda as get_user_by_id.
+     * `write-user-rds` is a Cognito trigger / different contract — it does **not** handle `get_all_users`.
+     */
+    logger.debug('Invoking get-user-info lambda: listUsers (get_all_users)', { adminId, filters });
     const result = await LAMBDA_INVOKER.invokeJson<LambdaListUsersResponse | LambdaUserInfo[] | LambdaErrorResponse>(
-      env.userManagementLambdaFunctionName,
+      env.userInfoLambdaFunctionName,
       wrapLambdaRequest(
         'get_all_users',
         adminId,
@@ -93,19 +98,18 @@ export class UsersServiceLambda implements UsersService {
     );
 
     if (isLambdaErrorResponse(result)) {
-      throw new Error(`userManagement lambda error: ${result.error}`);
+      throw new Error(`get-user-info lambda error: ${result.error}`);
     }
 
+    let mapped: UserInfo[];
     if (Array.isArray(result)) {
-      const data = mapLambdaUsers(result);
-      logger.debug('Returning Array result: ', { data, totalItems: data.length });
-      return { data, totalItems: data.length };
+      mapped = mapLambdaUsers(result);
+    } else {
+      mapped = mapLambdaUsers(result.data);
     }
 
-    const data = mapLambdaUsers(result.data);
-    const totalItems = result.totalItems ?? data.length;
-
-    logger.debug('Returning wrapped result: ', { data, totalItems });
+    const { data, totalItems } = applyListFiltersAndPage(mapped, filters);
+    logger.debug('Returning listUsers result: ', { totalItems, pageReturned: data.length });
     return { data, totalItems };
   }
 

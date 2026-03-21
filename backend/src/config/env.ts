@@ -24,13 +24,14 @@ export const env = {
   cognitoUserPoolId: String(process.env.COGNITO_USER_POOL_ID ?? ''),
   cognitoClientId: String(process.env.COGNITO_CLIENT_ID ?? ''),
 
-  // users / admin
-  userManagementLambdaFunctionName: String(
-    process.env.USER_MANAGEMENT_LAMBDA_FUNCTION_NAME ?? 'arn:aws:lambda:il-central-1:852215679994:function:charging-stations-write-user-rds'
-  ),
+  // users — reads (get_user_by_id, get_all_users) → `charging-stations-get-user-info` only
   userInfoLambdaFunctionName: String(
     process.env.USER_INFO_LAMBDA_FUNCTION_NAME ??
     'arn:aws:lambda:il-central-1:852215679994:function:charging-stations-get-user-info'
+  ),
+  /** Mutations (profile/role/delete) — must point to a Lambda that implements those actions; not the read Lambda. */
+  userManagementLambdaFunctionName: String(
+    process.env.USER_MANAGEMENT_LAMBDA_FUNCTION_NAME ?? 'arn:aws:lambda:il-central-1:852215679994:function:charging-stations-write-user-rds'
   ),
 
   // stations

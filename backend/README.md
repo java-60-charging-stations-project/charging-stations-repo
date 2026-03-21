@@ -61,6 +61,9 @@ npm run dev
 | **Logs** | `src/utils/logger.ts` (JSON → stdout; CloudWatch when API runs on ECS with log driver). **Lambda** logs → CloudWatch by default |
 | **Secured health + Lambda + audit logs** | `GET /health/secured-lambda` — JWT required, structured `logger.info` in `health.routes.ts` |
 
+**Users ↔ Lambda (which function, which action):** see [`docs/USERS_LAMBDA_ROUTING.md`](docs/USERS_LAMBDA_ROUTING.md).  
+Important: **`GET /admin/users` (list)** must invoke **`charging-stations-get-user-info`** with action **`get_all_users`** — not the write-user Lambda.
+
 ### Health checks
 
 Backend exposes health endpoints (prefix all paths with `API_PREFIX` if set, e.g. `/api/v1`):
