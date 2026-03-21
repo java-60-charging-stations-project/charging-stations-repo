@@ -8,7 +8,7 @@ Most Lambdas return this shape on success:
 
 ```json
 {
-  "data": { }
+  "data": {}
 }
 ```
 
@@ -111,7 +111,7 @@ Response (error):
 
 ### Write station (RDS) - `charging-stations-write-station-rds`
 
-This Lambda is **action-based**; it expects `event.service.action`.  
+This Lambda is **action-based**; it expects `event.service.action`.
 
 For newly created stations state is always `"INACTIVE"`
 
@@ -327,13 +327,14 @@ Response (error):
 ### Insert station ports
 
 Your DynamoDB writer currently uses:
+
 - `PK`: `station_id`
 - `SK` (sort key): `entity_key`
 - each port item is written with `entity_key = "PORT#<generated-port_id-uuid>"`
 
-It also stores the frontend’s unique port code inside the item as attribute `code`.  
+It also stores the frontend’s unique port code inside the item as attribute `code`.
 
-For newly created ports state is always `"DISABLED"`  
+For newly created ports state is always `"DISABLED"`
 
 Request:
 

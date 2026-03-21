@@ -11,6 +11,7 @@ import { bookingsRouter } from './modules/bookings/bookings.routes';
 import { usersRouter } from './modules/users/users.routes';
 import { authRouter } from './modules/auth/auth.routes';
 import { welcomeRouter } from './modules/welcome/welcome.routes';
+import { sessionsRouter } from './modules/sessions/sessions.routes';
 
 export function createApp() {
   const app = express();
@@ -29,6 +30,7 @@ export function createApp() {
   api.use(usersRouter());
   api.use(stationsRouter());
   api.use(bookingsRouter());
+  api.use(sessionsRouter());
   api.use(welcomeRouter());
 
   if (env.apiPrefix) {

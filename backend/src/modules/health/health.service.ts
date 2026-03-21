@@ -12,12 +12,19 @@ const LAMBDA_INVOKER: LambdaInvoker = new AwsLambdaInvoker(env.awsRegion);
 
 const logger = createLogger('health.service');
 
-export async function invokeHealthLambda(): Promise<HealthResponse> {
+/**
+ * Invokes the health Lambda. Pass `callerId` (e.g. Cognito `sub`) so `caller_id` in the payload
+ * reflects the authenticated user for audit; omit for system/internal checks.
+ */
+export async function invokeHealthLambda(callerId?: string): Promise<HealthResponse> {
+  const effectiveCaller = callerId?.trim() || 'system';
   try {
-    logger.debug(`Invoking health Lambda function: ${env.healthLambdaFunctionName}`);
+    logger.debug(`Invoking health Lambda function: ${env.healthLambdaFunctionName}`, {
+      caller_id: effectiveCaller
+    });
     const lambdaResponse = await LAMBDA_INVOKER.invokeJson<HealthResponse>(
       env.healthLambdaFunctionName,
-      wrapLambdaRequest('health', 'system', {}, {})
+      wrapLambdaRequest('health', effectiveCaller, {}, {})
     );
     logger.debug(`Lambda response: ${JSON.stringify(lambdaResponse)}`);
 

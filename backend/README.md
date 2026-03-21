@@ -51,24 +51,46 @@ npm run dev
 
 <http://localhost:8000>
 
+### Deliverable checklist (backend)
+
+| Requirement | Where it is |
+|-------------|-------------|
+| **JWT** | `src/middlewares/auth.ts` — `verifyCognitoJwt`, `requireGroups` (see `src/common/authRoles.ts`) |
+| **Lambda invoked** | e.g. `health.service.ts`, `stations.service.lambda.ts`, `users.service.lambda.ts` — `AwsLambdaInvoker` |
+| **Response to FE** | Controllers return JSON; sessions use role-shaped DTOs in `sessions.types.ts` |
+| **Logs** | `src/utils/logger.ts` (JSON → stdout; CloudWatch when API runs on ECS with log driver). **Lambda** logs → CloudWatch by default |
+| **Secured health + Lambda + audit logs** | `GET /health/secured-lambda` — JWT required, structured `logger.info` in `health.routes.ts` |
+
 ### Health checks
 
-Backend exposes two health endpoints:
+Backend exposes health endpoints (prefix all paths with `API_PREFIX` if set, e.g. `/api/v1`):
 
-- **Shallow health** (`GET /health`) checks only that the backend API process is running.
-- **Deep health** (`GET /health/api`) checks backend-to-Lambda connectivity by invoking the health Lambda.
+- **Shallow health** (`GET /health`) — only that the Node process is up.
+- **Deep health** (`GET /health/api`) — invokes the health Lambda (no JWT; for ops / ALB).
+- **Secured deep health** (`GET /health/secured-lambda`) — **JWT required**; calls the same health Lambda with `caller_id` = Cognito `sub`; writes structured logs for observability.
 
 Examples:
 
 ```bash
 curl http://localhost:8000/health
 curl http://localhost:8000/health/api
+curl http://localhost:8000/health/secured-lambda -H "Authorization: Bearer <ACCESS_TOKEN>"
 ```
 
-Response contract:
+Deep health response contract:
 
 ```json
 { "code": 200, "status": "ok" }
+```
+
+Secured endpoint returns e.g.:
+
+```json
+{
+  "success": true,
+  "user": { "sub": "..." },
+  "lambda": { "code": 200, "status": "ok" }
+}
 ```
 
 Possible deep-health failures:
@@ -77,6 +99,14 @@ Possible deep-health failures:
 { "code": 502, "status": "bad-health-response" }
 { "code": 502, "status": "no-lambda-response" }
 ```
+
+### Charging sessions (API)
+
+Role-based JSON (`USER` / `SUPPORT` / `ADMIN`). **Data is currently in-memory mock** — see [`docs/SESSIONS_API.md`](docs/SESSIONS_API.md).
+
+- `GET /sessions/:sessionId` — JWT; user sees only own session; staff sees any.
+- `GET /sessions?userId=...` — JWT; user only own `userId`; staff any.
+- `GET /sessions/all` — JWT + **ADMIN** or **SUPPORT** — all sessions, projection by role.
 
 ## Welcome
 
@@ -249,16 +279,17 @@ which in turn updates **Cognito User Pool** and/or the database, depending on th
 
 Response:
 
-````json
+```json
 { "code": 200, "data": [ { "stationId": "st-001", "name": "..." } ] }
-```+
+```
 
 - `GET /stations/:stationId`
 
 Response:
+
 ```json
 { "code": 200, "data": { "stationId": "st-001", "name": "..." } }
-````
+```
 
 ### Bookings (skeleton)
 
