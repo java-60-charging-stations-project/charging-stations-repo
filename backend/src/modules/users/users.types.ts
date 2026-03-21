@@ -4,8 +4,13 @@ export interface UsersService {
     listUsers(adminId: string, filters: ListUsersFilters): Promise<ListUsersResult>;
     updateOwnProfile(userId: string, payload: UpdateProfilePayload): Promise<void>;
     updateUserProfileAsAdmin(adminId: string, userId: string, payload: UpdateProfilePayload): Promise<void>;
-    updateUserRole(adminId: string, userId: string, role: string): Promise<void>;
     deleteUser(adminId: string, userId: string): Promise<void>;
+
+    // COGNITO METHODS GROUP
+    getUserRole(adminId: string, userId: string): Promise<UserRole | null>;
+    getUserDetails(adminId: string, userId: string, filters: GetUserDetailsFilters): Promise<AdminUserDetails | null>;
+    enableUser(adminId: string, userId: string, payload: UpdateUserEnabledPayload): Promise<void>;
+    updateUserRole(adminId: string, userId: string, payload: UpdateUserRolePayload): Promise<void>;
 }
 
 export interface UpdateProfilePayload {
@@ -27,6 +32,38 @@ export interface UserInfo {
     status: string;
     createdAt: string | null;
     updatedAt: string | null;
+}
+
+export interface UserRole {
+    role: string;
+}
+
+export interface AdminUserDetails {
+    userId: string;
+    username: string;
+    email: string;
+    name: string;
+    createDate: string | null;
+    lastModifiedDate: string | null;
+    enabled: boolean;
+    status: string;
+    groups?: string[];
+}
+
+export interface GetUserDetailsFilters {
+    includeGroups?: boolean;
+}
+
+export interface UpdateUserEnabledPayload {
+    email: string;
+    updatedAt: string;
+}
+
+export interface UpdateUserRolePayload {
+    email: string;
+    oldRole: string;
+    newRole: string;
+    updatedAt: string;
 }
 
 export interface LambdaUserInfo {

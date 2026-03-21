@@ -4,11 +4,16 @@ import { createLogger } from '../../utils/logger';
 import { wrapLambdaRequest } from '../../common/wrappers';
 import { type LambdaErrorResponse } from '../../common/wrapperTypes';
 import {
+  AdminUserDetails,
+  GetUserDetailsFilters,
   LambdaUserInfo,
   ListUsersFilters,
   ListUsersResult,
   UpdateProfilePayload,
+  UpdateUserEnabledPayload,
+  UpdateUserRolePayload,
   UserInfo,
+  UserRole,
   UsersService,
   mapLambdaUser,
   mapLambdaUsers
@@ -144,8 +149,47 @@ export class UsersServiceLambda implements UsersService {
     );
   }
 
-  async updateUserRole(adminId: string, userId: string, role: string): Promise<void> {
-    logger.debug('Invoking userManagement lambda: updateUserRole', { adminId, userId, role });
+  async deleteUser(adminId: string, userId: string): Promise<void> {
+    logger.debug('Invoking userManagement lambda: deleteUser', { adminId, userId });
+    await LAMBDA_INVOKER.invokeJson(
+      env.userManagementLambdaFunctionName,
+      wrapLambdaRequest(
+        'deleteUser',
+        adminId,
+        {
+          adminId,
+          userId
+        }
+      )
+    );
+  }
+
+  // COGNITO METHODS GROUP
+  async getUserRole(adminId: string, userId: string): Promise<UserRole | null> {
+    logger.debug('Invoking userManagement lambda: getUserRole', { adminId, userId });
+    throw new Error('Not implemented');
+  }
+
+  async getUserDetails(
+    adminId: string,
+    userId: string,
+    filters: GetUserDetailsFilters
+  ): Promise<AdminUserDetails | null> {
+    logger.debug('Invoking userManagement lambda: getUserDetails', { adminId, userId, filters });
+    throw new Error('Not implemented');
+  }
+
+  async enableUser(
+    adminId: string,
+    userId: string,
+    payload: UpdateUserEnabledPayload
+  ): Promise<void> {
+    logger.debug('Invoking userManagement lambda: enableUser', { adminId, userId, payload });
+    throw new Error('Not implemented');
+  }
+
+  async updateUserRole(adminId: string, userId: string, payload: UpdateUserRolePayload): Promise<void> {
+    logger.debug('Invoking userManagement lambda: updateUserRole', { adminId, userId, payload });
     const user_pool_id = env.cognitoUserPoolId;
     if (!user_pool_id) {
       throw new Error('COGNITO_USER_POOL_ID is not configured');
@@ -157,23 +201,8 @@ export class UsersServiceLambda implements UsersService {
         adminId,
         {
           userId,
-          role,
+          role: payload.newRole,
           user_pool_id
-        }
-      )
-    );
-  }
-
-  async deleteUser(adminId: string, userId: string): Promise<void> {
-    logger.debug('Invoking userManagement lambda: deleteUser', { adminId, userId });
-    await LAMBDA_INVOKER.invokeJson(
-      env.userManagementLambdaFunctionName,
-      wrapLambdaRequest(
-        'deleteUser',
-        adminId,
-        {
-          adminId,
-          userId
         }
       )
     );

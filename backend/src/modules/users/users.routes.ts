@@ -22,6 +22,20 @@ export function usersRouter(): Router {
   );
 
   router.get(
+    '/admin/users/:userId/role',
+    verifyCognitoJwt,
+    requireGroups([ADMIN_GROUP]),
+    controller.getUserRole
+  );
+
+  router.get(
+    '/admin/users/:userId/details',
+    verifyCognitoJwt,
+    requireGroups([ADMIN_GROUP]),
+    controller.getUserDetails
+  );
+
+  router.get(
     '/admin/users/:userId',
     verifyCognitoJwt,
     requireGroups([ADMIN_GROUP]),
@@ -40,6 +54,13 @@ export function usersRouter(): Router {
     verifyCognitoJwt,
     requireGroups([ADMIN_GROUP]),
     controller.updateUserRole
+  );
+
+  router.patch(
+    '/admin/users/:userId/enable',
+    verifyCognitoJwt,
+    requireGroups([ADMIN_GROUP]),
+    controller.enableUser
   );
 
   router.delete(

@@ -12,7 +12,15 @@ const updateProfileSchema = z.object({
 });
 
 const updateRoleSchema = z.object({
-  role: z.string().min(1)
+  email: z.string(),
+  oldRole: z.string().min(1),
+  newRole: z.string().min(1),
+  updatedAt: z.string(),
+});
+
+const enableUserSchema = z.object({
+  email: z.string(),
+  updatedAt: z.string(),
 });
 
 const listUsersQuerySchema = z.object({
@@ -21,6 +29,14 @@ const listUsersQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().min(1).max(200).default(200)
 });
+
+const getUserDetailsQuerySchema = z
+  .object({
+    includeGroups: z.union([z.literal('true'), z.literal('false')]).optional()
+  })
+  .transform(({ includeGroups }) => ({
+    includeGroups: includeGroups === undefined ? undefined : includeGroups === 'true'
+  }));
 
 export class UsersController {
   constructor(private readonly service: UsersService) { }
@@ -75,6 +91,43 @@ export class UsersController {
     res.status(200).json(wrapResponse(userInfo));
   };
 
+  getUserRole = async (req: Request, res: Response) => {
+    const adminId = req.user?.sub;
+    const { userId } = req.params;
+
+    if (!adminId) {
+      return res.status(401).json({ code: 401, error: { message: 'Unauthorized' } });
+    }
+
+    const userRole = await this.service.getUserRole(adminId, userId);
+    if (!userRole) {
+      return res
+        .status(404)
+        .json({ error: { code: 'USER_NOT_FOUND', message: 'User not found' } });
+    }
+
+    res.status(200).json(wrapResponse(userRole));
+  };
+
+  getUserDetails = async (req: Request, res: Response) => {
+    const adminId = req.user?.sub;
+    const { userId } = req.params;
+
+    if (!adminId) {
+      return res.status(401).json({ code: 401, error: { message: 'Unauthorized' } });
+    }
+
+    const query = getUserDetailsQuerySchema.parse(req.query);
+    const userDetails = await this.service.getUserDetails(adminId, userId, query);
+    if (!userDetails) {
+      return res
+        .status(404)
+        .json({ error: { code: 'USER_NOT_FOUND', message: 'User not found' } });
+    }
+
+    res.status(200).json(wrapResponse(userDetails));
+  };
+
   updateMyProfile = async (req: Request, res: Response) => {
     const userId = req.user?.sub;
     if (!userId) {
@@ -107,9 +160,22 @@ export class UsersController {
       return res.status(401).json({ code: 401, error: { message: 'Unauthorized' } });
     }
 
-    const { role } = updateRoleSchema.parse(req.body);
-    await this.service.updateUserRole(adminId, userId, role);
-    res.json({ code: 200, data: { userId, role } });
+    const payload = updateRoleSchema.parse(req.body);
+    await this.service.updateUserRole(adminId, userId, payload);
+    res.json({ code: 200, data: { userId, role: payload.newRole } });
+  };
+
+  enableUser = async (req: Request, res: Response) => {
+    const adminId = req.user?.sub;
+    const { userId } = req.params;
+
+    if (!adminId) {
+      return res.status(401).json({ code: 401, error: { message: 'Unauthorized' } });
+    }
+
+    const payload = enableUserSchema.parse(req.body);
+    await this.service.enableUser(adminId, userId, payload);
+    res.status(204).send();
   };
 
   deleteUser = async (req: Request, res: Response) => {

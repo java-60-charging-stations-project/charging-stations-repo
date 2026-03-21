@@ -1,6 +1,17 @@
 import { ResourceNotFoundError } from '../../common/serviceErrors';
 import { createLogger } from '../../utils/logger';
-import { ListUsersFilters, ListUsersResult, UpdateProfilePayload, UserInfo, UsersService } from './users.types';
+import {
+    AdminUserDetails,
+    GetUserDetailsFilters,
+    ListUsersFilters,
+    ListUsersResult,
+    UpdateProfilePayload,
+    UpdateUserEnabledPayload,
+    UpdateUserRolePayload,
+    UserInfo,
+    UserRole,
+    UsersService
+} from './users.types';
 import { applyListFiltersAndPage } from './users.listHelpers';
 
 const logger = createLogger('users.service.local', 'debug');
@@ -79,19 +90,6 @@ export class UsersServiceLocal implements UsersService {
         return;
     }
 
-    async updateUserRole(_adminId: string, _userId: string, _role: string): Promise<void> {
-        logger.debug('UsersServiceLocal updateUserRole', { _adminId, _userId, _role });
-        const userIndex = USERS.findIndex(user => user.userId === _userId);
-        if (userIndex === -1) {
-            throw new ResourceNotFoundError(`User not found: ${_userId}`);
-        }
-        USERS[userIndex] = {
-            ...USERS[userIndex],
-            role: _role,
-        };
-        return;
-    }
-
     async deleteUser(_adminId: string, _userId: string): Promise<void> {
         logger.debug('UsersServiceLocal deleteUser', { _adminId, _userId });
         const userIndex = USERS.findIndex(user => user.userId === _userId);
@@ -99,6 +97,47 @@ export class UsersServiceLocal implements UsersService {
             throw new ResourceNotFoundError(`User not found: ${_userId}`);
         }
         USERS.splice(userIndex, 1);
+        return;
+    }
+
+    // COGNITO METHODS GROUP
+    async getUserRole(_adminId: string, _userId: string): Promise<UserRole | null> {
+        logger.debug('UsersServiceLocal getUserRole', { _adminId, _userId });
+        throw new Error('Not implemented');
+    }
+
+    async getUserDetails(
+        _adminId: string,
+        _userId: string,
+        _filters: GetUserDetailsFilters
+    ): Promise<AdminUserDetails | null> {
+        logger.debug('UsersServiceLocal getUserDetails', { _adminId, _userId, _filters });
+        throw new Error('Not implemented');
+    }
+
+    async enableUser(
+        _adminId: string,
+        _userId: string,
+        _payload: UpdateUserEnabledPayload
+    ): Promise<void> {
+        logger.debug('UsersServiceLocal enableUser', { _adminId, _userId, _payload });
+        throw new Error('Not implemented');
+    }
+
+    async updateUserRole(
+        _adminId: string,
+        _userId: string,
+        _payload: UpdateUserRolePayload
+    ): Promise<void> {
+        logger.debug('UsersServiceLocal updateUserRole', { _adminId, _userId, _payload });
+        const userIndex = USERS.findIndex(user => user.userId === _userId);
+        if (userIndex === -1) {
+            throw new ResourceNotFoundError(`User not found: ${_userId}`);
+        }
+        USERS[userIndex] = {
+            ...USERS[userIndex],
+            role: _payload.newRole,
+        };
         return;
     }
 }
