@@ -51,6 +51,14 @@ Parameters:
   LambdaStationsWriteName:
     Type: String
     Default: charging-stations-write-station-rds
+  CognitoCrossAccountRoleArn:
+    Type: String
+    Description: Cross-account IAM role ARN used by the backend to manage Cognito users
+    Default: arn:aws:iam::852215679994:role/APNPartner
+  CognitoCrossAccountExternalId:
+    Type: String
+    Description: Optional ExternalId required by the cross-account Cognito role trust policy
+    Default: ""
   DesiredCount:
     Type: Number
     Default: 1
@@ -129,6 +137,13 @@ Resources:
               - Effect: Allow
                 Action: lambda:InvokeFunction
                 Resource: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaStationsWriteName}"
+        - PolicyName: AssumeCrossAccountCognitoRole
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: sts:AssumeRole
+                Resource: !Ref CognitoCrossAccountRoleArn
 
   TaskLogGroup:
     Type: AWS::Logs::LogGroup
@@ -204,6 +219,10 @@ Resources:
           Environment:
             - Name: NODE_ENV
               Value: production
+            - Name: COGNITO_CROSS_ACCOUNT_ROLE_ARN
+              Value: !Ref CognitoCrossAccountRoleArn
+            - Name: COGNITO_CROSS_ACCOUNT_EXTERNAL_ID
+              Value: !Ref CognitoCrossAccountExternalId
           LogConfiguration:
             LogDriver: awslogs
             Options:
