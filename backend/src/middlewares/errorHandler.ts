@@ -1,8 +1,18 @@
 import type { NextFunction, Request, Response } from 'express';
 import { ServiceError } from '../common/serviceErrors';
-import { ZodError, prettifyError } from 'zod';
+import { ZodError } from 'zod';
 import { createLogger } from '../utils/logger';
+
 const logger = createLogger('errorHandler');
+
+function formatZodError(error: ZodError): string {
+  return error.issues
+    .map((issue) => {
+      const path = issue.path.length ? `${issue.path.join('.')}: ` : '';
+      return `${path}${issue.message}`;
+    })
+    .join('; ');
+}
 
 
 export function errorHandler(
@@ -34,7 +44,7 @@ export function errorHandler(
     res.status(400).json({
       error: {
         code: 'VALIDATION_ERROR',
-        message: prettifyError(error),
+        message: formatZodError(error),
       },
     });
     return;
