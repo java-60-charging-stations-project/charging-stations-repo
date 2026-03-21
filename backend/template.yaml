@@ -11,18 +11,6 @@ Parameters:
     Type: List<AWS::EC2::Subnet::Id>
     Description: Public subnets (use at least 2 in different AZs for ALB)
     Default: subnet-0d53d5fb3c0a49277, subnet-0ac3863b0b8448d3f
-  CognitoUserPoolId:
-    Type: String
-    Description: Cognito user pool ID
-    Default: il-central-1_bR3OEStPa
-  CognitoClientId:
-    Type: String
-    Description: Cognito client ID
-    Default: 6ji0pennbecfmc4ckrdvv837n9
-  CognitoRegion:
-    Type: String
-    Description: Region
-    Default: il-central-1
   ImageUri:
     Type: String
     Description: ECR image URI
@@ -85,6 +73,15 @@ Resources:
             Action: sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: ReadBackendEnvFromS3
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource: arn:aws:s3:::charge-st-backend-config-773769103104/backend/prod.env
 
   TaskRole:
     Type: AWS::IAM::Role
@@ -201,41 +198,12 @@ Resources:
           Image: !Ref ImageUri
           PortMappings:
             - ContainerPort: !Ref ContainerPort
+          EnvironmentFiles:
+            - Type: s3
+              Value: arn:aws:s3:::charge-st-backend-config-773769103104/backend/prod.env
           Environment:
             - Name: NODE_ENV
               Value: production
-            - Name: ENVIRONMENT
-              Value: production
-            - Name: LOG_LEVEL
-              Value: debug
-            - Name: PORT
-              Value: !Ref ContainerPort
-            - Name: API_PREFIX
-              Value: /api/v1
-            - Name: CORS_ORIGIN
-              Value: "*"
-            - Name: AWS_REGION
-              Value: !Ref AWS::Region
-            - Name: HEALTH_LAMBDA_FUNCTION_NAME
-              Value: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaHealthName}"
-            - Name: USER_INFO_LAMBDA_FUNCTION_NAME
-              Value: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaUserInfoName}"
-            - Name: USER_MANAGEMENT_LAMBDA_FUNCTION_NAME
-              Value: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaUserManagementName}"
-            - Name: STATIONS_LAMBDA_FUNCTION_NAME
-              Value: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaStationsReadName}"
-            - Name: STATIONS_LAMBDA_WRITE_FUNCTION_NAME
-              Value: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaStationsWriteName}"
-            - Name: AUTH_DISABLED
-              Value: false
-            - Name: COGNITO_REGION
-              Value: !Ref AWS::Region
-            - Name: COGNITO_USER_POOL_ID
-              Value: !Ref CognitoUserPoolId
-            - Name: COGNITO_CLIENT_ID
-              Value: !Ref CognitoClientId
-            
-            # add more env vars here to mirror your .env
           LogConfiguration:
             LogDriver: awslogs
             Options:

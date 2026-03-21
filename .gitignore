@@ -39,6 +39,7 @@ node_modules/
 dist/
 # environment variables
 .env
+prod.env
 .env.*
 # logs
 npm-debug.log*
