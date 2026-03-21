@@ -20,9 +20,6 @@ export const env = {
 
   // auth
   authDisabled: readBool('AUTH_DISABLED', false),
-  cognitoRegion: String(process.env.COGNITO_REGION ?? 'il-central-1'),
-  cognitoUserPoolId: String(process.env.COGNITO_USER_POOL_ID ?? ''),
-  cognitoClientId: String(process.env.COGNITO_CLIENT_ID ?? ''),
 
   // users — reads (get_user_by_id, get_all_users) → `charging-stations-get-user-info` only
   userInfoLambdaFunctionName: String(
@@ -47,5 +44,15 @@ export const env = {
 
   // misc
   environment: String(process.env.ENVIRONMENT ?? 'local'),
-  logLevel: String(process.env.LOG_LEVEL ?? 'info')
+  logLevel: String(process.env.LOG_LEVEL ?? 'info'),
+
+  //Cognito settings
+  cognitoRegion: String(process.env.COGNITO_REGION ?? 'il-central-1'),
+  cognitoUserPoolId: String(process.env.COGNITO_USER_POOL_ID ?? ''),
+  cognitoClientId: String(process.env.COGNITO_CLIENT_ID ?? ''),
+  //Cross-account Cognito access settings
+  cognitoCrossAccountRoleArn: process.env.COGNITO_CROSS_ACCOUNT_ROLE_ARN,
+  cognitoAssumeRoleDurationSeconds: process.env.COGNITO_ASSUME_ROLE_DURATION_SECONDS,
+  cognitoCrossAccountExternalId: process.env.COGNITO_CROSS_ACCOUNT_EXTERNAL_ID,
+  cognitoAssumeRoleSessionName: process.env.COGNITO_ASSUME_ROLE_SESSION_NAME,
 };
