@@ -37,16 +37,16 @@ def invoke_write_ports(station_id: str):
     assert resp.get("StatusCode") == 200
     assert payload is not None
     assert len(payload) > 0
-    created_port_ids = response_json["data"]
-    assert created_port_ids is not None
-    assert isinstance(created_port_ids, list)
-    assert len(created_port_ids) == 1
-    assert created_port_ids[0] is not None
-    assert isinstance(created_port_ids[0], str)
-    assert len(created_port_ids[0]) > 0
-    print(f"Created port id: {created_port_ids[0]}")
+    created_port_keys = response_json["data"]["createdPortKeys"]
+    assert created_port_keys is not None
+    assert isinstance(created_port_keys, list)
+    assert len(created_port_keys) == 1
+    assert created_port_keys[0] is not None
+    assert isinstance(created_port_keys[0], str)
+    assert len(created_port_keys[0]) > 0
+    print(f"Created port key: {created_port_keys[0]}")
     if resp.get("FunctionError"):
-        raise SystemExit(f"Lambda error: {resp['FunctionError']}")\
+        raise SystemExit(f"Lambda error: {resp['FunctionError']}")
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
