@@ -2,27 +2,36 @@ import { CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-
 import { fromNodeProviderChain, fromTemporaryCredentials } from '@aws-sdk/credential-providers';
 
 import { env } from '../../../config/env';
+import { createLogger } from '../../../utils/logger';
 
-let cachedClient: CognitoIdentityProviderClient | undefined;
+const logger = createLogger('users.cognito.client');
 
-function readOptionalEnv(name: string): string | undefined {
-    const raw = process.env[name]?.trim();
-    return raw ? raw : undefined;
-}
+const DEFAULT_DURATION_SECONDS = 3600;
+const DEFAULT_ROLE_SESSION_NAME = 'charging-stations-backend-cognito';
 
-function readRoleDurationSeconds(): number | undefined {
-    const raw = readOptionalEnv('COGNITO_ASSUME_ROLE_DURATION_SECONDS');
-    if (!raw) return undefined;
+function getDurationInSeconds(): number {
+    const configValue = env.cognitoAssumeRoleDurationSeconds;
+    if (!configValue) return DEFAULT_DURATION_SECONDS;
 
-    const parsed = Number(raw);
-    if (!Number.isInteger(parsed) || parsed < 900 || parsed > 43200) {
-    throw new Error(
-        'COGNITO_ASSUME_ROLE_DURATION_SECONDS must be an integer between 900 and 43200.'
-    );
+    const numValue = Number(configValue);
+    if (!Number.isInteger(numValue) || numValue < 900 || numValue > 43200) {
+        throw new Error(
+            'COGNITO_ASSUME_ROLE_DURATION_SECONDS must be an integer between 900 and 43200.'
+        );
     }
 
-    return parsed;
+    return numValue;
 }
+
+const crossAccountConfig = {
+    roleArn: env.cognitoCrossAccountRoleArn,
+    externalId: env.cognitoCrossAccountExternalId,
+    roleSessionName: env.cognitoAssumeRoleSessionName ?? DEFAULT_ROLE_SESSION_NAME,
+    durationSeconds: getDurationInSeconds(),
+} as const;
+
+
+let cachedClient: CognitoIdentityProviderClient | undefined;
 
 /**
  * Returns a Cognito client for user-pool admin operations.
@@ -35,7 +44,7 @@ function readRoleDurationSeconds(): number | undefined {
  * base credentials and then assumes the target role in the user-pool owner
  * account via STS.
  */
-export function getCognitoIdentityProviderClient(): CognitoIdentityProviderClient {
+export function getCognitoClient(): CognitoIdentityProviderClient {
     if (cachedClient) {
         return cachedClient;
     }
@@ -45,28 +54,29 @@ export function getCognitoIdentityProviderClient(): CognitoIdentityProviderClien
         throw new Error('Cognito region is not configured.');
     }
 
-    const crossAccountRoleArn = readOptionalEnv('COGNITO_CROSS_ACCOUNT_ROLE_ARN');
-    const externalId = readOptionalEnv('COGNITO_CROSS_ACCOUNT_EXTERNAL_ID');
-    const roleSessionName =
-        readOptionalEnv('COGNITO_ASSUME_ROLE_SESSION_NAME') ??
-        'charging-stations-backend-cognito';
-    const durationSeconds = readRoleDurationSeconds();
-
-    cachedClient = new CognitoIdentityProviderClient({
-        region,
-        credentials: crossAccountRoleArn
-        ? fromTemporaryCredentials({
-            masterCredentials: fromNodeProviderChain(),
-            clientConfig: { region },
-            params: {
-                RoleArn: crossAccountRoleArn,
-                RoleSessionName: roleSessionName,
-                ExternalId: externalId,
-                DurationSeconds: durationSeconds
-            }
-            })
-        : undefined
-    });
-
+    if (crossAccountConfig.roleArn) {
+        logger.debug('Using cross-account Cognito configuration: ', { crossAccountConfig });
+        cachedClient = new CognitoIdentityProviderClient({
+            region,
+            credentials: crossAccountConfig.roleArn
+                ? fromTemporaryCredentials({
+                    masterCredentials: fromNodeProviderChain(),
+                    clientConfig: { region },
+                    params: {
+                        RoleArn: crossAccountConfig.roleArn,
+                        RoleSessionName: crossAccountConfig.roleSessionName,
+                        ExternalId: crossAccountConfig.externalId,
+                        DurationSeconds: crossAccountConfig.durationSeconds
+                    }
+                })
+                : undefined
+        });
+    }
+    else {
+        logger.debug('Using local Cognito configuration');
+        cachedClient = new CognitoIdentityProviderClient({
+            region,
+        });
+    }
     return cachedClient;
 }
