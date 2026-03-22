@@ -54,7 +54,7 @@ Parameters:
   CognitoCrossAccountRoleArn:
     Type: String
     Description: Cross-account IAM role ARN used by the backend to manage Cognito users
-    Default: arn:aws:iam::852215679994:role/APNPartner
+    Default: arn:aws:iam::852215679994:policy/sam-db-lambdas-backend-cognito-groups
   CognitoCrossAccountExternalId:
     Type: String
     Description: Optional ExternalId required by the cross-account Cognito role trust policy
