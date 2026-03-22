@@ -138,6 +138,16 @@ export interface AdminCreateStationResponse {
   stationId: string;
 }
 
+export interface LambdaAdminCreateStationResponse {
+  station_id: string;
+}
+
+export function mapLambdaAdminCreateStationResponse(raw: LambdaAdminCreateStationResponse): AdminCreateStationResponse {
+  return {
+    stationId: raw.station_id,
+  };
+}
+
 /** Response for PATCH /admin/stations/{stationId}/state */
 export interface AdminUpdateStationStateResponse {
   updatedAt: string;

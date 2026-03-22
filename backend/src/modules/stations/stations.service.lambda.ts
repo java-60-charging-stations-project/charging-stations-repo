@@ -9,12 +9,13 @@ import type {
   AdminDeleteStationResponse,
   AdminUpdateStationStateRequest,
   AdminUpdateStationStateResponse,
+  LambdaAdminCreateStationResponse,
   LambdaStation,
   StationBase,
   StationState,
   StationsService
 } from './stations.types';
-import { mapLambdaStation, mapLambdaStationList } from './stations.types';
+import { mapLambdaAdminCreateStationResponse, mapLambdaStation, mapLambdaStationList } from './stations.types';
 
 const logger = createLogger('stations.service');
 const LAMBDA_INVOKER: LambdaInvoker = new AwsLambdaInvoker(env.awsRegion);
@@ -47,7 +48,7 @@ export class StationsServiceLambda implements StationsService {
 
   async create(payload: AdminCreateStationRequest, callerId: string): Promise<AdminCreateStationResponse> {
     logger.debug('Invoking stations lambda: create', { payload, callerId });
-    const result = await LAMBDA_INVOKER.invokeJson<{ data: AdminCreateStationResponse }>(
+    const result = await LAMBDA_INVOKER.invokeJson<{ data: LambdaAdminCreateStationResponse }>(
       env.stationsLambdaWriteFunctionName,
       wrapLambdaRequest(
         'writeStation',
@@ -55,7 +56,7 @@ export class StationsServiceLambda implements StationsService {
         payload
       )
     );
-    return result.data;
+    return mapLambdaAdminCreateStationResponse(result.data);
   }
   
   async updateStationState(
