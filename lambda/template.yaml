@@ -63,6 +63,8 @@ Parameters:
 Conditions:
   UseInvokerAccountA: !Not [!Equals [!Ref InvokerAccountIdA, ""]]
   UseInvokerAccountB: !Not [!Equals [!Ref InvokerAccountIdB, ""]]
+  HasAnyInvoker: !Or [!Condition UseInvokerAccountA, !Condition UseInvokerAccountB]
+  UseBothInvokers: !And [!Condition UseInvokerAccountA, !Condition UseInvokerAccountB]
 
 Resources:
 
@@ -207,6 +209,31 @@ Resources:
               - cognito-idp:AdminGetUser
               - cognito-idp:ListUsers
             Resource: !GetAtt UserPool.Arn
+
+  # Trust matches AWS::Lambda::Permission invoker principals — backend sts:AssumeRole for cognito-idp Admin APIs
+  BackendCognitoCrossAccountRole:
+    Type: AWS::IAM::Role
+    Condition: HasAnyInvoker
+    Properties:
+      RoleName: !Sub ${AWS::StackName}-cognito-cross-account
+      Description: Assumed from invoker account(s) for Cognito user-pool group management
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS:
+                Fn::If:
+                  - UseBothInvokers
+                  - - !Sub "arn:aws:iam::${InvokerAccountIdA}:root"
+                    - !Sub "arn:aws:iam::${InvokerAccountIdB}:root"
+                  - Fn::If:
+                      - UseInvokerAccountA
+                      - !Sub "arn:aws:iam::${InvokerAccountIdA}:root"
+                      - !Sub "arn:aws:iam::${InvokerAccountIdB}:root"
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Ref BackendCognitoUserGroupManagementPolicy
 
   ChargingStationsRDSPostgresDB:
     Type: AWS::RDS::DBInstance
@@ -718,6 +745,12 @@ Outputs:
     Value: !Ref BackendCognitoUserGroupManagementPolicy
     Export:
       Name: !Sub ${AWS::StackName}-BackendCognitoGroupPolicyArn
+  CognitoCrossAccountRoleArn:
+    Condition: HasAnyInvoker
+    Description: Backend sets CognitoCrossAccountRoleArn to this — sts:AssumeRole from invoker account(s) (same principals as Lambda invoke)
+    Value: !GetAtt BackendCognitoCrossAccountRole.Arn
+    Export:
+      Name: !Sub ${AWS::StackName}-CognitoCrossAccountRoleArn
   StationPortsRdsSyncQueueUrl:
     Description: URL for station ports → RDS sync (SendMessage from write-station-ports-dynamo)
     Value: !Ref StationPortsRdsSyncQueue

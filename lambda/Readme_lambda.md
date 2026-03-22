@@ -93,9 +93,10 @@ Invoke permission is per **AWS account**. At deploy time, set:
 
 The stack creates **`BackendCognitoUserGroupManagementPolicy`** — a managed IAM policy scoped to this stack’s **User Pool** (`AdminAddUserToGroup`, `AdminRemoveUserFromGroup`, `AdminListGroupsForUser`, `ListGroups`, `AdminGetUser`, `ListUsers`).
 
-1. **Attach the policy** to your **ECS task role** (task role, not execution role), e.g. add the output **`BackendCognitoUserGroupManagementPolicyArn`** to `taskRoleArn`’s managed policy ARNs in your ECS task definition (same AWS account).
-2. **Network:** Ensure tasks can reach the **public** Cognito IdP API (HTTPS), e.g. **NAT gateway** or another egress path from private subnets. This stack does not create a **cognito-idp** VPC endpoint; IAM policy alone is not enough without outbound connectivity.
-3. Configure the app with **`UserPoolId`** and **`UserPoolClientId`** from stack outputs (and your app client settings).
+1. **Same account as the pool:** Attach the output **`BackendCognitoUserGroupManagementPolicyArn`** to your **ECS task role** (task role, not execution role).
+2. **Cross-account backend:** The stack also creates **`BackendCognitoCrossAccountRole`** (output **`CognitoCrossAccountRoleArn`**) whose **trust policy** allows the same **`InvokerAccountIdA` / `InvokerAccountIdB`** principals as **`AWS::Lambda::Permission`**. On the backend task role, allow **`sts:AssumeRole`** to that ARN; use assumed-role credentials for **`cognito-idp`** calls.
+3. **Network:** Ensure tasks can reach the **public** Cognito IdP API (HTTPS), e.g. **NAT** or **public task IPs**. This stack does not create a **cognito-idp** VPC endpoint.
+4. Configure the app with **`UserPoolId`** and **`UserPoolClientId`** from stack outputs (and your app client settings).
 
 ---
 
