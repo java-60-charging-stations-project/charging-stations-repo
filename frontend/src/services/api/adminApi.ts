@@ -1,35 +1,63 @@
 import { apiClient } from './api';
 import type { ApiArrayResponse, ApiResponse } from '@/types/apiTypes';
-import type { AdminUser } from '@/types/responseTypes';
+import type { 
+    AdminGetUserResponse,
+    AdminUserDetailsResponse,
+    AdminUserRoleResponse,
+    UpdateUserRoleRequest,
+} from '@/types/users';
 import type { AdminChangeStationStateRequest, AdminCreateStationRequest, AdminCreateStationResponse, AdminUpdateStationStateResponse, StationBase } from '@/types/stations';
 
-export async function fetchAdminUsers(): Promise<AdminUser[]> {
-    const response = await apiClient.get<ApiArrayResponse<AdminUser>>(
+/** USERS */
+export async function fetchAdminUsers(): Promise<AdminGetUserResponse[]> {
+    const response = await apiClient.get<ApiArrayResponse<AdminGetUserResponse>>(
         '/admin/users',
         { params: { page: 1, pageSize: 200 } },
     );
     return response.data;
 }
 
-export async function fetchAdminUserById(userId: string): Promise<AdminUser> {
-    const response = await apiClient.get<ApiResponse<AdminUser>>(
+export async function fetchAdminUserById(userId: string): Promise<AdminGetUserResponse> {
+    const response = await apiClient.get<ApiResponse<AdminGetUserResponse>>(
         `/admin/users/${userId}`,
     );
     return response.data;
 }
 
-export async function updateUserRole(
-    userId: string,
-    role: string,
-    updatedAt: string,
-): Promise<AdminUser> {
-    const response = await apiClient.patch<ApiResponse<AdminUser>>(
-        `/admin/users/${userId}/role`,
-        { role, updatedAt },
+export async function fetchAdminUserDetails(userId: string): Promise<AdminUserDetailsResponse> {
+    const response = await apiClient.get<ApiResponse<AdminUserDetailsResponse>>(
+        `/admin/users/${userId}/details`,
     );
     return response.data;
 }
 
+export async function fetchAdminUserRole(userId: string): Promise<AdminUserRoleResponse> {
+    const response = await apiClient.get<ApiResponse<AdminUserRoleResponse>>(
+        `/admin/users/${userId}/role`,
+    );
+    return response.data;
+}
+
+export async function updateUserRole(userId: string, request: UpdateUserRoleRequest): Promise<void> {
+    await apiClient.patch<ApiResponse<void>>(
+        `/admin/users/${userId}/role`,
+        request,
+    );
+};
+
+export async function adminEnableUser(userId: string): Promise<void> {
+    await apiClient.patch<ApiResponse<void>>(
+        `/admin/users/${userId}/enable`,
+    );
+};
+
+export async function adminDisableUser(userId: string): Promise<void> {
+    await apiClient.patch<ApiResponse<void>>(
+        `/admin/users/${userId}/disable`,
+    );
+};
+
+/** STATIONS */
 export async function fetchStations(): Promise<StationBase[]> {
     const response = await apiClient.get<ApiArrayResponse<StationBase>>(
         '/admin/stations',
