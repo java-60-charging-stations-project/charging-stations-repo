@@ -205,9 +205,18 @@ Resources:
               - cognito-idp:AdminAddUserToGroup
               - cognito-idp:AdminRemoveUserFromGroup
               - cognito-idp:AdminListGroupsForUser
-              - cognito-idp:ListGroups
+              - cognito-idp:AdminDisableUser
+              - cognito-idp:AdminEnableUser
+              - cognito-idp:AdminDeleteUser
+              - cognito-idp:AdminCreateUser
               - cognito-idp:AdminGetUser
+              - cognito-idp:ListGroups
               - cognito-idp:ListUsers
+              - cognito-idp:AdminResetUserPassword
+              - cognito-idp:AdminUpdateUserAttributes
+              - cognito-idp:ChangePassword
+              - cognito-idp:ConfirmForgotPassword
+              - cognito-idp:ForgotPassword
             Resource: !GetAtt UserPool.Arn
 
   # Trust matches AWS::Lambda::Permission invoker principals — backend sts:AssumeRole for cognito-idp Admin APIs
