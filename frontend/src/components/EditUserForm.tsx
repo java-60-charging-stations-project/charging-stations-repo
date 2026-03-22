@@ -25,9 +25,9 @@ const EditUserForm: FC<EditUserFormProps> = ({ user, onUserUpdated }) => {
         setLockLoading(true);
         try {
             if (user.enabled) {
-                await adminDisableUser(user.userId);
+                await adminDisableUser(user.userId, { email: user.email, updatedAt: user.lastModifiedDate });
             } else {
-                await adminEnableUser(user.userId);
+                await adminEnableUser(user.userId, { email: user.email, updatedAt: user.lastModifiedDate});
             }
             onUserUpdated();
         } catch (e) {

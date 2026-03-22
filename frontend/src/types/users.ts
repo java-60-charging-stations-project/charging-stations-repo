@@ -31,3 +31,8 @@ export interface UpdateUserRoleRequest {
     newRole: string;
     updatedAt: string;
 };
+
+export interface AdminChangeLockStateUserRequest {
+    email: string;
+    updatedAt: string | null;
+};

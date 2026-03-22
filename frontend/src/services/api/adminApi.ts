@@ -1,6 +1,7 @@
 import { apiClient } from './api';
 import type { ApiArrayResponse, ApiResponse } from '@/types/apiTypes';
 import type { 
+    AdminChangeLockStateUserRequest,
     AdminGetUserResponse,
     AdminUserDetailsResponse,
     AdminUserRoleResponse,
@@ -45,15 +46,17 @@ export async function updateUserRole(userId: string, request: UpdateUserRoleRequ
     );
 };
 
-export async function adminEnableUser(userId: string): Promise<void> {
+export async function adminEnableUser(userId: string, request:AdminChangeLockStateUserRequest): Promise<void> {
     await apiClient.patch<ApiResponse<void>>(
         `/admin/users/${userId}/enable`,
+        request,
     );
 };
 
-export async function adminDisableUser(userId: string): Promise<void> {
+export async function adminDisableUser(userId: string, request:AdminChangeLockStateUserRequest): Promise<void> {
     await apiClient.patch<ApiResponse<void>>(
         `/admin/users/${userId}/disable`,
+        request,
     );
 };
 
