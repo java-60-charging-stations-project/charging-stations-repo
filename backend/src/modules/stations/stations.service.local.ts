@@ -123,25 +123,6 @@ export class StationsServiceLocal implements StationsService {
     return { stationId: nextId };
   }
 
-  async updateStatus(
-    stationId: string,
-    status: StationState,
-    _callerId: string,
-    _callerGroups: string[]
-  ): Promise<StationBase> {
-    const station = STATIONS.find((s) => s.id === stationId);
-    if (!station) {
-      throw new ResourceNotFoundError('Station not found');
-    }
-    if (station.state === status) {
-      throw new BadRequestError('Station already has this status');
-    }
-
-    station.state = status;
-    station.updatedAt = new Date().toISOString();
-    return station;
-  }
-
   async updateStationState(
     stationId: string,
     oldState: StationState,

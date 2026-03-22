@@ -7,6 +7,7 @@ import type {
   AdminCreateStationRequest,
   AdminCreateStationResponse,
   AdminDeleteStationResponse,
+  AdminUpdateStationStateRequest,
   AdminUpdateStationStateResponse,
   LambdaStation,
   StationBase,
@@ -35,9 +36,7 @@ export class StationsServiceLambda implements StationsService {
       wrapLambdaRequest(
         'getStationById',
         callerId,
-        {
-          station_id: stationId
-        }
+        {stationId,}
       )
     );
     if (!result.data) {
@@ -58,34 +57,7 @@ export class StationsServiceLambda implements StationsService {
     );
     return result.data;
   }
-
-  async updateStatus(
-    stationId: string,
-    status: StationState,
-    callerId: string,
-    callerGroups: string[]
-  ): Promise<StationBase> {
-    logger.debug('Invoking stations lambda: updateStatus', {
-      stationId,
-      status,
-      callerId,
-      callerGroups
-    });
-    const result = await LAMBDA_INVOKER.invokeJson<{ data: StationBase }>(
-      env.stationsLambdaFunctionName,
-      wrapLambdaRequest(
-        'update_station_status',
-        callerId,
-        {
-          stationId,
-          status,
-          caller_groups: callerGroups
-        }
-      )
-    );
-    return result.data;
-  }
-
+  
   async updateStationState(
     stationId: string,
     oldState: StationState,
@@ -100,14 +72,11 @@ export class StationsServiceLambda implements StationsService {
     });    
     const result = await LAMBDA_INVOKER.invokeJson<{ data: AdminUpdateStationStateResponse }>(
       env.stationsLambdaWriteFunctionName,
-      {
-        service: { action: 'change_station_status', caller_id: callerId },
-        data: {
-          stationId,
-          oldState,
-          newState,
-        }
-      }
+      wrapLambdaRequest<AdminUpdateStationStateRequest, unknown>(
+          'changeStationState',
+          callerId,
+          { stationId, oldState, newState },
+      )
     );
     return result.data;
   }
