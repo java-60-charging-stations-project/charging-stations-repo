@@ -81,7 +81,7 @@ def get_all_users() -> list[dict]:
 def get_email_or_id(data: dict) -> str:
     result = None
     email = data.get("email")
-    user_id = data.get("user_id")
+    user_id = data.get("userId")
     if email and user_id:
         logger.error(f"provide only one of email or user_id, not both: {data}")
         raise LambdaResponseError({"error": "provide only one of email or user_id, not both", "code": "INVALID_REQUEST"})

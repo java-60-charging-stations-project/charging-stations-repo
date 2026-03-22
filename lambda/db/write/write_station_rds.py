@@ -65,7 +65,7 @@ def extract_full_station_instance_from_event(event: dict) -> StationInstance:
             "longitude": location.get("longitude", 0.0),
             "latitude": location.get("latitude", 0.0),
             "ports": data.get("ports", 0),
-            "hasFreePorts": False,
+            "has_free_ports": False,
             "created_at": timestamp,
             "updated_at": timestamp,
         }
@@ -110,7 +110,7 @@ def insert_station_to_rds(station: StationInstance) -> None:
         logger.error(f"Error getting connection: {e}")
         raise LambdaResponseError({"error": f"Error getting connection: {e}", "code": "DATABASE_ERROR"})
     try:
-        rate_plan = station.get("ratePlan", None)
+        rate_plan = station.get("rate_plan")
         rate_plan_json = json.dumps(rate_plan) if rate_plan else None
         with conn.cursor() as cur:
             cur.execute(

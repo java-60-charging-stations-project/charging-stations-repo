@@ -15,11 +15,11 @@ LAMBDA_CLIENT = boto3.client("lambda", region_name=AWS_REGION)
 def invoke_get_user_info(user_id: str):
     payload = {
         "service": {
-        "action": "get_user_by_id",
-        "caller_id": "string",
+        "action": "getUserById",
+        "callerId": "string",
         },
         "data": {
-            "user_id": user_id,
+            "userId": user_id,
         }
     }
     response = LAMBDA_CLIENT.invoke(
@@ -41,7 +41,7 @@ def invoke_get_user_info(user_id: str):
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("Usage: python -m tests.integration.read.get_user_info_lambda_invoker <user_id>")
+        print("Usage: python -m tests.integration.read.get_user_info_lambda_invoker <userId>")
         sys.exit(1)
     user_id = sys.argv[1]
     invoke_get_user_info(user_id)

@@ -152,7 +152,7 @@ The template provisions **RDS** (PostgreSQL, IAM auth), **VPC endpoints** (RDS A
 See **`lambda_request_responces.md`** for full shapes. Summary:
 
 - **CreateRDSTables** – Payload optional (e.g. `{"trigger": "script_run"}`). Returns handler result.
-- **WriteUserRDS** – Cognito: returns the same event. API: `service` + `data` (e.g. `change_user_status`).
+- **WriteUserRDS** – Cognito: returns the same event. API: `service` + `data` (e.g. `changeUserStatus`).
 - **GetUserInfo** – `service.callerId`, `service.action`, `data` per action (e.g. `userId` or `email`, not both). Success `data`: **snake_case** user fields from RDS.
 - **ConfirmConsoleCreatedAdmin** – Payload: `username`, `password`, `new_password`, `name` (optional). Response tokens / message or error.
 - **WriteStationRDS** – Success `data` uses **snake_case**: `station_id`, `updated_at`, `deleted_at` (ISO strings where applicable).

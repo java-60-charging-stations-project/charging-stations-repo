@@ -13,7 +13,7 @@ WRITE_STATION_FUNCTION_NAME = os.getenv("WRITE_STATION_FUNCTION_NAME", "charging
 def invoke_delete_station(station_id: str):
     client = boto3.client("lambda", region_name=AWS_REGION)
     payload = {
-      "service": { "action": "delete_station", "caller_id": "script" },
+      "service": { "action": "deleteStation", "callerId": "script" },
         "data": {
             "stationId": station_id,
       }
@@ -37,7 +37,7 @@ def invoke_delete_station(station_id: str):
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("Usage: python -m tests.integration.write.delete_station_lambda_invoker <station_id>")
+        print("Usage: python -m tests.integration.write.delete_station_lambda_invoker <stationId>")
         sys.exit(1)
     station_id = sys.argv[1]
     invoke_delete_station(station_id)

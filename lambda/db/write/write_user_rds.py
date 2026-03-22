@@ -190,8 +190,8 @@ def handler(event: dict, context: Any) -> dict | SuccessResponsePayload | ErrorR
         try:
             match action:
                 case "changeUserStatus":
-                    user_status = event["data"]["user_status"]
-                    user_id = event["data"]["user_id"]
+                    user_status = event["data"]["userStatus"]
+                    user_id = event["data"]["userId"]
                     change_user_status(user_id, user_status)
                     log_audit("INFO", message="user status changed successfully", status="SUCCESS", **audit_base)
                     return SuccessResponsePayload(data={"user_id": user_id})

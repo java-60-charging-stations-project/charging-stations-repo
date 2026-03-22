@@ -14,10 +14,10 @@ LAMBDA_CLIENT = boto3.client("lambda", region_name=AWS_REGION)
 def invoke_get_station_info(station_id: str):
     payload = {
         "service": {
-        "action": "get_station_by_id",
-        "caller_id": "string"},
+        "action": "getStationById",
+        "callerId": "string"},
         "data": {
-            "station_id": station_id,
+            "stationId": station_id,
         },
     }
     response = LAMBDA_CLIENT.invoke(
