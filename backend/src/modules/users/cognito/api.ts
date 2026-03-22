@@ -105,6 +105,7 @@ export class CognitoUsersAPI {
             UserPoolId: this.userPoolId,
         });
         return this.client.send(command);
+
     }
 }
 
