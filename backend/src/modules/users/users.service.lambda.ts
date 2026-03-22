@@ -19,6 +19,7 @@ import {
   mapLambdaUsers
 } from './users.types';
 import { applyListFiltersAndPage } from './users.listHelpers';
+import { ResourceNotFoundError } from '../../common/serviceErrors';
 
 const logger = createLogger('users.service', 'debug');
 const LAMBDA_INVOKER: LambdaInvoker = new AwsLambdaInvoker(env.awsRegion);
@@ -57,7 +58,7 @@ export class UsersServiceLambda implements UsersService {
     return mapLambdaUser(result.data);
   }
 
-  async getUserById(adminId: string, userId: string): Promise<UserInfo | null> {
+  async getUserById(adminId: string, userId: string): Promise<UserInfo> {
     logger.debug('Invoking userInfo lambda: getUserById (admin)', { adminId, userId });
     const result = await LAMBDA_INVOKER.invokeJson<LambdaUserResponse | LambdaErrorResponse>(
       env.userInfoLambdaFunctionName,
@@ -72,7 +73,7 @@ export class UsersServiceLambda implements UsersService {
 
     if (isLambdaErrorResponse(result)) {
       if (result.code === 'USER_NOT_FOUND' || result.code === 'NOT_FOUND' || result.error.toLowerCase().includes('not found')) {
-        return null;
+        throw new ResourceNotFoundError(`User not found: ${userId}`);
       }
       throw new Error(`userInfo lambda error: ${result.error}`);
     }
@@ -149,7 +150,7 @@ export class UsersServiceLambda implements UsersService {
     );
   }
   // COGNITO METHODS GROUP
-  async getUserRole(adminId: string, userId: string): Promise<UserRole | null> {
+  async getUserRole(adminId: string, userId: string): Promise<UserRole> {
     logger.debug('Invoking userManagement lambda: getUserRole', { adminId, userId });
     throw new Error('Not implemented');
   }
