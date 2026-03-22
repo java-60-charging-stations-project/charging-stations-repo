@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import { z } from 'zod';
 import { createLogger } from '../../utils/logger';
 import { wrapResponse, wrapResponseList } from '../../common/wrappers';
-import type { UsersService } from './users.types';
+import type { UsersService } from './users.service.interface';
 
 const logger = createLogger('users.controller');
 

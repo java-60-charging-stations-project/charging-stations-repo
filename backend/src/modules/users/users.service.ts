@@ -1,7 +1,7 @@
 import { env } from "../../config/env";
 import { UsersServiceLambda } from "./users.service.lambda";
 import { UsersServiceAwsLocal } from "./users.service.awslocal";
-import { UsersService } from "./users.types";
+import { UsersService } from "./users.service.interface";
 
 export function buildUsersService(): UsersService {
     if (env.environment === 'local') {

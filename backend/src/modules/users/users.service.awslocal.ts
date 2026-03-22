@@ -99,28 +99,39 @@ export class UsersServiceAwsLocal implements UsersService {
         return { role: "USER" };
     }
 
-    async getUserDetails(
-        _adminId: string,
-        _userId: string,
-        _filters: GetUserDetailsFilters
-    ): Promise<AdminUserDetails> {
-        throw new Error('Not implemented');
+    async getUserDetails(adminId: string, userId: string, filters: GetUserDetailsFilters): Promise<AdminUserDetails> {
+        logger.debug('Getting user details: ', { adminId, userId, filters });
+        const response = await cognitoApiClient.getUserDetails(userId);
+        if (!response) {
+            throwUserNotFoundError(userId);
+        }
+        logger.debug('Cognito response: ', { cognitoResponse: response });
+        const user: CognitoUser = unpackAdminGetUserResponse(response);
+        const role = await this.getUserRole(adminId, userId);
+
+        return {
+            userId: user.userId,
+            username: user.email,
+            email: user.email,
+            name: user.name,
+            createDate: user.createDate,
+            lastModifiedDate: user.lastModifiedDate,
+            enabled: user.enabled,
+            status: user.status,
+            role: role.role,
+        };
+    };
+
+    async enableUser( adminId: string, userId: string, payload: UpdateUserEnabledPayload ): Promise<void> {
+        logger.debug('Enabling user: ', { adminId, userId, payload });
+        await cognitoApiClient.enableUser(userId);
+        logger.debug('User enabled: ', { adminId, userId });
     }
 
-    async enableUser(
-        _adminId: string,
-        _userId: string,
-        _payload: UpdateUserEnabledPayload
-    ): Promise<void> {
-        throw new Error('Not implemented');
-    }
-
-    async disableUser(
-        _adminId: string,
-        _userId: string,
-        _payload: UpdateUserEnabledPayload
-    ): Promise<void> {
-        throw new Error('Not implemented');
+    async disableUser(adminId: string, userId: string, payload: UpdateUserEnabledPayload): Promise<void> {
+        logger.debug('Disabling user: ', { adminId, userId, payload });
+        await cognitoApiClient.disableUser(userId);
+        logger.debug('User disabled: ', { adminId, userId });
     }
     updateOwnProfile(userId: string, payload: UpdateProfilePayload): Promise<void> {
         throw new Error('Method not implemented.');
