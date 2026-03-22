@@ -91,43 +91,6 @@ export class UsersController {
     res.status(200).json(wrapResponse(userInfo));
   };
 
-  getUserRole = async (req: Request, res: Response) => {
-    const adminId = req.user?.sub;
-    const { userId } = req.params;
-
-    if (!adminId) {
-      return res.status(401).json({ code: 401, error: { message: 'Unauthorized' } });
-    }
-
-    const userRole = await this.service.getUserRole(adminId, userId);
-    if (!userRole) {
-      return res
-        .status(404)
-        .json({ error: { code: 'USER_NOT_FOUND', message: 'User not found' } });
-    }
-
-    res.status(200).json(wrapResponse(userRole));
-  };
-
-  getUserDetails = async (req: Request, res: Response) => {
-    const adminId = req.user?.sub;
-    const { userId } = req.params;
-
-    if (!adminId) {
-      return res.status(401).json({ code: 401, error: { message: 'Unauthorized' } });
-    }
-
-    const query = getUserDetailsQuerySchema.parse(req.query);
-    const userDetails = await this.service.getUserDetails(adminId, userId, query);
-    if (!userDetails) {
-      return res
-        .status(404)
-        .json({ error: { code: 'USER_NOT_FOUND', message: 'User not found' } });
-    }
-
-    res.status(200).json(wrapResponse(userDetails));
-  };
-
   updateMyProfile = async (req: Request, res: Response) => {
     const userId = req.user?.sub;
     if (!userId) {
@@ -152,6 +115,25 @@ export class UsersController {
     res.json({ code: 200, data: { userId, ...payload } });
   };
 
+  // Cognito-related operations
+  getUserRole = async (req: Request, res: Response) => {
+    const adminId = req.user?.sub;
+    const { userId } = req.params;
+
+    if (!adminId) {
+      return res.status(401).json({ code: 401, error: { message: 'Unauthorized' } });
+    }
+
+    const userRole = await this.service.getUserRole(adminId, userId);
+    if (!userRole) {
+      return res
+        .status(404)
+        .json({ error: { code: 'USER_NOT_FOUND', message: 'User not found' } });
+    }
+
+    res.status(200).json(wrapResponse(userRole));
+  };
+
   updateUserRole = async (req: Request, res: Response) => {
     const adminId = req.user?.sub;
     const { userId } = req.params;
@@ -165,7 +147,7 @@ export class UsersController {
     res.json({ code: 200, data: { userId, role: payload.newRole } });
   };
 
-  enableUser = async (req: Request, res: Response) => {
+  getUserDetails = async (req: Request, res: Response) => {
     const adminId = req.user?.sub;
     const { userId } = req.params;
 
@@ -173,9 +155,15 @@ export class UsersController {
       return res.status(401).json({ code: 401, error: { message: 'Unauthorized' } });
     }
 
-    const payload = enableUserSchema.parse(req.body);
-    await this.service.enableUser(adminId, userId, payload);
-    res.status(204).send();
+    const query = getUserDetailsQuerySchema.parse(req.query);
+    const userDetails = await this.service.getUserDetails(adminId, userId, query);
+    if (!userDetails) {
+      return res
+        .status(404)
+        .json({ error: { code: 'USER_NOT_FOUND', message: 'User not found' } });
+    }
+
+    res.status(200).json(wrapResponse(userDetails));
   };
 
   deleteUser = async (req: Request, res: Response) => {
@@ -194,5 +182,31 @@ export class UsersController {
 
     await this.service.deleteUser(adminId, userId);
     res.json({ code: 200, data: { userId, deleted: true } });
+  };
+
+  disableUser = async (req: Request, res: Response) => {
+    const adminId = req.user?.sub;
+    const { userId } = req.params;
+
+    if (!adminId) {
+      return res.status(401).json({ code: 401, error: { message: 'Unauthorized' } });
+    }
+
+    const payload = enableUserSchema.parse(req.body);
+    await this.service.disableUser(adminId, userId, payload);
+    res.status(204).send();
+  };
+
+  enableUser = async (req: Request, res: Response) => {
+    const adminId = req.user?.sub;
+    const { userId } = req.params;
+
+    if (!adminId) {
+      return res.status(401).json({ code: 401, error: { message: 'Unauthorized' } });
+    }
+
+    const payload = enableUserSchema.parse(req.body);
+    await this.service.enableUser(adminId, userId, payload);
+    res.status(204).send();
   };
 }

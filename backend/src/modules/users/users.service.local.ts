@@ -59,7 +59,7 @@ export class UsersServiceLocal implements UsersService {
         return USERS.find(user => user.userId === userId) || userAdmin;
     }
 
-    async getUserById(_adminId: string, _userId: string): Promise<UserInfo | null> {
+    async getUserById(_adminId: string, _userId: string): Promise<UserInfo> {
         logger.debug('UsersServiceLocal getUserById', { _adminId, _userId });
         const user = USERS.find(user => user.userId === _userId);
         if (!user) {
@@ -101,7 +101,7 @@ export class UsersServiceLocal implements UsersService {
     }
 
     // COGNITO METHODS GROUP
-    async getUserRole(_adminId: string, _userId: string): Promise<UserRole | null> {
+    async getUserRole(_adminId: string, _userId: string): Promise<UserRole> {
         logger.debug('UsersServiceLocal getUserRole', { _adminId, _userId });
         throw new Error('Not implemented');
     }
@@ -116,6 +116,15 @@ export class UsersServiceLocal implements UsersService {
     }
 
     async enableUser(
+        _adminId: string,
+        _userId: string,
+        _payload: UpdateUserEnabledPayload
+    ): Promise<void> {
+        logger.debug('UsersServiceLocal enableUser', { _adminId, _userId, _payload });
+        throw new Error('Not implemented');
+    }
+
+    async disableUser(
         _adminId: string,
         _userId: string,
         _payload: UpdateUserEnabledPayload
