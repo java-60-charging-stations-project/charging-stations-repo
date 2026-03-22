@@ -5,6 +5,7 @@ import { getErrorMessage } from "@/services/api/errorUtils";
 import { getLogger } from "@/services/logging";
 import type { StationBase } from "@/types/stations";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const logger = getLogger("AdminStationsPage");
 
@@ -12,10 +13,10 @@ function StationTableHeader(): React.ReactNode {
   return (
     <thead>
       <tr>
-        <th>Code</th>
         <th>Name</th>
         <th>Owner</th>
         <th>City</th>
+        <th>Address</th>
         <th>State</th>
         <th>Actions</th>
       </tr>
@@ -24,6 +25,7 @@ function StationTableHeader(): React.ReactNode {
 }
 
 const AdminStationsPage = () => {
+  const navigate = useNavigate();
   const [stations, setStations] = useState<StationBase[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,11 +61,7 @@ const AdminStationsPage = () => {
         updatedAt,
       });
       logger.debug("result", result);
-      //setStations(stations.map((station) =>
-      //  station.id === stationId
-      //    ? { ...station, state: "OUT_OF_SERVICE" as const, updatedAt: result.updatedAt }
-      //    : station
-      //));
+      
       setUpdateCount((c) => c + 1);
       setSuccess("Station activated successfully");
     }
@@ -99,15 +97,22 @@ const AdminStationsPage = () => {
   function StationTableRow({ station }: { station: StationBase }): React.ReactNode {
     return (
       <tr>
-        <td>{station.code}</td>
-        <td>{station.name}</td>
+        <td>
+          <button
+            className="text-blue-600 hover:underline cursor-pointer bg-transparent border-none p-0"
+            onClick={() => navigate(`/admin/stations/create/${station.id}`)}
+          >
+            {station.name}
+          </button>
+        </td>
         <td>{station.owner}</td>
         <td>{station.city}</td>
+        <td>{station.address}</td>
         <td>{station.state}</td>
         <td>
           <div className="w-full flex gap-2 justify-around">
             <SimpleButton 
-                caption="Activate"
+                caption="To support"
                 color="tertiary"
                 isDisabled={station.state !== "INACTIVE" || updating}
                 size="xs"
@@ -131,7 +136,7 @@ const AdminStationsPage = () => {
   useEffect(() => { loadStations(); }, [updateCount]);
 
   return (
-    <div>
+    <div className="text-xs">
       <h1>Stations</h1>
       {loading && <p>Loading...</p>}
       {error && (
