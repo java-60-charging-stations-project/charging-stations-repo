@@ -64,7 +64,7 @@ export function usersRouter(): Router {
   );
 
   router.patch(
-    '/admin/users/:userId/enable',
+    '/admin/users/:userId/disable',
     verifyCognitoJwt,
     requireGroups([ADMIN_GROUP]),
     controller.disableUser
