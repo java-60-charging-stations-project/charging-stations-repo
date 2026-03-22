@@ -67,15 +67,15 @@ def create_tables() -> None:
                     city TEXT NOT NULL,
                     address TEXT,
                     email TEXT,
-                    siteTechnician TEXT,
-                    maxPowerKw FLOAT,
+                    site_technician TEXT,
+                    max_power_kw FLOAT,
                     location GEOGRAPHY(Point, 4326),
                     ports INT NOT NULL,
-                    ratePlan JSONB,
+                    rate_plan JSONB,
                     state TEXT NOT NULL,
                     hasFreePorts BOOLEAN NOT NULL,
-                    createdAt TIMESTAMPTZ NOT NULL,
-                    updatedAt TIMESTAMPTZ NOT NULL
+                    created_at TIMESTAMPTZ NOT NULL,
+                    updated_at TIMESTAMPTZ NOT NULL
                 );
             """)
             cur.execute("""CREATE INDEX IF NOT EXISTS idx_stations_location ON stations USING GIST (location);""")
@@ -89,11 +89,11 @@ def handler(event: dict, context: Any) -> dict:
         log_audit(
             "INFO",
             message="tables created or already exist",
-            userId=event.get("user_id"),
+            user_id=event.get("user_id"),
             service=context.function_name,
             event="CREATE_RDS_TABLES",
             status="SUCCESS",
-            requestId=context.aws_request_id,
+            request_id=context.aws_request_id,
             trigger=event.get("trigger"),
         )
         create_tables()
@@ -102,12 +102,12 @@ def handler(event: dict, context: Any) -> dict:
         log_audit(
             "ERROR",
             message="error creating tables",
-            userId=event.get("user_id"),
+            user_id=event.get("user_id"),
             service=context.function_name,
             event="CREATE_RDS_TABLES",
             status="ERROR",
             errorMessage=str(e),
-            requestId=context.aws_request_id,
+            request_id=context.aws_request_id,
             trigger=event.get("trigger"),
         )
         raise Exception(f"Error creating tables: {e}")

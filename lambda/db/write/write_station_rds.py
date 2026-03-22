@@ -56,18 +56,18 @@ def extract_full_station_instance_from_event(event: dict) -> StationInstance:
             "owner": data["owner"],
             "city": data["city"],
             "address": data["address"],
-            "ratePlan": data["ratePlan"],
+            "rate_plan": data["ratePlan"],
             "email": data["email"],
             "phone": data["phone"],
             "state": "INACTIVE",
-            "siteTechnician": data["siteTechnician"],
-            "maxPowerKw": data.get("maxPowerKw", 0.0),
+            "site_technician": data["siteTechnician"],
+            "max_power_kw": data.get("maxPowerKw", 0.0),
             "longitude": location.get("longitude", 0.0),
             "latitude": location.get("latitude", 0.0),
             "ports": data.get("ports", 0),
             "hasFreePorts": False,
-            "createdAt": timestamp,
-            "updatedAt": timestamp,
+            "created_at": timestamp,
+            "updated_at": timestamp,
         }
         logger.info(f"Station instance extracted successfully: {station_instance}")
         return station_instance
@@ -117,8 +117,8 @@ def insert_station_to_rds(station: StationInstance) -> None:
                 """
                     INSERT INTO stations (
                         id, code, name, owner, city, address, email, 
-                        siteTechnician, maxPowerKw, location, ports, 
-                        ratePlan, state, hasFreePorts, createdAt, updatedAt
+                        site_technician, max_power_kw, location, ports, 
+                        rate_plan, state, has_free_ports, created_at, updated_at
                     ) VALUES (
                         %s, %s, %s, %s, %s, %s, %s, %s, %s, 
                         ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography, 
@@ -133,16 +133,16 @@ def insert_station_to_rds(station: StationInstance) -> None:
                     station["city"],
                     station["address"],
                     station["email"],
-                    station["siteTechnician"],
-                    station["maxPowerKw"],
+                    station["site_technician"],
+                    station["max_power_kw"],
                     station["longitude"],
                     station["latitude"],
                     station["ports"],
                     rate_plan_json,
                     station["state"],
-                    station["hasFreePorts"],
-                    station["createdAt"],
-                    station["updatedAt"],
+                    station["has_free_ports"],
+                    station["created_at"],
+                    station["updated_at"],
                 ),
             )
         conn.commit()
@@ -219,7 +219,7 @@ def delete_station(station_id: str) -> datetime:
         state = "DELETED"
         with conn.cursor() as cur:
             cur.execute("""
-            UPDATE stations SET state = %s, updatedAt = %s WHERE id = %s 
+            UPDATE stations SET state = %s, updated_at = %s WHERE id = %s 
             AND state IN ('ACTIVE', 'INACTIVE', 'OUT_OF_SERVICE')
             """, 
                 (state, updated_at, station_id),
@@ -263,7 +263,7 @@ def update_station_ports_count_in_rds(station_id: str, ports_delta: int) -> tupl
             updated_at = datetime.now()
             cur.execute(
                 """
-                    UPDATE stations SET ports = ports + %s, updatedAt = %s WHERE id = %s RETURNING ports
+                    UPDATE stations SET ports = ports + %s, updated_at = %s WHERE id = %s RETURNING ports
                 """,
                 (
                     ports_delta,
@@ -296,23 +296,23 @@ def update_station_ports_count_in_rds(station_id: str, ports_delta: int) -> tupl
 
 def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponsePayload:
     logger.info(f"Handler called with event: {event}")
-    if event["Records"]:
+    if event.get("Records"):
         try:
-            sqs_request_id = event["Records"][0]["body"]["correlationId"]
-            sqs_caller_id = event["Records"][0]["body"]["callerId"]
+            sqs_request_id = event["Records"][0]["body"]["correlation_id"]
+            sqs_caller_id = event["Records"][0]["body"]["caller_id"]
             sqs_action = event["Records"][0]["body"]["action"]
-            sqs_ports_delta = event["Records"][0]["body"]["portsDelta"]
-            sqs_station_id = event["Records"][0]["body"]["stationId"]
+            sqs_ports_delta = event["Records"][0]["body"]["ports_delta"]
+            sqs_station_id = event["Records"][0]["body"]["station_id"]
         except KeyError as e:
             log_audit("ERROR", message="missing SQS records keys", status="ERROR", errorMessage=f"missing SQS records keys: {e}")
             return ErrorResponsePayload(error=f"missing SQS records keys: {e}", code="INVALID_REQUEST")
     try:
-        caller_id = event["service"]["caller_id"] if event["service"] else sqs_caller_id
+        caller_id = event["service"]["callerId"] if event.get("service") else sqs_caller_id
     except KeyError as e:
-        log_audit("ERROR", message="missing caller_id", status="ERROR", errorMessage=f"missing caller_id: {e}")
-        return ErrorResponsePayload(error=f"missing caller_id: {e}", code="UNAUTHORIZED")
+        log_audit("ERROR", message="missing callerId", status="ERROR", errorMessage=f"missing callerId: {e}")
+        return ErrorResponsePayload(error=f"missing callerId: {e}", code="UNAUTHORIZED")
     try:
-        action = event["service"]["action"] if event["service"] else sqs_action
+        action = event["service"]["action"] if event.get("service") else sqs_action
     except KeyError as e:
         log_audit("ERROR", message="missing action", status="ERROR", errorMessage=f"missing action: {e}")
         return ErrorResponsePayload(error=f"missing action: {e}", code="INVALID_REQUEST")
@@ -320,28 +320,28 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
         "caller_id": caller_id,
         "service": context.function_name,
         "event": action,
-        "requestId": sqs_request_id if sqs_request_id else context.aws_request_id,
+        "request_id": sqs_request_id if sqs_request_id else context.aws_request_id,
     }
     try:
         match action:
-            case "write_station":
+            case "writeStation":
                 station_instance: StationInstance = extract_full_station_instance_from_event(event)
                 insert_station_to_rds(station_instance)
                 log_audit("INFO", message="station written to RDS successfully", status="SUCCESS", **audit_base)
-                return SuccessResponsePayload(data={"stationId": station_instance["id"]})
-            case "change_station_state":
+                return SuccessResponsePayload(data={"station_id": station_instance["id"]})
+            case "changeStationState":
                 station_state = extract_station_state_from_event(event)
                 old_state = station_state["old_state"]
                 new_state = station_state["new_state"]
                 station_id = station_state["station_id"]
                 updated_at = change_station_state(station_id, old_state, new_state)
                 log_audit("INFO", message=f"{station_id} state changed from {old_state} to {new_state}", status="SUCCESS", **audit_base)
-                return SuccessResponsePayload(data={"updatedAt": updated_at.isoformat()})
-            case "delete_station":
+                return SuccessResponsePayload(data={"updated_at": updated_at.isoformat()})
+            case "deleteStation":
                 station_id = event["data"]["stationId"]
                 updated_at = delete_station(station_id)
                 log_audit("INFO", message=f"{station_id} deleted successfully", status="SUCCESS", **audit_base)
-                return SuccessResponsePayload(data={"deletedAt": updated_at.isoformat()})
+                return SuccessResponsePayload(data={"deleted_at": updated_at.isoformat()})
             case "update_station_ports_count":
                 station_id = sqs_station_id
                 ports_delta = sqs_ports_delta

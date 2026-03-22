@@ -78,6 +78,22 @@ def get_all_users() -> list[dict]:
         logger.error(f"Error getting all users: {e}")
         raise LambdaResponseError({"error": f"error getting all users: {e}", "code": "DATABASE_ERROR"})
 
+def get_email_or_id(data: dict) -> str:
+    result = None
+    email = data.get("email")
+    user_id = data.get("user_id")
+    if email and user_id:
+        logger.error(f"provide only one of email or user_id, not both: {data}")
+        raise LambdaResponseError({"error": "provide only one of email or user_id, not both", "code": "INVALID_REQUEST"})
+    if email:
+        result = email
+    if user_id:
+        result = user_id
+    if result is None:
+        logger.error(f"missing email or user_id in data: {data}")
+        raise LambdaResponseError({"error": "missing email or user_id in data", "code": "INVALID_REQUEST"})
+    return result
+
 def build_json(user_info: dict) -> dict:
     user_dict = dict(user_info)
     return datetime_to_json(user_dict)
@@ -85,10 +101,10 @@ def build_json(user_info: dict) -> dict:
 def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponsePayload:
     logger.info(f"Handler called with event: {event}")
     try:
-        caller_id = event["service"]["caller_id"]
+        caller_id = event["service"]["callerId"]
     except KeyError as e:
-        log_audit("ERROR", message="missing caller_id", status="ERROR", errorMessage=f"missing caller_id: {e}")
-        return ErrorResponsePayload(error=f"missing caller_id: {e}", code="UNAUTHORIZED")
+        log_audit("ERROR", message="missing callerId", status="ERROR", errorMessage=f"missing callerId: {e}")
+        return ErrorResponsePayload(error=f"missing callerId: {e}", code="UNAUTHORIZED")
     try:
         action = event["service"]["action"]
     except KeyError as e:
@@ -98,12 +114,12 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
         "caller_id": caller_id,
         "service": context.function_name,
         "event": action,
-        "requestId": context.aws_request_id,
+        "request_id": context.aws_request_id,
     }
     try:
         match action:
-            case "get_user_by_id":
-                user_id = event["data"]["user_id"]
+            case "getUserById":
+                user_id = get_email_or_id(event["data"])
                 user_info = get_user_info(user_id)
                 if not user_info:
                     log_audit("ERROR", message="user not found in Database", status="ERROR", errorMessage="user not found in RDS", **audit_base)
@@ -112,7 +128,7 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                 logger.info(f"result: {result}")
                 log_audit("INFO", message="user info fetched successfully", status="SUCCESS", **audit_base)
                 return SuccessResponsePayload(data=result)
-            case "get_all_users":
+            case "getAllUsers":
                 users_info = get_all_users()
                 if not users_info:
                     log_audit("ERROR", message="no users found in Database", status="ERROR", errorMessage="no users found in Database", **audit_base)

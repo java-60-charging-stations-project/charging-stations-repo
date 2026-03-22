@@ -1,5 +1,6 @@
 import os
 import boto3
+import math
 import psycopg2
 from typing import Any
 from psycopg2.extras import RealDictCursor
@@ -7,8 +8,16 @@ from datetime import datetime
 from utils.logger import logger, log_audit
 from utils.error_handlers import LambdaResponseError
 from data_types.contract_types import ErrorResponsePayload, SuccessResponsePayload
+from data_types.db_instance_types import RequestParameters
 
 _conn = None
+
+DEFAULT_PAGE_SIZE = 200
+STATIONS_SELECT = """
+    id, code, name, owner, city, address, email, site_technician, max_power_kw,
+    (ST_AsGeoJSON(location)::json) AS location,
+    ports, rate_plan, state, has_free_ports, created_at, updated_at
+"""
 
 def datetime_to_json(v: Any) -> Any:
     if isinstance(v, datetime):
@@ -56,40 +65,85 @@ def get_station_info(station_id: str) -> dict:
         raise LambdaResponseError({"error": f"Error getting connection: {e}", "code": "DATABASE_ERROR"})
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute("SELECT * FROM stations WHERE id = %s", (station_id,))
+            cur.execute(f"SELECT {STATIONS_SELECT.strip()} FROM stations WHERE id = %s", (station_id,))
             return cur.fetchone()
     except Exception as e:
         conn.rollback()
         logger.error(f"Error getting station info: {e}")
         raise LambdaResponseError({"error": f"Error getting station info: {e}", "code": "DATABASE_ERROR"})
 
-def get_all_stations() -> list[dict]:
+def _normalize_pagination(page: int | None, page_size: int | None) -> tuple[int, int]:
+    p = page if page is not None and page >= 1 else 1
+    ps = page_size if page_size is not None else DEFAULT_PAGE_SIZE
+    ps = max(min(ps, DEFAULT_PAGE_SIZE), 1)
+    return p, ps
+
+def get_request_parameters(meta_parameters: dict) -> RequestParameters:
+    page, page_size = _normalize_pagination(meta_parameters.get("page"), meta_parameters.get("pageSize"))
+    request_parameters: RequestParameters = {
+        "city": meta_parameters.get("city"),
+        "owner": meta_parameters.get("owner"),
+        "state": meta_parameters.get("state"),
+        "page": page,
+        "page_size": page_size,
+    }
+    return request_parameters
+
+def get_all_stations(parameters: RequestParameters) -> tuple[list[dict], int, int]:
     try:
         conn = get_connection()
     except Exception as e:
         logger.error(f"Error getting connection: {e}")
         raise LambdaResponseError({"error": f"Error getting connection: {e}", "code": "DATABASE_ERROR"})
+    offset = (parameters["page"] - 1) * parameters["page_size"]
+    conditions: list[str] = []
+    params: list[Any] = []
+    if parameters.get("city"):
+        conditions.append("city = %s")
+        params.append(parameters["city"])
+    if parameters.get("owner"):
+        conditions.append("owner = %s")
+        params.append(parameters["owner"])
+    if parameters.get("state"):
+        conditions.append("state = %s")
+        params.append(parameters["state"])
+    where_sql = " AND ".join(conditions) if conditions else "TRUE"
+    base_from = f"FROM stations WHERE {where_sql}"
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute("SELECT * FROM stations")
-            return cur.fetchall()
+            cur.execute(f"SELECT COUNT(*) AS c {base_from}", tuple(params))
+            total_items = int(cur.fetchone()["c"])
+            total_pages = math.ceil(total_items / parameters["page_size"])
+            cur.execute(
+                f"SELECT {STATIONS_SELECT.strip()} {base_from} ORDER BY created_at DESC LIMIT %s OFFSET %s", 
+                tuple(params) + (parameters["page_size"], offset),
+            )
+            rows = cur.fetchall()
+        return rows, total_items, total_pages
     except Exception as e:
         conn.rollback()
         logger.error(f"Error getting all stations: {e}")
         raise LambdaResponseError({"error": f"Error getting all stations: {e}", "code": "DATABASE_ERROR"})
 
+def build_meta_parameters(total_items: int, total_pages: int, parameters: RequestParameters) -> dict:
+    return {
+        "total_items": total_items,
+        "total_pages": total_pages,
+        "page": parameters["page"],
+        "page_size": parameters["page_size"],
+    }
+
 def build_json(station_info: dict) -> dict:
     station_dict = dict(station_info)
-    station_dict.pop("location", None)
     return datetime_to_json(station_dict)
 
 def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponsePayload:
     logger.info(f"Handler called with event: {event}")
     try:
-        caller_id = event["service"]["caller_id"]
+        caller_id = event["service"]["callerId"]
     except KeyError as e:
-        log_audit("ERROR", message="missing caller_id", status="ERROR", errorMessage=f"missing caller_id: {e}")
-        return ErrorResponsePayload(error=f"missing caller_id: {e}", code="UNAUTHORIZED")
+        log_audit("ERROR", message="missing callerId", status="ERROR", errorMessage=f"missing callerId: {e}")
+        return ErrorResponsePayload(error=f"missing callerId: {e}", code="UNAUTHORIZED")
     try:
         action = event["service"]["action"]
     except KeyError as e:
@@ -99,12 +153,12 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
         "caller_id": caller_id,
         "service": context.function_name,
         "event": action,
-        "requestId": context.aws_request_id,
+        "request_id": context.aws_request_id,
     }
     try:
         match action:
-            case "get_station_by_id":
-                    station_id = event["data"]["station_id"]
+            case "getStationById":
+                    station_id = event["data"]["stationId"]
                     station_info = get_station_info(station_id)
                     if not station_info:
                         log_audit("ERROR", message="station not found in Database", status="ERROR", errorMessage="station not found in Database", **audit_base)
@@ -113,15 +167,16 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                     logger.info(f"result: {result}")
                     log_audit("INFO", message="station info fetched successfully", status="SUCCESS", **audit_base)
                     return SuccessResponsePayload(data=result)
-            case "get_all_stations":
-                    stations_info = get_all_stations()
-                    if not stations_info:
-                        log_audit("ERROR", message="no stations found in Database", status="ERROR", errorMessage="no stations found in Database", **audit_base)
-                        return ErrorResponsePayload(error="no stations found in Database", code="NOT_FOUND")
+            case "getAllStations":
+                    meta_parameters = event.get("meta", {})
+                    request_parameters = get_request_parameters(meta_parameters)
+                    stations_info, total_items, total_pages = get_all_stations(request_parameters)
+                    meta_parameters = build_meta_parameters(total_items, total_pages, request_parameters)
+                    logger.info(f"meta parameters: {meta_parameters}")
                     log_audit("INFO", message="all stations fetched successfully", status="SUCCESS", **audit_base)
                     return_list = [build_json(station) for station in stations_info]
                     logger.info(f"return list: {return_list}")
-                    return SuccessResponsePayload(data=return_list)
+                    return SuccessResponsePayload(data=return_list, meta=meta_parameters)
             case _:
                 log_audit("ERROR", message=f"invalid action {action}", status="ERROR", errorMessage=f"invalid action {action}", **audit_base)
                 return ErrorResponsePayload(error=f"invalid action {action}", code="INVALID_REQUEST")

@@ -6,8 +6,7 @@ from typing import Any
 from utils.logger import logger, log_audit
 from utils.error_handlers import LambdaResponseError
 from data_types.db_instance_types import UserInstance
-
-USER_POOL_ID = os.environ.get("USER_POOL_ID", "")
+from utils.data_types.contract_types import SuccessResponsePayload, ErrorResponsePayload
 
 _conn = None
 
@@ -41,25 +40,6 @@ def get_connection() -> psycopg2.extensions.connection:
         )
     return _conn
 
-def extract_payload_from_event(event: dict) -> dict:
-    logger.info(f"Extracting payload from event")
-    try:
-        payload: dict = {
-            "action": event["action"],
-            "caller_id": event["caller_id"],
-            "user_id": event["user_id"],
-            "role": event["role"],
-            "user_pool_id": event["user_pool_id"],
-        }
-        logger.info(f"Payload extracted successfully: {payload}")
-        return payload
-    except KeyError as e:
-        logger.error(f"Missing key: {e}")
-        raise LambdaResponseError({"error": f"missing key: {e}", "code": "INVALID_REQUEST"})
-    except Exception as e:
-        logger.error(f"Unhandled error: {e}")
-        raise LambdaResponseError({"error": f"unhandled error: {e}", "code": "UNHANDLED_ERROR"})
-
 def is_admin_pre_sign_up(event: dict) -> bool:
     trigger = event.get("triggerSource", "")
     return trigger == "PreSignUp_AdminCreateUser"
@@ -74,7 +54,6 @@ def extract_user_instance_from_event(event: dict) -> UserInstance:
         logger.info(f"Extracting user instance")
         attrs = event['request']['userAttributes']
         email = attrs['email']
-        status = attrs['cognito:user_status'] if not console_created else "CONFIRMED"
         full_name = attrs['name'] if not console_created else "Console User"
         timestamp = datetime.now()
         if full_name.startswith("cognito:"):
@@ -85,7 +64,7 @@ def extract_user_instance_from_event(event: dict) -> UserInstance:
             "email": email,
             "phone": attrs.get('phone_number'),
             "role": "USER",
-            "status": "ACTIVE" if status == "CONFIRMED" else None,
+            "status": "CONFIRMED",
             "created_at": timestamp,
             "updated_at": timestamp,
         }
@@ -98,6 +77,36 @@ def extract_user_instance_from_event(event: dict) -> UserInstance:
         logger.error(f"Unhandled error: {e}")
         raise LambdaResponseError({"error": f"Unhandled error: {e}", "code": "UNHANDLED_ERROR"})
 
+def change_user_status(user_id: str, user_status: str) -> datetime:
+    try:
+        conn = get_connection()
+    except Exception as e:
+        logger.error(f"Error getting connection: {e}")
+        raise LambdaResponseError({"error": f"Error getting connection: {e}", "code": "DATABASE_ERROR"})
+    try:
+        updated_at = datetime.now()
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE users SET status = %s, updated_at = %s WHERE user_id = %s
+                """,
+                (user_status, updated_at, user_id),
+            )
+            conn.commit()
+        return updated_at
+    except psycopg2.IntegrityError as e:
+        conn.rollback()
+        logger.error(f"Constraint violation changing user status: {e}")
+        raise LambdaResponseError({"error": str(e), "code": "CONSTRAINT_VIOLATION"})
+    except psycopg2.DatabaseError as e:
+        conn.rollback()
+        logger.error(f"Database error changing user status: {e}")
+        raise LambdaResponseError({"error": str(e), "code": "DATABASE_ERROR"})
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Unhandled error changing user status: {e}")
+        raise LambdaResponseError({"error": f"Unhandled error changing user status: {e}", "code": "UNHANDLED_ERROR"})
+
 def insert_user_to_rds(user: UserInstance) -> None:
     try:
         conn = get_connection()
@@ -108,8 +117,8 @@ def insert_user_to_rds(user: UserInstance) -> None:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                INSERT INTO users (user_id, full_name, email, phone, role, status, created_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO users (user_id, full_name, email, phone, role, status, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
                     user["user_id"],
@@ -119,6 +128,7 @@ def insert_user_to_rds(user: UserInstance) -> None:
                     user["role"],
                     user["status"],
                     user["created_at"],
+                    user["updated_at"],
                 ),
             )
         conn.commit()
@@ -138,25 +148,63 @@ def insert_user_to_rds(user: UserInstance) -> None:
         logger.error(f"Unhandled error inserting user: {e}")
         raise LambdaResponseError({"error": f"unhandled error inserting user: {e}", "code": "UNHANDLED_ERROR"})
 
-def handler(event: dict, context: Any) -> dict:
+def handler(event: dict, context: Any) -> dict | SuccessResponsePayload | ErrorResponsePayload:
     logger.info(f"Handler called with event: {event}")
     audit_base = {
-        "caller_id": event.get("caller_id"),
         "service": context.function_name,
-        "event": "WRITE_USER_TO_RDS",
-        "requestId": context.aws_request_id,
-        "trigger": event.get("triggerSource"),
+        "request_id": context.aws_request_id,
     }
-    if is_user_pre_sign_up(event):
+    event_data = event.get("data")
+    caller = "user" if event_data else "cognito"
+    if caller == "cognito":
+        audit_base["caller_id"] = caller
+        audit_base["event"] = "WRITE_USER_TO_RDS"
+        audit_base["trigger"] = event.get("triggerSource")
+        if is_user_pre_sign_up(event):
+            return event
+        try:
+            user_instance: UserInstance = extract_user_instance_from_event(event)
+            insert_user_to_rds(user_instance)
+            log_audit("INFO", message="user written to RDS successfully", status="SUCCESS", **audit_base)
+        except LambdaResponseError as e:
+            log_audit("ERROR", message="error writing user to RDS", status="ERROR", errorMessage=e.response.get("error"), **audit_base)
+            raise
+        except Exception as e:
+            log_audit("ERROR", message="error writing user to RDS", status="ERROR", errorMessage=str(e), **audit_base)
+            raise
         return event
-    try:
-        user_instance: UserInstance = extract_user_instance_from_event(event)
-        insert_user_to_rds(user_instance)
-        log_audit("INFO", message="user written to RDS successfully", status="SUCCESS", **audit_base)
-    except LambdaResponseError as e:
-        log_audit("ERROR", message="error writing user to RDS", status="ERROR", errorMessage=e.response.get("error"), **audit_base)
-        raise
-    except Exception as e:
-        log_audit("ERROR", message="error writing user to RDS", status="ERROR", errorMessage=str(e), **audit_base)
-        raise
-    return event
+    elif caller == "user":
+        try:
+            caller_id = event["service"]["callerId"]
+        except KeyError as e:
+            log_audit("ERROR", message="missing callerId", status="ERROR", errorMessage=f"missing callerId: {e}", **audit_base)
+            return ErrorResponsePayload(error=f"missing callerId: {e}", code="UNAUTHORIZED")
+        try:
+            action = event["service"]["action"]
+        except KeyError as e:
+            log_audit("ERROR", message="missing action", status="ERROR", errorMessage=f"missing action: {e}", **audit_base)
+            return ErrorResponsePayload(error=f"missing action: {e}", code="INVALID_REQUEST")
+        audit_base["caller_id"] = caller_id
+        audit_base["event"] = action
+        audit_base["trigger"] = "user_request"
+        try:
+            match action:
+                case "changeUserStatus":
+                    user_status = event["data"]["user_status"]
+                    user_id = event["data"]["user_id"]
+                    change_user_status(user_id, user_status)
+                    log_audit("INFO", message="user status changed successfully", status="SUCCESS", **audit_base)
+                    return SuccessResponsePayload(data={"user_id": user_id})
+                case _:
+                    log_audit("ERROR", message="invalid action", status="ERROR", errorMessage=f"invalid action: {action}", **audit_base)
+                    return ErrorResponsePayload(error=f"invalid action: {action}", code="INVALID_REQUEST")
+        except KeyError as e:
+            log_audit("ERROR", message="missing data", status="ERROR", errorMessage=f"missing data: {e}", **audit_base)
+            return ErrorResponsePayload(error=f"missing data: {e}", code="INVALID_REQUEST")
+        except LambdaResponseError as e:
+            log_audit("ERROR", message="error changing user status", status="ERROR", errorMessage=e.response.get("error"), **audit_base)
+            return ErrorResponsePayload(error=e.response["error"], code=e.response["code"])
+        except Exception as e:
+            log_audit("ERROR", message="error changing user status", status="ERROR", errorMessage=str(e), **audit_base)
+            return ErrorResponsePayload(error=f"unhandled error changing user status: {e}", code="UNHANDLED_ERROR")
+    

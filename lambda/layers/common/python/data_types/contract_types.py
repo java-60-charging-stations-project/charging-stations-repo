@@ -6,7 +6,8 @@ ErrorsList = Literal["UNHANDLED_ERROR", "ALREADY_EXISTS", "NOT_FOUND", "UNAUTHOR
 
 class SuccessResponsePayload(TypedDict):
     data: dict | list
-
+    meta: Optional[dict]
+    
 class ErrorResponsePayload(TypedDict):
     error: str
     code: ErrorsList

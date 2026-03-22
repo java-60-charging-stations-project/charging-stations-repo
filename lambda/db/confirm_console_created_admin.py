@@ -66,11 +66,11 @@ def handler(event: dict, context: Any) -> dict:
         log_audit(
             "INFO",
             message="console created admin confirmed successfully",
-            userId=event.get("user_id"),
+            user_id=event.get("user_id"),
             service=context.function_name,
             event="CONFIRM_CONSOLE_CREATED_ADMIN",
             status="SUCCESS",
-            requestId=context.aws_request_id,
+            request_id=context.aws_request_id,
             trigger=event.get("trigger"),
         )
         return {
@@ -83,12 +83,12 @@ def handler(event: dict, context: Any) -> dict:
         log_audit(
             "ERROR",
             message="error confirming console created admin",
-            userId=event.get("user_id"),
+            user_id=event.get("user_id"),
             service=context.function_name,
             event="CONFIRM_CONSOLE_CREATED_ADMIN",
             status="ERROR",
             errorMessage=str(e),
-            requestId=context.aws_request_id,
+            request_id=context.aws_request_id,
             trigger=event.get("trigger"),
             )
         raise Exception(f"Invalid username or password: {e}")
@@ -96,12 +96,12 @@ def handler(event: dict, context: Any) -> dict:
         log_audit(
             "ERROR",
             message="unhandled error",
-            userId=event.get("user_id"),
+            user_id=event.get("user_id"),
             service=context.function_name,
             event="CONFIRM_CONSOLE_CREATED_ADMIN",
             status="ERROR",
             errorMessage=str(e),
-            requestId=context.aws_request_id,
+            request_id=context.aws_request_id,
             trigger=event.get("trigger"),
         )
         raise Exception(f"Unhandled error: {e}")

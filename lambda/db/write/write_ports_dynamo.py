@@ -50,7 +50,7 @@ def insert_station_ports(station_id: str, ports: list[dict]) -> list[str]:
         with table.batch_writer() as batch:
             for p in ports:
                 port_item = build_port_item(station_id, p)
-                created_port_keys.append(port_item["entityKey"])
+                created_port_keys.append(port_item["entity_key"])
                 batch.put_item(Item=port_item)
         return created_port_keys
     except Exception as e:
@@ -62,14 +62,14 @@ def build_port_item(station_id: str, port: dict) -> PortInstance:
         port_id = str(uuid.uuid4())
         timestamp = datetime.now().isoformat()
         port_item: PortInstance = {
-            "stationId": station_id,
+            "station_id": station_id,
             "code": port["code"],
-            "entityKey": f"PORT#{port_id}",
+            "entity_key": f"PORT#{port_id}",
             "state": "DISABLED",
             "power": Decimal(str(port["power"])),
-            "lastMeterKw": Decimal(str(port["lastMeterKw"])),
-            "createdAt": timestamp,
-            "updatedAt": timestamp,
+            "last_meter_kw": Decimal(str(port["lastMeterKw"])),
+            "created_at": timestamp,
+            "updated_at": timestamp,
         }
         logger.info(f"Port item built successfully: {port_item}")
         return port_item
@@ -95,8 +95,8 @@ def delete_station_ports(station_id: str, port_keys: list[str]) -> None:
             for port_key in port_keys:
                 batch.delete_item(
                     Key={
-                        "stationId": station_id,
-                        "entityKey": port_key,
+                        "station_id": station_id,
+                        "entity_key": port_key,
                     }
                 )
     except Exception as e:
@@ -111,10 +111,10 @@ def enqueue_station_ports_count_sync(station_id: str, ports_delta: int, caller_i
         return None
     body = {
         "action": "update_station_ports_count",
-        "stationId": station_id,
-        "portsDelta": ports_delta,
-        "callerId": caller_id,
-        "correlationId": request_id,
+        "station_id": station_id,
+        "ports_delta": ports_delta,
+        "caller_id": caller_id,
+        "correlation_id": request_id,
     }
     try:
         resp = get_sqs_client().send_message(QueueUrl=SYNC_RDS_QUEUE_URL, MessageBody=json.dumps(body))
@@ -130,7 +130,7 @@ def enqueue_station_ports_count_sync(station_id: str, ports_delta: int, caller_i
 def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponsePayload:
     logger.info(f"Handler called with event: {event}")
     try:
-        caller_id = event["service"]["caller_id"]
+        caller_id = event["service"]["callerId"]
     except KeyError as e:
         log_audit("ERROR", message="missing caller_id", status="ERROR", errorMessage=f"missing caller_id: {e}")
         return ErrorResponsePayload(error=f"missing caller_id: {e}", code="UNAUTHORIZED")
@@ -143,7 +143,7 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
         "caller_id": caller_id,
         "service": context.function_name,
         "event": action,
-        "requestId": context.aws_request_id,
+        "request_id": context.aws_request_id,
     }
     try:
         match action:
@@ -153,7 +153,7 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                 created_port_keys = insert_station_ports(station_id, ports)
                 log_audit("INFO", message="station ports inserted successfully", status="SUCCESS", **audit_base)
                 enqueue_station_ports_count_sync(station_id, len(ports), caller_id, context.aws_request_id)
-                return SuccessResponsePayload(data={"createdPortKeys": created_port_keys})
+                return SuccessResponsePayload(data={"created_port_keys": created_port_keys})
             case _:
                 log_audit("ERROR", message=f"invalid action {action}", status="ERROR", errorMessage=f"invalid action {action}", **audit_base)
                 return ErrorResponsePayload(error=f"invalid action {action}", code="INVALID_REQUEST")

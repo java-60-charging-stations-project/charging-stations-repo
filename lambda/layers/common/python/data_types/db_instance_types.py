@@ -26,12 +26,12 @@ class StationInstance(TypedDict):
     address: str
     email: Optional[str]
     phone: Optional[str]
-    siteTechnician: Optional[str]
-    maxPowerKw: Optional[float]
+    site_technician: Optional[str]
+    max_power_kw: Optional[float]
     longitude: Optional[float]
     latitude: Optional[float]
     ports: Optional[int]
-    ratePlan: Optional[RatePlan]
+    rate_plan: Optional[RatePlan]
     state: Literal["ACTIVE", "INACTIVE", "OUT_OF_SERVICE", "DELETED"]
     created_at: datetime
     updated_at: Optional[datetime]
@@ -45,3 +45,10 @@ class PortInstance(TypedDict):
     last_meter_kw: float
     created_at: datetime
     updated_at: Optional[datetime]
+
+class RequestParameters(TypedDict):
+    city: Optional[str]
+    owner: Optional[str]
+    state: Optional[Literal["ACTIVE", "INACTIVE", "OUT_OF_SERVICE", "DELETED"]]
+    page: Optional[int]
+    page_size: Optional[int]

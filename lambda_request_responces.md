@@ -2,6 +2,17 @@
 
 This document describes the JSON **shape** of the payloads sent to (and returned by) the Lambda handlers.
 
+## Naming convention (frontend / backend ↔ Lambdas)
+
+| Direction | JSON keys |
+|-----------|-----------|
+| **Requests** (from frontend or backend into Lambdas) | **camelCase** (e.g. `callerId`, `stationId`, `userId`, `siteTechnician`, `ratePlan`) |
+| **Successful responses** (`data`, and nested objects from RDS/Dynamo) | **snake_case** (e.g. `station_id`, `created_at`, `rate_plan`, `max_power_kw`) |
+
+Nested JSON stored as-is in the DB (e.g. inside `rate_plan`) may still contain camelCase **keys** inside the blob depending on how it was written; **top-level response fields** follow **snake_case** as returned by the handlers.
+
+**Internal** payloads (e.g. **SQS** message bodies between Lambdas) may use **snake_case** keys and are not part of the frontend HTTP contract.
+
 ## Global Success Response
 
 Most Lambdas return this shape on success:
@@ -21,9 +32,11 @@ On error, Lambdas return:
 ```json
 {
   "error": "Human readable message",
-  "code": "UNHANDLED_ERROR | ALREADY_EXISTS | NOT_FOUND | UNAUTHORIZED | INVALID_REQUEST | CONSTRAINT_VIOLATION | DATABASE_ERROR | INVALID_STATE"
+  "code": "UNHANDLED_ERROR | ALREADY_EXISTS | NOT_FOUND | UNAUTHORIZED | INVALID_REQUEST | CONSTRAINT_VIOLATION | DATABASE_ERROR | INVALID_STATE | QUEUE_ERROR"
 }
 ```
+
+`QUEUE_ERROR` is returned when a **post-write** step fails (e.g. enqueueing the **SQS** message that syncs port counts to RDS from `charging-stations-write-station-ports-dynamo`).
 
 ## Users - `charging-stations-get-user-info`
 
@@ -33,7 +46,7 @@ Request:
 
 ```json
 {
-  "service": { "action": "get_all_users", "caller_id": "string" }
+  "service": { "action": "getAllUsers", "callerId": "string" }
 }
 ```
 
@@ -72,11 +85,11 @@ Request:
 ```json
 {
   "service": {
-    "action": "get_user_by_id",
-    "caller_id": "string"
+    "action": "getUserById",
+    "callerId": "string"
   },
   "data": {
-    "user_id": "string"
+    "userId": "string"
   }
 }
 ```
@@ -109,6 +122,8 @@ Response (error):
 
 ## Stations (RDS) - `charging-stations-get-station-info`
 
+**Read responses (`getAllStations`, `getStationById`):** objects follow **snake_case** (PostgreSQL column names). `location` is returned as GeoJSON.
+
 ### Write station (RDS) - `charging-stations-write-station-rds`
 
 This Lambda is **action-based**; it expects `event.service.action`.
@@ -119,7 +134,7 @@ Request:
 
 ```json
 {
-  "service": { "action": "write_station", "caller_id": "string" },
+  "service": { "action": "writeStation", "callerId": "string" },
   "data": {
     "code": "string",
     "name": "string",
@@ -147,7 +162,7 @@ Response (success):
 
 ```json
 {
-  "data": { "stationId": "station-uuid" }
+  "data": { "station_id": "station-uuid" }
 }
 ```
 
@@ -162,11 +177,20 @@ Response (error):
 
 ### Get all stations
 
+Optional filters and pagination are passed in **`meta`** (camelCase keys).
+
 Request:
 
 ```json
 {
-  "service": { "action": "get_all_stations", "caller_id": "string" }
+  "service": { "action": "getAllStations", "callerId": "string" },
+  "meta": {
+    "city": "string|null",
+    "owner": "string|null",
+    "state": "ACTIVE|INACTIVE|OUT_OF_SERVICE|DELETED",
+    "page": 1,
+    "pageSize": 20
+  }
 }
 ```
 
@@ -183,22 +207,32 @@ Response (success):
       "city": "string",
       "address": "string",
       "email": "string|null",
-      "siteTechnician": "string|null",
-      "maxPowerKw": 0.0,
+      "site_technician": "string|null",
+      "max_power_kw": 0.0,
       "ports": 0,
-      "ratePlan": {
+      "rate_plan": {
         "currencyCode": "string",
         "currencyName": "string",
         "peakRate": 0.0,
         "offPeakRate": 0.0
       },
       "state": "ACTIVE|INACTIVE|OUT_OF_SERVICE|DELETED",
+      "has_free_ports": true,
+      "location": { "type": "Point", "coordinates": [34.7852, 32.0933] },
       "created_at": "ISO-8601-string",
       "updated_at": "ISO-8601-string"
     }
-  ]
+  ],
+  "meta": {
+    "total_items": 100,
+    "total_pages": 5,
+    "page": 1,
+    "page_size": 20
+  }
 }
 ```
+
+`meta` shape matches your handler when present; omit `meta` if your stack returns a plain list only.
 
 Response (error):
 
@@ -216,11 +250,11 @@ Request:
 ```json
 {
   "service": {
-    "action": "get_station_by_id",
-    "caller_id": "string"
+    "action": "getStationById",
+    "callerId": "string"
   },
   "data": {
-    "station_id": "station-uuid"
+    "stationId": "station-uuid"
   }
 }
 ```
@@ -237,19 +271,20 @@ Response (success):
     "city": "string",
     "address": "string",
     "email": "string|null",
-    "siteTechnician": "string|null",
-    "maxPowerKw": 0.0,
+    "site_technician": "string|null",
+    "max_power_kw": 0.0,
     "ports": 0,
-    "ratePlan": {
+    "rate_plan": {
       "currencyCode": "string",
       "currencyName": "string",
       "peakRate": 0.0,
       "offPeakRate": 0.0
     },
     "state": "ACTIVE|INACTIVE|OUT_OF_SERVICE|DELETED",
-    "hasFreePorts" : False,
-    "createdAt": "ISO-8601-string",
-    "updatedAt": "ISO-8601-string"
+    "has_free_ports": false,
+    "location": { "type": "Point", "coordinates": [34.7854, 32.0946] },
+    "created_at": "ISO-8601-string",
+    "updated_at": "ISO-8601-string"
   }
 }
 ```
@@ -269,7 +304,7 @@ Request:
 
 ```json
 {
-  "service": { "action": "change_station_state", "caller_id": "string" },
+  "service": { "action": "changeStationState", "callerId": "string" },
   "data": {
     "stationId": "station-uuid",
     "oldState": "ACTIVE|INACTIVE|OUT_OF_SERVICE",
@@ -282,7 +317,7 @@ Response (success):
 
 ```json
 {
-  "data": { "updatedAt": "ISO-8601-string" }
+  "data": { "updated_at": "ISO-8601-string" }
 }
 ```
 
@@ -301,7 +336,7 @@ Request:
 
 ```json
 {
-  "service": { "action": "delete_station", "caller_id": "string" },
+  "service": { "action": "deleteStation", "callerId": "string" },
   "data": { "stationId": "station-uuid" }
 }
 ```
@@ -310,7 +345,7 @@ Response (success):
 
 ```json
 {
-  "data": { "deletedAt": "ISO-8601-string" }
+  "data": { "deleted_at": "ISO-8601-string" }
 }
 ```
 
@@ -327,21 +362,23 @@ Response (error):
 
 ### Insert station ports
 
-Your DynamoDB writer currently uses:
+**Table:** `STATIONS_DYNAMO_TABLE` (e.g. `charging-stations-station-entities` from the SAM stack).
 
-- `PK`: `station_id`
-- `SK` (sort key): `entity_key`
-- each port item is written with `entity_key = "PORT#<generated-port_id-uuid>"`
+Key design:
 
-It also stores the frontend’s unique port code inside the item as attribute `code`.
+- **Partition key:** `station_id`
+- **Sort key:** `entity_key`
+- Each port row uses `entity_key = "PORT#<uuid>"` (full sort-key value is returned in the success payload).
 
-For newly created ports state is always `"DISABLED"`
+The item also stores the frontend port identifier as attribute `code`. New ports are created with `state: "DISABLED"`.
+
+After a successful Dynamo write, the Lambda **enqueues an SQS message** (when `SYNC_RDS_QUEUE_URL` is set) so a consumer can run `UPDATE stations SET ports = ports + …` in RDS. The message body is JSON with fields such as `action`, `station_id`, `ports_delta`, `caller_id`, `correlation_id`.
 
 Request:
 
 ```json
 {
-  "service": { "action": "insert_station_ports", "caller_id": "string" },
+  "service": { "action": "insertStationPorts", "callerId": "string" },
   "data": {
     "stationId": "station-uuid",
     "ports": [
@@ -359,15 +396,21 @@ Response (success):
 
 ```json
 {
-  "data": ["generated-port-key", "generated-port-key"]
+  "data": {
+    "created_port_keys": ["PORT#<uuid>", "PORT#<uuid>"]
+  }
 }
 ```
+
+`created_port_keys` values are the DynamoDB **sort key** strings (`entity_key`), suitable for deletes or follow-up APIs.
 
 Response (error):
 
 ```json
 {
   "error": "Human readable message",
-  "code": "INVALID_REQUEST|DATABASE_ERROR|UNHANDLED_ERROR|..."
+  "code": "INVALID_REQUEST|DATABASE_ERROR|QUEUE_ERROR|UNHANDLED_ERROR|..."
 }
 ```
+
+`QUEUE_ERROR` means Dynamo writes succeeded but **SQS enqueue** for the RDS port-count sync failed.

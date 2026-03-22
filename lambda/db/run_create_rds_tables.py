@@ -13,7 +13,7 @@ CREATE_RDS_TABLES_FUNCTION_NAME = os.getenv("CREATE_RDS_TABLES_FUNCTION_NAME", "
 def main():
     client = boto3.client("lambda", region_name=AWS_REGION)
     payload = {
-        "action": "get_all_users",
+        "action": "create_tables",
         "caller_id": "script_run",
     }
     resp = client.invoke(

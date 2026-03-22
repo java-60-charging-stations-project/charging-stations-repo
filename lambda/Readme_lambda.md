@@ -1,6 +1,13 @@
 # Charging Stations – Lambda Backends
 
-Lambda functions for the Charging Stations Control System. They are invoked directly (e.g. from Node.js or run scripts) or by AWS (Cognito PostConfirmation and PostAuthentication triggers). Callers get a synchronous response; there is no SNS subscription.
+Lambda functions for the Charging Stations Control System. They are invoked directly (e.g. from Node.js or run scripts) or by AWS (Cognito triggers, SQS). Callers get a synchronous response unless noted.
+
+### JSON naming (HTTP / backend → Lambda)
+
+- **Requests** from frontend or backend: use **camelCase** keys (e.g. `callerId`, `stationId`, `userId`, `siteTechnician`, `ratePlan`).
+- **Successful Lambda responses** (`data`): **snake_case** keys matching RDS/Dynamo (e.g. `station_id`, `created_at`, `rate_plan`, `created_port_keys`).
+
+Full examples: **`lambda_request_responces.md`** at repo root.
 
 ---
 
@@ -25,7 +32,7 @@ Lambda functions for the Charging Stations Control System. They are invoked dire
 - **AWS Secrets Manager** – a secret with at least `username` and `password`. The template uses **DBSecretArn** only to **initialise the RDS instance** at create time (CloudFormation resolves it). Lambdas use **IAM database authentication** at runtime (no secret at runtime).
 - **VPC and private subnets** – template parameters: **VpcId**, **PrivateSubnet1Id**, **PrivateSubnet2Id** (same subnets for RDS, Lambdas, and VPC endpoints), **DynamoDBRouteTable1Id** (route table IDs from default **VPC** `rtb-...`).
 - **pgAdmin** (or any PostgreSQL client) – to connect to RDS once to run `GRANT rds_iam` for the DB user (one-time setup).
-- **Pyhon packages** - `pip install boto3 mypy` - boto3 for lambda invocations from IDE, myoy optional for type checking
+- **Python packages** – `pip install boto3 mypy` – `boto3` for Lambda invocations from the IDE; `mypy` optional for type checking.
 
 ### Single stack (Cognito, RDS, Lambdas, Health)
 
@@ -38,10 +45,10 @@ sam deploy --guided   # first time; then sam deploy
 
 Use `--use-container` so dependencies (e.g. psycopg2 on Python 3.12) build correctly. On first deploy, set VPC, subnets, DB secret ARN, invoker account ID(s); save to `samconfig.toml` for later runs.
 
-The template provisions: **Cognito** (User Pool, client, groups ADMIN/USER/SUPPORT), **RDS** PostgreSQL (IAM auth, private), **VPC endpoints** (RDS API for auth tokens, Cognito IdP so the write Lambda can add users to groups from inside the VPC without NAT), **Lambdas** (WriteUserRDS, GetUserInfo, CreateRDSTables, ConfirmConsoleCreatedAdmin, Health), and permissions.
+The template provisions: **Cognito** (User Pool, client, groups ADMIN/USER/SUPPORT), **RDS** PostgreSQL (IAM auth, private), **VPC endpoints** (RDS API for auth tokens, Cognito IdP, **SQS** so VPC Lambdas can enqueue without NAT, **DynamoDB** gateway for private-subnet access), **SQS** (station ports → RDS sync queue + DLQ), **Lambdas** (WriteUserRDS, GetUserInfo, CreateRDSTables, ConfirmConsoleCreatedAdmin, Health, station read/write, ports writer), and permissions.
 
 1. In the RDS console, temporarily:
-   - On the **Databases** tab of **Aurora and RDS** page select desired **db**, in Modify - Connectivity - Additional configuration set **Publicly accessible = Yes** apply the change and waid for **db** to modify.
+   - On the **Databases** tab of **Aurora and RDS** page select desired **db**, in Modify - Connectivity - Additional configuration set **Publicly accessible = Yes**, apply the change, and wait for **db** to modify.
    - In **db** - Security group rules find the security group attached to the DB and add an inbound rule:
      - Type: **PostgreSQL** (or **TCP** port `5432`)
      - Source: `<your public IP>/32`.
@@ -102,51 +109,46 @@ python -m tests.integration.routes.health_invoker <account_id>
 
 ### DB stack – functions
 
-The template provisions **RDS** (PostgreSQL, IAM auth), **VPC endpoints** (RDS API for `generate_db_auth_token`, **DynamoDB VPC gateway endpoint** so private subnets can access DynamoDB (if no NAT is available). DB Lambdas run in the VPC and use IAM database authentication (no Secrets Manager at runtime).
+The template provisions **RDS** (PostgreSQL, IAM auth), **VPC endpoints** (RDS API for `generate_db_auth_token`, **DynamoDB gateway**, **SQS interface** for `SendMessage` from VPC without NAT). DB Lambdas run in the VPC and use IAM database authentication (no Secrets Manager at runtime).
 
 | Function | Purpose | Invoker |
 |----------|---------|--------|
 | **charging-stations-create-rds-tables** | Create RDS tables (e.g. `users`). | Script or cross-account. |
 | **charging-stations-write-user-rds** | Write user to RDS and add to Cognito group. | Cognito (PostConfirmation + PostAuthentication). |
-| **charging-stations-get-user-info** | Return user by `user_id` from RDS. | Backend or cross-account. |
+| **charging-stations-get-user-info** | Users from RDS (list, by id, by email per actions). | Backend or cross-account. |
 | **charging-stations-confirm-console-created-admin** | Cognito auth (InitiateAuth, NEW_PASSWORD_REQUIRED with `name`). | Script or backend. |
-| **charging-stations-write-station-rds** | Write station to RDS; change station state; delete (soft) station. | Admin (write/delete/state) or cross-account. |
+| **charging-stations-write-station-rds** | Write station to RDS; change state; delete (soft); update port count (incl. from **SQS**). | Admin, cross-account, or SQS trigger. |
 | **charging-stations-get-station-info** | Read station(s) from RDS. | Backend or cross-account. |
-| **charging-stations-write-station-ports-dynamo** | Write station ports into DynamoDB (single-table design; ports today, sessions later). | Support (ports). |
+| **charging-stations-write-station-ports-dynamo** | Insert ports in DynamoDB; enqueue **SQS** to sync `ports` in RDS (when `SYNC_RDS_QUEUE_URL` is set). | Support / backend. |
 
-**WriteUserRDS** – Triggered by Cognito PostConfirmation and PostAuthentication. Inserts the user into RDS (from `request.userAttributes`: sub, email, name, etc.) and calls Cognito `AdminAddUserToGroup` (role **USER** by default, **ADMIN** when `triggerSource` is PostAuthentication - for console-created user). **full_name** - if missing or Cognito sends the placeholder `cognito:default_val`, it is stored as **"Console User"**. Must return the same event to Cognito.
+**WriteUserRDS** – Cognito triggers (e.g. PostConfirmation) **or** direct invoke with `service` + `data` (e.g. `changeUserStatus`). For Cognito: inserts the user into RDS from `request.userAttributes` and returns the **same event** back. For API invokes: `callerId` in `service`. **full_name**: if missing or Cognito sends `cognito:default_val`, stored as **"Console User"**.
 
 **ConfirmConsoleCreatedAdmin** – For first login (NEW_PASSWORD_REQUIRED), the Lambda sends `userAttributes.name` in the challenge response (default **"Console User"**) because console-created user by default does not have `name`. 
 
-**WriteStationRDS** – Action-based single handler:
-- `write_station`: creates a station row in RDS. Payload fields come from `event["data"]` (e.g. `code`, `name`, `owner`, `city`, `address`, `siteTechnician`, `ratePlan`, optional `email`, `phone`, `state`, `maxPowerKw`, `ports`, `location`).
-- `change_station_state`: payload fields `stationId`, `oldState`, `newState`. Updates only when current state matches `oldState`.
-- `delete_station`: payload `data.stationId`. Soft-deletes by setting state to `DELETED` when previous state is `ACTIVE`, `INACTIVE` or `OUT_OF_SERVICE`.
+**WriteStationRDS** – Action-based single handler (`callerId` in `service`; camelCase in `data`):
+- `write_station`: creates a station row. `data`: `code`, `name`, `owner`, `city`, `address`, `siteTechnician`, `ratePlan`, optional `email`, `phone`, `state`, `maxPowerKw`, `ports`, `location` (`longitude`/`latitude`).
+- `change_station_state`: `stationId`, `oldState`, `newState`. Updates only when current state matches `oldState`.
+- `delete_station`: `data.stationId`. Soft-delete when state is `ACTIVE`, `INACTIVE`, or `OUT_OF_SERVICE`.
+- **SQS**: messages (e.g. port-count sync) are handled separately; body uses snake_case fields expected by the consumer.
 
-**GetStationInfo** – Action-based single handler:
-- `get_station_by_id`: payload `data.station_id`.
-- `get_all_stations`: no extra payload required.
+**GetStationInfo** – Action-based (`callerId` in `service`):
+- `get_station_by_id`: `data.stationId`.
+- `get_all_stations`: optional `meta` — `city`, `owner`, `state`, `page`, `pageSize`. Response `data` is a list of station objects (**snake_case**); optional **`meta`** with totals/pages when implemented.
 
-**WriteStationPortsDynamo** – Support writes station ports:
-- `insert_station_ports`: payload `data.stationId` and `data.ports` (array of `{ status, power, lastMeterKw }`).
-- Ports are stored in DynamoDB using the single-table key pattern `station_id` (PK) + `entity_key` (SK), where port items use `entity_key = "PORT#<port_id>"` (sessions can be added later as `SESSION#...`). Make sure the writer sets `entity_key` when inserting port items.
+**WriteStationPortsDynamo** – `insert_station_ports`: `data.stationId`, `data.ports` (array of `code`, `power`, `lastMeterKw`). Response `data.created_port_keys` (**snake_case**), values are Dynamo `entity_key` strings (`PORT#...`). Enqueues SQS for RDS `ports` update when configured.
 
 
 ### Request/response (plain JSON)
 
+See **`lambda_request_responces.md`** for full shapes. Summary:
+
 - **CreateRDSTables** – Payload optional (e.g. `{"trigger": "script_run"}`). Returns handler result.
-- **WriteUserRDS** – Event from Cognito. Returns the same event.
-- **GetUserInfo** – Payload: `{"user_id": "<uuid>"}`. Response: `{"userId", "username", "email", "phone", "role", "status", "createdAt", "updatedAt"}` or `{"error": "..."}`.
-- **ConfirmConsoleCreatedAdmin** – Payload: `{"username", "password", "new_password", "name"}` (`new_password` when NEW_PASSWORD_REQUIRED; `name` optional, default "Console User"). Response: `{"message", "accessToken", "idToken", "refreshToken"}` or exception.
-- **WriteStationRDS** (`charging-stations-write-station-rds`) – action-based:
-  - `write_station`: returns `{"stationId": "<str>"}` on success
-  - `change_station_state`: returns `{"updatedAt": "<iso datetime>"}` on success
-  - `delete_station`: returns `{"deletedAt": "<iso datetime>"}` on success
-- **GetStationInfo** (`charging-stations-get-station-info`) – action-based:
-  - `get_station_by_id`: returns station record(s) with timestamps converted to JSON (ISO strings)
-  - `get_all_stations`: returns list of stations
-- **WriteStationPortsDynamo** (`charging-stations-write-station-ports-dynamo`) – action-based:
-  - `insert_station_ports`: returns array of created port ids
+- **WriteUserRDS** – Cognito: returns the same event. API: `service` + `data` (e.g. `change_user_status`).
+- **GetUserInfo** – `service.callerId`, `service.action`, `data` per action (e.g. `userId` or `email`, not both). Success `data`: **snake_case** user fields from RDS.
+- **ConfirmConsoleCreatedAdmin** – Payload: `username`, `password`, `new_password`, `name` (optional). Response tokens / message or error.
+- **WriteStationRDS** – Success `data` uses **snake_case**: `station_id`, `updated_at`, `deleted_at` (ISO strings where applicable).
+- **GetStationInfo** – Station objects in **snake_case**; `location` as GeoJSON when selected.
+- **WriteStationPortsDynamo** – `insert_station_ports`: success `data.created_port_keys` (list of `PORT#...` strings). Possible **`QUEUE_ERROR`** if SQS enqueue fails after Dynamo write.
 
 ### Run scripts
 
@@ -174,7 +176,7 @@ From **`lambda`** (with boto3 and IAM allowing `lambda:InvokeFunction` on the ta
 python -m tests.integration.routes.health_invoker <invoker account_id>
 ```
 
-**GetUserInfo** – requires a real `user_id` in RDS; asserts `StatusCode == 200` and `response_json['data']['user_id'] == user_id`:
+**GetUserInfo** – requires a real user id in RDS; asserts success and **snake_case** fields in `data` (e.g. `user_id`):
 
 ```bash
 python -m tests.integration.read.get_user_info_lambda_invoker <user_id>
