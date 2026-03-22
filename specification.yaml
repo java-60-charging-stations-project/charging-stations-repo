@@ -1140,12 +1140,6 @@ paths:
           description: User identifier
           schema:
             type: string
-        - name: includeGroups
-          in: query
-          required: false
-          description: Include Cognito group names in the response
-          schema:
-            type: boolean
       responses:
         '200':
           description: User details
@@ -2057,6 +2051,7 @@ components:
         - lastModifiedDate
         - enabled
         - status
+        - role
       properties:
         userId:
           type: string
@@ -2076,10 +2071,9 @@ components:
           type: boolean
         status:
           type: string
-        groups:
-          type: array
-          items:
-            type: string
+        role:
+          type: string
+          enum: [ADMIN, USER, SUPPORT]
 
     AdminUserDetailsSingleResponse:
       type: object

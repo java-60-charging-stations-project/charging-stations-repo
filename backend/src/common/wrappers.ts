@@ -11,10 +11,7 @@ export function wrapLambdaRequest<T, M = unknown>(
     meta?: M
 ): LambdaRequest<T, M> {
     return {
-        service: {
-            action,
-            caller_id: callerId,
-        },
+        service: { action, callerId},
         data,
         ...(meta !== undefined ? { meta } : {}),
     };

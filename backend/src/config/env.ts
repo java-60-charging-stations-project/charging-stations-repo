@@ -21,7 +21,7 @@ export const env = {
   // auth
   authDisabled: readBool('AUTH_DISABLED', false),
 
-  // users — reads (get_user_by_id, get_all_users) → `charging-stations-get-user-info` only
+  // users — reads (getUserById, getAllUsers) → `charging-stations-get-user-info` only
   userInfoLambdaFunctionName: String(
     process.env.USER_INFO_LAMBDA_FUNCTION_NAME ??
     'arn:aws:lambda:il-central-1:852215679994:function:charging-stations-get-user-info'

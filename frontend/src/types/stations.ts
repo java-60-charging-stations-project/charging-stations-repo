@@ -36,6 +36,8 @@ export interface AdminCreateStationRequest {
     owner: string;
     city: string;
     address: string;
+    location: Location;
+    maxPowerKw: number;
     ratePlan: RatePlan;
     siteTechnician: string | null;
     phone: string | null;

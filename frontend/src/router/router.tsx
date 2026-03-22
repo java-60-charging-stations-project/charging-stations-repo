@@ -65,6 +65,7 @@ const router = createBrowserRouter([
                             { path: "users/:userId", element: <AdminUserEditPage /> },
                             { path: "stations", element: <AdminStationsPage /> },
                             { path: "stations/create", element: <StationEditPage /> },
+                            { path: "stations/create/:stationId", element: <StationEditPage /> },
                         ]
                     },
                 ]

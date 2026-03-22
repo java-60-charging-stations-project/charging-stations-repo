@@ -80,22 +80,6 @@ export class StationsController {
     res.status(201).json({ code: 201, data: station });
   };
 
-  updateStatus = async (req: Request, res: Response) => {
-    const stationId = idSchema.parse(req.params.stationId);
-    const { status: nextStatus } = updateStatusSchema.parse(req.body);
-
-    const callerId = req.user?.sub ?? '';
-    const station = await this.service.getById(stationId, callerId);
-    if (!station) {
-      return res.status(404).json({ code: 404, error: { message: 'Station not found' } });
-    }
-
-    const groups = req.user?.groups ?? [];
-
-    const updated = await this.service.updateStatus(stationId, nextStatus, callerId, groups);
-    res.json({ code: 200, data: updated });
-  };
-
   updateStationState = async (req: Request, res: Response) => {
     const stationId = idSchema.parse(req.params.stationId);
     const { oldState, newState } = updateStationStateSchema.parse(req.body);

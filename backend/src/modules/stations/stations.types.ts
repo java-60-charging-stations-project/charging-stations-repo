@@ -33,6 +33,12 @@ export interface StationBase {
   ratePlan?: RatePlan;
   createdAt: string;
   updatedAt: string;
+  hasFreePorts?: boolean;
+}
+
+export interface LambdaLocation {
+  type: string;
+  coordinates: [number, number];
 }
 
 /** Raw station shape as returned by the Lambda (snake_case / lowercase keys) */
@@ -45,17 +51,19 @@ export interface LambdaStation {
   address: string;
   phone?: string | null;
   email: string | null;
-  sitetechnician?: string | null;
+  site_technician?: string | null;
   siteTechnician?: string | null;
-  maxpowerkw?: number | null;
+  max_power_kw?: number | null;
   maxPowerKw?: number | null;
   ports?: number;
   state?: StationState;
   status?: StationState;
-  rateplan?: RatePlan | null;
+  rate_plan?: RatePlan | null;
   ratePlan?: RatePlan | null;
   created_at: string;
   updated_at: string;
+  location?: LambdaLocation;
+  has_free_ports?: boolean;
 }
 
 export function mapLambdaStation(raw: LambdaStation): StationBase {
@@ -68,13 +76,18 @@ export function mapLambdaStation(raw: LambdaStation): StationBase {
     address: raw.address,
     phone: raw.phone ?? null,
     email: raw.email,
-    siteTechnician: raw.siteTechnician ?? raw.sitetechnician ?? null,
-    maxPowerKw: raw.maxPowerKw ?? raw.maxpowerkw ?? null,
+    siteTechnician: raw.siteTechnician ?? raw.site_technician ?? null,
+    maxPowerKw: raw.maxPowerKw ?? raw.max_power_kw ?? null,
     ports: raw.ports ?? 0,
     state: raw.state ?? raw.status ?? 'INACTIVE',
-    ratePlan: raw.ratePlan ?? raw.rateplan ?? undefined,
+    ratePlan: raw.ratePlan ?? raw.rate_plan ?? undefined,
     createdAt: raw.created_at,
     updatedAt: raw.updated_at,
+    location: raw.location ? {
+      latitude: raw.location.coordinates[1],
+      longitude: raw.location.coordinates[0],
+    } : undefined,
+    hasFreePorts: raw.has_free_ports,
   };
 }
 
@@ -125,14 +138,40 @@ export interface AdminCreateStationResponse {
   stationId: string;
 }
 
+export interface LambdaAdminCreateStationResponse {
+  station_id: string;
+}
+
+export function mapLambdaAdminCreateStationResponse(raw: LambdaAdminCreateStationResponse): AdminCreateStationResponse {
+  return {
+    stationId: raw.station_id,
+  };
+}
+
 /** Response for PATCH /admin/stations/{stationId}/state */
 export interface AdminUpdateStationStateResponse {
   updatedAt: string;
 }
 
+export interface LambdaAdminUpdateStationStateResponse {
+  updated_at: string;
+}
+
+export function mapLambdaAdminUpdateStationStateResponse(raw: LambdaAdminUpdateStationStateResponse): AdminUpdateStationStateResponse {
+  return {
+    updatedAt: raw.updated_at,
+  };
+}
+
 /** Response for DELETE /admin/stations/{stationId} */
 export interface AdminDeleteStationResponse {
   deletedAt: string;
+}
+
+export interface AdminUpdateStationStateRequest {
+  stationId: string;
+  oldState: StationState;
+  newState: StationState;
 }
 
 export interface StationsService {
@@ -141,14 +180,7 @@ export interface StationsService {
   getById(stationId: string, callerId: string): Promise<StationBase>;
   
   create(payload: AdminCreateStationRequest, callerId: string): Promise<AdminCreateStationResponse>;
-  
-  updateStatus(
-    stationId: string,
-    status: StationState,
-    callerId: string,
-    callerGroups: string[]
-  ): Promise<StationBase>;
-  
+    
   updateStationState(
     stationId: string,
     oldState: StationState,

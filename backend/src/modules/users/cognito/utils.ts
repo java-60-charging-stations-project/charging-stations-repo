@@ -51,7 +51,7 @@ export function unpackListUsersResponse(cognitoResponse: ListUsersResponse): Cog
 export function getUserInfoFromCognitoUser(cognitoUser: CognitoUser): UserInfo {
     return {
         userId: cognitoUser.userId,
-        username: cognitoUser.email,
+        username: cognitoUser.name,
         email: cognitoUser.email,
         phone: getAttributeValue(cognitoUser.attributes, 'phone') ?? "0123456789",
         role: "USER",
