@@ -58,7 +58,6 @@ Parameters:
     Type: String
     Description: ARN of existing DB secret
     Default: arn:aws:secretsmanager:il-central-1:852215679994:secret:charging-stations-rds-postgres-credentials-adUrnW
-  
 
   
 Conditions:
@@ -189,32 +188,25 @@ Resources:
         - IpProtocol: -1
           CidrIp: 0.0.0.0/0
 
-  CognitoIdPApiEndpointSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
+  # Attach this managed policy to your ECS/Fargate task role (same account) so the backend can change group membership
+  BackendCognitoUserGroupManagementPolicy:
+    Type: AWS::IAM::ManagedPolicy
     Properties:
-      GroupDescription: Security group for Cognito IdP API VPC endpoint
-      VpcId: !Ref VpcId
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          SourceSecurityGroupId: !Ref LambdaSecurityGroup
-      SecurityGroupEgress:
-        - IpProtocol: -1
-          CidrIp: 0.0.0.0/0
-
-  CognitoIdPVpcEndpoint:
-    Type: AWS::EC2::VPCEndpoint
-    Properties:
-      VpcId: !Ref VpcId
-      VpcEndpointType: Interface
-      ServiceName: !Sub "com.amazonaws.${AWS::Region}.cognito-idp"
-      SubnetIds:
-        - !Ref PrivateSubnet1Id
-        - !Ref PrivateSubnet2Id
-      SecurityGroupIds:
-        - !Ref CognitoIdPApiEndpointSecurityGroup
-      PrivateDnsEnabled: true
+      ManagedPolicyName: !Sub ${AWS::StackName}-backend-cognito-groups
+      Description: Fargate/backend API — AdminAddUserToGroup / AdminRemoveUserFromGroup for this User Pool
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: CognitoUserPoolGroupManagement
+            Effect: Allow
+            Action:
+              - cognito-idp:AdminAddUserToGroup
+              - cognito-idp:AdminRemoveUserFromGroup
+              - cognito-idp:AdminListGroupsForUser
+              - cognito-idp:ListGroups
+              - cognito-idp:AdminGetUser
+              - cognito-idp:ListUsers
+            Resource: !GetAtt UserPool.Arn
 
   ChargingStationsRDSPostgresDB:
     Type: AWS::RDS::DBInstance
@@ -247,7 +239,7 @@ Resources:
       Layers:
         - !Ref CommonToolsLayer
         - !Sub "arn:aws:lambda:${AWS::Region}:770693421928:layer:Klayers-p312-psycopg2-binary:2"
-      Description: Write user to RDS and add to Cognito group
+      Description: Write user to RDS
       VpcConfig:
         SecurityGroupIds:
           - !Ref LambdaSecurityGroup
@@ -270,9 +262,6 @@ Resources:
                 - "arn:aws:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:${DBResourceId}/${DBUser}"
                 - DBResourceId: !GetAtt ChargingStationsRDSPostgresDB.DbiResourceId
                   DBUser: !Sub "{{resolve:secretsmanager:${DBSecretArn}:SecretString:username}}"
-            - Effect: Allow
-              Action: cognito-idp:AdminAddUserToGroup
-              Resource: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/*"
 
   GetUserInfoFunction:
     Type: AWS::Serverless::Function
@@ -709,6 +698,26 @@ Resources:
       Principal: !Sub "arn:aws:iam::${InvokerAccountIdB}:root"
 
 Outputs:
+  UserPoolId:
+    Description: Cognito User Pool ID (backend API / Fargate env)
+    Value: !Ref UserPool
+    Export:
+      Name: !Sub ${AWS::StackName}-UserPoolId
+  UserPoolArn:
+    Description: Cognito User Pool ARN (IAM Resource for cognito-idp policies)
+    Value: !GetAtt UserPool.Arn
+    Export:
+      Name: !Sub ${AWS::StackName}-UserPoolArn
+  UserPoolClientId:
+    Description: Cognito app client ID for user-auth flows from backend
+    Value: !Ref UserPoolClient
+    Export:
+      Name: !Sub ${AWS::StackName}-UserPoolClientId
+  BackendCognitoUserGroupManagementPolicyArn:
+    Description: Attach this managed policy to the Fargate/ECS task role that calls Cognito Admin group APIs
+    Value: !Ref BackendCognitoUserGroupManagementPolicy
+    Export:
+      Name: !Sub ${AWS::StackName}-BackendCognitoGroupPolicyArn
   StationPortsRdsSyncQueueUrl:
     Description: URL for station ports → RDS sync (SendMessage from write-station-ports-dynamo)
     Value: !Ref StationPortsRdsSyncQueue

@@ -45,7 +45,7 @@ sam deploy --guided   # first time; then sam deploy
 
 Use `--use-container` so dependencies (e.g. psycopg2 on Python 3.12) build correctly. On first deploy, set VPC, subnets, DB secret ARN, invoker account ID(s); save to `samconfig.toml` for later runs.
 
-The template provisions: **Cognito** (User Pool, client, groups ADMIN/USER/SUPPORT), **RDS** PostgreSQL (IAM auth, private), **VPC endpoints** (RDS API for auth tokens, Cognito IdP, **SQS** so VPC Lambdas can enqueue without NAT, **DynamoDB** gateway for private-subnet access), **SQS** (station ports → RDS sync queue + DLQ), **Lambdas** (WriteUserRDS, GetUserInfo, CreateRDSTables, ConfirmConsoleCreatedAdmin, Health, station read/write, ports writer), and permissions.
+The template provisions: **Cognito** (User Pool, client, groups ADMIN/USER/SUPPORT), **RDS** PostgreSQL (IAM auth, private), **VPC endpoints** (RDS API for auth tokens, **SQS** so VPC Lambdas can enqueue without NAT, **DynamoDB** gateway for private-subnet access), **SQS** (station ports → RDS sync queue + DLQ), **Lambdas** (WriteUserRDS, GetUserInfo, CreateRDSTables, ConfirmConsoleCreatedAdmin, Health, station read/write, ports writer), and permissions.
 
 1. In the RDS console, temporarily:
    - On the **Databases** tab of **Aurora and RDS** page select desired **db**, in Modify - Connectivity - Additional configuration set **Publicly accessible = Yes**, apply the change, and wait for **db** to modify.
@@ -88,6 +88,14 @@ Invoke permission is per **AWS account**. At deploy time, set:
 
 - **InvokerAccountIdA** (and optionally **InvokerAccountIdB**) in the template parameters so those accounts can call the Lambdas.
 - For CI or scripts, use the deployer account ID (e.g. `LAMBDA_ACCOUNT_ID`) when invoking by ARN.
+
+### Backend on Fargate (Cognito user groups)
+
+The stack creates **`BackendCognitoUserGroupManagementPolicy`** — a managed IAM policy scoped to this stack’s **User Pool** (`AdminAddUserToGroup`, `AdminRemoveUserFromGroup`, `AdminListGroupsForUser`, `ListGroups`, `AdminGetUser`, `ListUsers`).
+
+1. **Attach the policy** to your **ECS task role** (task role, not execution role), e.g. add the output **`BackendCognitoUserGroupManagementPolicyArn`** to `taskRoleArn`’s managed policy ARNs in your ECS task definition (same AWS account).
+2. **Network:** Ensure tasks can reach the **public** Cognito IdP API (HTTPS), e.g. **NAT gateway** or another egress path from private subnets. This stack does not create a **cognito-idp** VPC endpoint; IAM policy alone is not enough without outbound connectivity.
+3. Configure the app with **`UserPoolId`** and **`UserPoolClientId`** from stack outputs (and your app client settings).
 
 ---
 
