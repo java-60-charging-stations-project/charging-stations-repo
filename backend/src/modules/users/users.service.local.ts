@@ -10,9 +10,9 @@ import {
     UpdateUserRolePayload,
     UserInfo,
     UserRole,
-    UsersService
 } from './users.types';
 import { applyListFiltersAndPage } from './users.listHelpers';
+import { UsersService } from './users.service.interface';
 
 const logger = createLogger('users.service.local', 'debug');
 
@@ -110,7 +110,7 @@ export class UsersServiceLocal implements UsersService {
         _adminId: string,
         _userId: string,
         _filters: GetUserDetailsFilters
-    ): Promise<AdminUserDetails | null> {
+    ): Promise<AdminUserDetails> {
         logger.debug('UsersServiceLocal getUserDetails', { _adminId, _userId, _filters });
         throw new Error('Not implemented');
     }

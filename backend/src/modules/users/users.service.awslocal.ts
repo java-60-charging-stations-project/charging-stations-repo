@@ -9,8 +9,8 @@ import {
     UpdateUserRolePayload,
     UserInfo,
     UserRole,
-    UsersService,
 } from './users.types';
+import { UsersService } from './users.service.interface';
 import { ResourceNotFoundError, InternalServerError, BadRequestError } from '../../common/serviceErrors';
 import { cognitoApiClient } from './cognito/api';
 import { getUserInfoFromCognitoUser,
@@ -103,7 +103,7 @@ export class UsersServiceAwsLocal implements UsersService {
         _adminId: string,
         _userId: string,
         _filters: GetUserDetailsFilters
-    ): Promise<AdminUserDetails | null> {
+    ): Promise<AdminUserDetails> {
         throw new Error('Not implemented');
     }
 

@@ -14,10 +14,10 @@ import {
   UpdateUserRolePayload,
   UserInfo,
   UserRole,
-  UsersService,
   mapLambdaUser,
   mapLambdaUsers
 } from './users.types';
+import { UsersService } from './users.service.interface';
 import { applyListFiltersAndPage } from './users.listHelpers';
 import { ResourceNotFoundError } from '../../common/serviceErrors';
 
@@ -159,7 +159,7 @@ export class UsersServiceLambda implements UsersService {
     adminId: string,
     userId: string,
     filters: GetUserDetailsFilters
-  ): Promise<AdminUserDetails | null> {
+  ): Promise<AdminUserDetails> {
     logger.debug('Invoking userManagement lambda: getUserDetails', { adminId, userId, filters });
     throw new Error('Not implemented');
   }
