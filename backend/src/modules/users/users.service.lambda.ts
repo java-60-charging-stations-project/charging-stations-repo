@@ -148,22 +148,6 @@ export class UsersServiceLambda implements UsersService {
       )
     );
   }
-
-  async deleteUser(adminId: string, userId: string): Promise<void> {
-    logger.debug('Invoking userManagement lambda: deleteUser', { adminId, userId });
-    await LAMBDA_INVOKER.invokeJson(
-      env.userManagementLambdaFunctionName,
-      wrapLambdaRequest(
-        'deleteUser',
-        adminId,
-        {
-          adminId,
-          userId
-        }
-      )
-    );
-  }
-
   // COGNITO METHODS GROUP
   async getUserRole(adminId: string, userId: string): Promise<UserRole | null> {
     logger.debug('Invoking userManagement lambda: getUserRole', { adminId, userId });
@@ -188,6 +172,15 @@ export class UsersServiceLambda implements UsersService {
     throw new Error('Not implemented');
   }
 
+  async disableUser(
+    adminId: string,
+    userId: string,
+    payload: UpdateUserEnabledPayload
+  ): Promise<void> {
+    logger.debug('Invoking userManagement lambda: enableUser', { adminId, userId, payload });
+    throw new Error('Not implemented');
+  }
+
   async updateUserRole(adminId: string, userId: string, payload: UpdateUserRolePayload): Promise<void> {
     logger.debug('Invoking userManagement lambda: updateUserRole', { adminId, userId, payload });
     const user_pool_id = env.cognitoUserPoolId;
@@ -203,6 +196,21 @@ export class UsersServiceLambda implements UsersService {
           userId,
           role: payload.newRole,
           user_pool_id
+        }
+      )
+    );
+  }
+
+  async deleteUser(adminId: string, userId: string): Promise<void> {
+    logger.debug('Invoking userManagement lambda: deleteUser', { adminId, userId });
+    await LAMBDA_INVOKER.invokeJson(
+      env.userManagementLambdaFunctionName,
+      wrapLambdaRequest(
+        'deleteUser',
+        adminId,
+        {
+          adminId,
+          userId
         }
       )
     );

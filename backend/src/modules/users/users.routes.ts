@@ -63,6 +63,13 @@ export function usersRouter(): Router {
     controller.enableUser
   );
 
+  router.patch(
+    '/admin/users/:userId/enable',
+    verifyCognitoJwt,
+    requireGroups([ADMIN_GROUP]),
+    controller.disableUser
+  );
+
   router.delete(
     '/admin/users/:userId',
     verifyCognitoJwt,

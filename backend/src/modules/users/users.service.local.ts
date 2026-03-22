@@ -124,6 +124,15 @@ export class UsersServiceLocal implements UsersService {
         throw new Error('Not implemented');
     }
 
+    async disableUser(
+        _adminId: string,
+        _userId: string,
+        _payload: UpdateUserEnabledPayload
+    ): Promise<void> {
+        logger.debug('UsersServiceLocal enableUser', { _adminId, _userId, _payload });
+        throw new Error('Not implemented');
+    }
+
     async updateUserRole(
         _adminId: string,
         _userId: string,

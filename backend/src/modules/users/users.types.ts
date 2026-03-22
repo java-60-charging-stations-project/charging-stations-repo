@@ -10,6 +10,7 @@ export interface UsersService {
     getUserRole(adminId: string, userId: string): Promise<UserRole | null>;
     getUserDetails(adminId: string, userId: string, filters: GetUserDetailsFilters): Promise<AdminUserDetails | null>;
     enableUser(adminId: string, userId: string, payload: UpdateUserEnabledPayload): Promise<void>;
+    disableUser(adminId: string, userId: string, payload: UpdateUserEnabledPayload): Promise<void>;
     updateUserRole(adminId: string, userId: string, payload: UpdateUserRolePayload): Promise<void>;
 }
 
