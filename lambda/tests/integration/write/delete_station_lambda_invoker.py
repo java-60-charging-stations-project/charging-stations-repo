@@ -29,7 +29,7 @@ def invoke_delete_station(station_id: str):
     assert resp.get("StatusCode") == 200
     assert payload is not None
     assert len(payload) > 0
-    deleted_at = response_json["data"]["deletedAt"]
+    deleted_at = response_json["data"]["deleted_at"]
     assert deleted_at is not None
     print(deleted_at)
     if resp.get("FunctionError"):

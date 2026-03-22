@@ -31,7 +31,7 @@ def invoke_change_station_state(station_id: str, old_state: str, new_state: str)
     assert resp.get("StatusCode") == 200
     assert payload is not None
     assert len(payload) > 0
-    updated_at = response_json["data"]["updatedAt"]
+    updated_at = response_json["data"]["updated_at"]
     assert updated_at is not None
     print(updated_at)
     if resp.get("FunctionError"):

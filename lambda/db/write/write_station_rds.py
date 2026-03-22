@@ -230,9 +230,9 @@ def delete_station(station_id: str) -> datetime:
                 if row is None:
                     logger.error(f"station not found: {station_id}")
                     raise LambdaResponseError({"error": f"station not found: {station_id}", "code": "NOT_FOUND"})
-                logger.error(f"state mismatch for station {station_id}: expected 'ACTIVE' or 'INACTIVE', actual {row[0]}")
+                logger.error(f"state mismatch for station {station_id}: expected 'ACTIVE', 'INACTIVE' or 'OUT_OF_SERVICE', actual {row[0]}")
                 raise LambdaResponseError(
-                    {"error": f"state mismatch for station {station_id}: expected 'ACTIVE' or 'INACTIVE', actual {row[0]}", 
+                    {"error": f"state mismatch for station {station_id}: expected 'ACTIVE', 'INACTIVE' or 'OUT_OF_SERVICE', actual {row[0]}", 
                     "code": "INVALID_REQUEST"})
         conn.commit()
         return updated_at
@@ -296,6 +296,11 @@ def update_station_ports_count_in_rds(station_id: str, ports_delta: int) -> tupl
 
 def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponsePayload:
     logger.info(f"Handler called with event: {event}")
+    sqs_request_id = None
+    sqs_caller_id = None
+    sqs_action = None
+    sqs_ports_delta = None
+    sqs_station_id = None
     if event.get("Records"):
         try:
             sqs_request_id = event["Records"][0]["body"]["correlation_id"]

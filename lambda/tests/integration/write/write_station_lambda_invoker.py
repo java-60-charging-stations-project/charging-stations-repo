@@ -48,7 +48,7 @@ def main():
     assert resp.get("StatusCode") == 200
     assert payload is not None
     assert len(payload) > 0
-    station_id = response_json["data"]["stationId"]
+    station_id = response_json["data"]["station_id"]
     assert station_id is not None
     print(station_id)
     if resp.get("FunctionError"):
