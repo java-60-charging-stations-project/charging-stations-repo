@@ -23,7 +23,7 @@ export class StationsServiceLambda implements StationsService {
     logger.debug('Invoking stations lambda: list', { callerId });
     const result = await LAMBDA_INVOKER.invokeJson<{ data: LambdaStation[] | LambdaStation | null }>(
       env.stationsLambdaFunctionName,
-      wrapLambdaRequest('get_all_stations', callerId, {})
+      wrapLambdaRequest('getAllStations', callerId, {})
     );
     return mapLambdaStationList(result.data);
   }
@@ -33,7 +33,7 @@ export class StationsServiceLambda implements StationsService {
     const result = await LAMBDA_INVOKER.invokeJson<{ data: LambdaStation | null }>(
       env.stationsLambdaFunctionName,
       wrapLambdaRequest(
-        'get_station_by_id',
+        'getStationById',
         callerId,
         {
           station_id: stationId
@@ -51,7 +51,7 @@ export class StationsServiceLambda implements StationsService {
     const result = await LAMBDA_INVOKER.invokeJson<{ data: AdminCreateStationResponse }>(
       env.stationsLambdaWriteFunctionName,
       wrapLambdaRequest(
-        'write_station',
+        'writeStation',
         callerId,
         payload
       )
@@ -123,7 +123,7 @@ export class StationsServiceLambda implements StationsService {
     const result = await LAMBDA_INVOKER.invokeJson<{ data: AdminDeleteStationResponse }>(
       env.stationsLambdaWriteFunctionName,
       wrapLambdaRequest(
-        'delete_station',
+        'deleteStation',
         callerId,
         {
           stationId

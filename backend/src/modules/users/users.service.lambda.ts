@@ -43,7 +43,7 @@ export class UsersServiceLambda implements UsersService {
     const result = await LAMBDA_INVOKER.invokeJson<LambdaUserResponse | LambdaErrorResponse>(
       env.userInfoLambdaFunctionName,
       wrapLambdaRequest(
-        'get_user_by_id',
+        'getUserById',
         userId,
         {
           user_id: userId
@@ -63,7 +63,7 @@ export class UsersServiceLambda implements UsersService {
     const result = await LAMBDA_INVOKER.invokeJson<LambdaUserResponse | LambdaErrorResponse>(
       env.userInfoLambdaFunctionName,
       wrapLambdaRequest(
-        'get_user_by_id',
+        'getUserById',
         adminId,
         {
           user_id: userId
@@ -83,14 +83,14 @@ export class UsersServiceLambda implements UsersService {
 
   async listUsers(adminId: string, filters: ListUsersFilters): Promise<ListUsersResult> {
     /**
-     * Must use **get-user-info** (`charging-stations-get-user-info`), same Lambda as get_user_by_id.
-     * `write-user-rds` is a Cognito trigger / different contract — it does **not** handle `get_all_users`.
+     * Must use **get-user-info** (`charging-stations-get-user-info`), same Lambda as getUserById.
+     * `write-user-rds` is a Cognito trigger / different contract — it does **not** handle `getAllUsers`.
      */
-    logger.debug('Invoking get-user-info lambda: listUsers (get_all_users)', { adminId, filters });
+    logger.debug('Invoking get-user-info lambda: listUsers (getAllUsers)', { adminId, filters });
     const result = await LAMBDA_INVOKER.invokeJson<LambdaListUsersResponse | LambdaUserInfo[] | LambdaErrorResponse>(
       env.userInfoLambdaFunctionName,
       wrapLambdaRequest(
-        'get_all_users',
+        'getAllUsers',
         adminId,
         {
           role: filters.role,

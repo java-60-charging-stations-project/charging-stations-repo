@@ -1,6 +1,6 @@
 import type { ListUsersFilters, UserInfo } from './users.types';
 
-/** Apply role/status filters and pagination (RDS `get_all_users` returns full list). */
+/** Apply role/status filters and pagination (RDS `getAllUsers` returns full list). */
 export function applyListFiltersAndPage(
   users: UserInfo[],
   filters: ListUsersFilters
