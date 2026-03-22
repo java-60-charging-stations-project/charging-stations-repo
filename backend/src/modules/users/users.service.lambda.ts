@@ -45,9 +45,7 @@ export class UsersServiceLambda implements UsersService {
       wrapLambdaRequest(
         'getUserById',
         userId,
-        {
-          user_id: userId
-        }
+        {userId,}
       )
     );
 
@@ -65,9 +63,7 @@ export class UsersServiceLambda implements UsersService {
       wrapLambdaRequest(
         'getUserById',
         adminId,
-        {
-          user_id: userId
-        }
+        {userId,}
       )
     );
 
