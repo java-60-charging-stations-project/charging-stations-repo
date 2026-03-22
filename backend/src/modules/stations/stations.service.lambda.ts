@@ -10,12 +10,18 @@ import type {
   AdminUpdateStationStateRequest,
   AdminUpdateStationStateResponse,
   LambdaAdminCreateStationResponse,
+  LambdaAdminUpdateStationStateResponse,
   LambdaStation,
   StationBase,
   StationState,
   StationsService
 } from './stations.types';
-import { mapLambdaAdminCreateStationResponse, mapLambdaStation, mapLambdaStationList } from './stations.types';
+import { 
+  mapLambdaAdminCreateStationResponse,
+  mapLambdaStation,
+  mapLambdaStationList,
+  mapLambdaAdminUpdateStationStateResponse,
+} from './stations.types';
 
 const logger = createLogger('stations.service');
 const LAMBDA_INVOKER: LambdaInvoker = new AwsLambdaInvoker(env.awsRegion);
@@ -71,7 +77,7 @@ export class StationsServiceLambda implements StationsService {
       newState,
       callerId
     });    
-    const result = await LAMBDA_INVOKER.invokeJson<{ data: AdminUpdateStationStateResponse }>(
+    const result = await LAMBDA_INVOKER.invokeJson<{ data: LambdaAdminUpdateStationStateResponse }>(
       env.stationsLambdaWriteFunctionName,
       wrapLambdaRequest<AdminUpdateStationStateRequest, unknown>(
           'changeStationState',
@@ -79,7 +85,7 @@ export class StationsServiceLambda implements StationsService {
           { stationId, oldState, newState },
       )
     );
-    return result.data;
+    return mapLambdaAdminUpdateStationStateResponse(result.data);
   }
 
   async deleteStation(

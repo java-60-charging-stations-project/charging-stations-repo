@@ -153,6 +153,16 @@ export interface AdminUpdateStationStateResponse {
   updatedAt: string;
 }
 
+export interface LambdaAdminUpdateStationStateResponse {
+  updated_at: string;
+}
+
+export function mapLambdaAdminUpdateStationStateResponse(raw: LambdaAdminUpdateStationStateResponse): AdminUpdateStationStateResponse {
+  return {
+    updatedAt: raw.updated_at,
+  };
+}
+
 /** Response for DELETE /admin/stations/{stationId} */
 export interface AdminDeleteStationResponse {
   deletedAt: string;
