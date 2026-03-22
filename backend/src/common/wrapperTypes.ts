@@ -22,7 +22,7 @@ export interface LambdaErrorResponse {
 export interface LambdaRequest<T, M = unknown> {
     service: {
         action: string;
-        caller_id: string;
+        callerId: string;
     };
     data: T;
     meta?: M;
