@@ -132,6 +132,8 @@ export interface AdminCreateStationRequest {
   siteTechnician: string | null;
   phone: string | null;
   email: string | null;
+  location: Location;
+  maxPowerKw: number;
 }
 
 export interface AdminCreateStationResponse {

@@ -48,12 +48,21 @@ export interface AdminCreateStationResponse {
     stationId: string;
 };
 
-export interface AdminChangeStationStateRequest {
+export interface ChangeStationStateRequest {
     oldState: StationState;
     newState: StationState;
     updatedAt: string;
 };
 
-export interface AdminUpdateStationStateResponse {
+export interface ChangeStationStateResponse {
     updatedAt: string;
 }
+
+export interface StationsListParams {
+    city?: string;
+    owner?: string;
+    state?: StationState;
+    orderBy?: string;
+    page?: number;
+    pageSize?: number;
+  }

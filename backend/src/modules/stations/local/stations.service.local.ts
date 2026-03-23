@@ -93,12 +93,13 @@ export class StationsServiceLocal implements StationsService {
       phone: payload.phone,
       email: payload.email,
       siteTechnician: payload.siteTechnician,
-      maxPowerKw: null,
+      maxPowerKw: 0,
       ports: 0,
       state: 'INACTIVE',
       ratePlan: payload.ratePlan,
       createdAt: now,
       updatedAt: now,
+      location: payload.location,
     };
 
     STATIONS.push(newStation);

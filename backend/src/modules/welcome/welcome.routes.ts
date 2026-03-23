@@ -1,6 +1,7 @@
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { wrapResponseList } from '../../common/wrappers';
 import { buildStationsService } from '../stations/stations.service';
+import { DEFAULT_PAGE_SIZE } from '../../common/constants';
 
 export function welcomeRouter(): Router {
   const router = Router();
@@ -15,20 +16,15 @@ export function welcomeRouter(): Router {
         const page = Math.max(1, Number(req.query.page) || 1);
         const pageSize = Math.min(200, Math.max(1, Number(req.query.pageSize) || 200));
 
-        const all = await service.list('');
-        const filtered = all
-          .filter((s) => s.state === 'ACTIVE')
-          .filter((s) => (city ? s.city.toLowerCase().includes(city.toLowerCase()) : true))
-          .filter((s) =>
-            provider ? s.owner.toLowerCase().includes(provider.toLowerCase()) : true
-          );
+        const stations = await service.list({
+          state: 'ACTIVE',
+          page: 1,
+          pageSize: DEFAULT_PAGE_SIZE,
+        }, 'GUEST_USER');
 
-        const totalItems = filtered.length;
-        const totalPages = Math.ceil(totalItems / pageSize) || 1;
-        const start = (page - 1) * pageSize;
-        const data = filtered.slice(start, start + pageSize);
 
-        res.status(200).json(wrapResponseList(data, totalItems, pageSize, page, totalPages));
+
+        res.status(200).json(stations);
       } catch (error) {
         next(error);
       }
