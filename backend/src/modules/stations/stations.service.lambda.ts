@@ -13,19 +13,18 @@ import type {
   LambdaAdminCreateStationResponse,
   LambdaAdminUpdateStationStateResponse,
   LambdaStation,
-  ListStationsParams,
   Meta,
   StationBase,
   StationBaseCollectionResponse,
   StationState,
-  StationsService
 } from './stations.types';
-import { 
+import {
   mapLambdaAdminCreateStationResponse,
   mapLambdaStation,
   mapLambdaStationList,
   mapLambdaAdminUpdateStationStateResponse,
 } from './stations.types';
+import type { ListStationsParams, StationsService } from './stations.interface';
 
 const logger = createLogger('stations.service');
 const LAMBDA_INVOKER: LambdaInvoker = new AwsLambdaInvoker(env.awsRegion);
