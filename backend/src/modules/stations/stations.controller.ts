@@ -23,6 +23,11 @@ const ratePlanSchema = z.object({
   offPeakRate: z.number()
 });
 
+const locationSchema = z.object({
+  latitude: z.number(),
+  longitude: z.number()
+});
+
 const createStationSchema = z.object({
   code: z.string().min(1),
   name: z.string().min(1),
@@ -32,7 +37,9 @@ const createStationSchema = z.object({
   ratePlan: ratePlanSchema,
   siteTechnician: z.string().nullable(),
   phone: z.string().nullable(),
-  email: z.string().nullable()
+  email: z.string().nullable(),
+  location: locationSchema,
+  maxPowerKw: z.number()
 });
 
 const updateStatusSchema = z.object({
