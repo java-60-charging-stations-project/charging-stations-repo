@@ -7,7 +7,14 @@ import type {
     AdminUserRoleResponse,
     UpdateUserRoleRequest,
 } from '@/types/users';
-import type { AdminChangeStationStateRequest, AdminCreateStationRequest, AdminCreateStationResponse, AdminUpdateStationStateResponse, StationBase } from '@/types/stations';
+import type { 
+    ChangeStationStateRequest,
+    AdminCreateStationRequest,
+    AdminCreateStationResponse,
+    ChangeStationStateResponse,
+    StationBase,
+    StationsListParams,
+} from '@/types/stations';
 
 /** USERS */
 export async function fetchAdminUsers(): Promise<AdminGetUserResponse[]> {
@@ -61,11 +68,12 @@ export async function adminDisableUser(userId: string, request:AdminChangeLockSt
 };
 
 /** STATIONS */
-export async function fetchStations(): Promise<StationBase[]> {
+export async function fetchStations(params: StationsListParams): Promise<ApiArrayResponse<StationBase>> {
     const response = await apiClient.get<ApiArrayResponse<StationBase>>(
         '/admin/stations',
+        { params },
     );
-    return response.data;
+    return response;
 };
 
 export async function fetchStationById(stationId: string): Promise<StationBase> {
@@ -83,8 +91,8 @@ export async function createStation(stationCreateRequest: AdminCreateStationRequ
     return response.data;
 };
 
-export async function changeStationState(stationId: string, request: AdminChangeStationStateRequest): Promise<AdminUpdateStationStateResponse> {
-    const response = await apiClient.patch<ApiResponse<AdminUpdateStationStateResponse>>(
+export async function changeStationState(stationId: string, request: ChangeStationStateRequest): Promise<ChangeStationStateResponse> {
+    const response = await apiClient.patch<ApiResponse<ChangeStationStateResponse>>(
         `/admin/stations/${stationId}/state`,
         request,
     );
