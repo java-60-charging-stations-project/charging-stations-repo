@@ -2,7 +2,8 @@ import type { Request, Response } from 'express';
 import { z } from 'zod';
 import { wrapResponse } from '../../common/wrappers';
 import { ADMIN_GROUP, SUPPORT_GROUP } from '../../common/authRoles';
-import type { StationsService, StationState } from './stations.types';
+import type { StationState } from './stations.types';
+import type { StationsService } from './stations.interface';
 
 const idSchema = z.string().min(1);
 
