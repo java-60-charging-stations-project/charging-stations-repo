@@ -1,10 +1,13 @@
 import { BadRequestError, ConflictError, ResourceNotFoundError } from '../../common/serviceErrors';
+import { DEFAULT_PAGE_SIZE } from '../../common/constants';
 import type {
   AdminCreateStationRequest,
   AdminCreateStationResponse,
   AdminDeleteStationResponse,
   AdminUpdateStationStateResponse,
+  ListStationsParams,
   StationBase,
+  StationBaseCollectionResponse,
   StationState,
   StationsService
 } from './stations.types';
@@ -82,8 +85,45 @@ const STATIONS: StationBase[] = [
 ];
 
 export class StationsServiceLocal implements StationsService {
-  async list(_callerId: string): Promise<StationBase[]> {
-    return [...STATIONS];
+  async list(params: ListStationsParams, _callerId: string): Promise<StationBaseCollectionResponse> {
+    let stations = [...STATIONS];
+
+    if (params.city) {
+      const prefix = params.city.toLowerCase();
+      stations = stations.filter((s) => s.city.toLowerCase().startsWith(prefix));
+    }
+    if (params.owner) {
+      const prefix = params.owner.toLowerCase();
+      stations = stations.filter((s) => s.owner.toLowerCase().startsWith(prefix));
+    }
+    if (params.state) {
+      stations = stations.filter((s) => s.state === params.state);
+    }
+
+    const tokens = params.orderBy
+      ? params.orderBy.split(',').map((t) => t.trim()).filter(Boolean)
+      : [];
+
+    stations.sort((a, b) => {
+      for (const token of tokens) {
+        let cmp = 0;
+        if (token === 'name+') cmp = a.name.localeCompare(b.name);
+        else if (token === 'name-') cmp = b.name.localeCompare(a.name);
+        else if (token === 'owner+') cmp = a.owner.localeCompare(b.owner);
+        else if (token === 'owner-') cmp = b.owner.localeCompare(a.owner);
+        if (cmp !== 0) return cmp;
+      }
+      return a.id.localeCompare(b.id);
+    });
+
+    const page = params.page ?? 1;
+    const pageSize = params.pageSize ?? DEFAULT_PAGE_SIZE;
+    const totalItems = stations.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+    const start = (page - 1) * pageSize;
+    const paged = stations.slice(start, start + pageSize);
+
+    return { data: paged, meta: { page, pageSize, totalItems, totalPages } };
   }
 
   async getById(stationId: string, _callerId: string): Promise<StationBase> {

@@ -3,6 +3,7 @@ import { env } from '../../config/env';
 import { AwsLambdaInvoker, type LambdaInvoker } from '../../utils/lambdaInvoker';
 import { createLogger } from '../../utils/logger';
 import { wrapLambdaRequest } from '../../common/wrappers';
+import { DEFAULT_PAGE_SIZE } from '../../common/constants';
 import type {
   AdminCreateStationRequest,
   AdminCreateStationResponse,
@@ -12,7 +13,10 @@ import type {
   LambdaAdminCreateStationResponse,
   LambdaAdminUpdateStationStateResponse,
   LambdaStation,
+  ListStationsParams,
+  Meta,
   StationBase,
+  StationBaseCollectionResponse,
   StationState,
   StationsService
 } from './stations.types';
@@ -27,13 +31,30 @@ const logger = createLogger('stations.service');
 const LAMBDA_INVOKER: LambdaInvoker = new AwsLambdaInvoker(env.awsRegion);
 
 export class StationsServiceLambda implements StationsService {
-  async list(callerId: string): Promise<StationBase[]> {
-    logger.debug('Invoking stations lambda: list', { callerId });
-    const result = await LAMBDA_INVOKER.invokeJson<{ data: LambdaStation[] | LambdaStation | null }>(
+  async list(params: ListStationsParams, callerId: string): Promise<StationBaseCollectionResponse> {
+    const { city, owner, state, orderBy, page = 1, pageSize = DEFAULT_PAGE_SIZE } = params;
+    logger.debug('Invoking stations lambda: list', { params, callerId });
+
+    const data: Record<string, unknown> = {};
+    if (city !== undefined) data.city = city;
+    if (owner !== undefined) data.owner = owner;
+    if (state !== undefined) data.state = state;
+    if (orderBy !== undefined) data.orderBy = orderBy;
+
+    const result = await LAMBDA_INVOKER.invokeJson<{ data: LambdaStation[] | LambdaStation | null; meta?: Meta }>(
       env.stationsLambdaFunctionName,
-      wrapLambdaRequest('getAllStations', callerId, {})
+      wrapLambdaRequest('getAllStations', callerId, data, { page, pageSize })
     );
-    return mapLambdaStationList(result.data);
+
+    const stations = mapLambdaStationList(result.data);
+    const meta: Meta = result.meta ?? {
+      page,
+      pageSize,
+      totalItems: stations.length,
+      totalPages: Math.max(1, Math.ceil(stations.length / pageSize)),
+    };
+
+    return { data: stations, meta };
   }
 
   async getById(stationId: string, callerId: string): Promise<StationBase> {

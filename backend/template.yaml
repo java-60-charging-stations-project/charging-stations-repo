@@ -54,11 +54,7 @@ Parameters:
   CognitoCrossAccountRoleArn:
     Type: String
     Description: Cross-account IAM role ARN used by the backend to manage Cognito users
-    Default: arn:aws:iam::852215679994:policy/sam-db-lambdas-backend-cognito-groups
-  CognitoCrossAccountExternalId:
-    Type: String
-    Description: Optional ExternalId required by the cross-account Cognito role trust policy
-    Default: ""
+    Default: arn:aws:iam::852215679994:role/sam-db-lambdas-cognito-cross-account
   DesiredCount:
     Type: Number
     Default: 1
@@ -216,13 +212,6 @@ Resources:
           EnvironmentFiles:
             - Type: s3
               Value: arn:aws:s3:::charge-st-backend-config-773769103104/backend/prod.env
-          Environment:
-            - Name: NODE_ENV
-              Value: production
-            - Name: COGNITO_CROSS_ACCOUNT_ROLE_ARN
-              Value: !Ref CognitoCrossAccountRoleArn
-            - Name: COGNITO_CROSS_ACCOUNT_EXTERNAL_ID
-              Value: !Ref CognitoCrossAccountExternalId
           LogConfiguration:
             LogDriver: awslogs
             Options:
