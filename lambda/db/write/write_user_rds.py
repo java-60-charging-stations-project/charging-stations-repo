@@ -167,4 +167,6 @@ def handler(event: dict, context: Any) -> dict | SuccessResponsePayload | ErrorR
         except Exception as e:
             log_audit("ERROR", message=f"error performing {action}", status="ERROR", errorMessage=str(e), **audit_base)
             return ErrorResponsePayload(error=f"unhandled error performing {action}: {e}", code="UNHANDLED_ERROR")
-    
+    else:
+        log_audit("ERROR", message="invalid caller", status="ERROR", errorMessage=f"invalid caller: {caller}", **audit_base)
+        return ErrorResponsePayload(error=f"invalid caller: {caller}", code="INVALID_REQUEST")

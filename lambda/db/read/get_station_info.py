@@ -195,7 +195,7 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                     result = build_json(station_info)
                     logger.info(f"result: {result}")
                     log_audit("INFO", message="station info fetched successfully", status="SUCCESS", **audit_base)
-                    return SuccessResponsePayload(data=result)
+                    return SuccessResponsePayload(data=result, meta={})
             case "getAllStations":
                     meta_parameters = event.get("meta", {})
                     data = event.get("data", {})

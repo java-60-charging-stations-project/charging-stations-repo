@@ -127,7 +127,7 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                 result = build_json(user_info)
                 logger.info(f"result: {result}")
                 log_audit("INFO", message="user info fetched successfully", status="SUCCESS", **audit_base)
-                return SuccessResponsePayload(data=result)
+                return SuccessResponsePayload(data=result, meta={})
             case "getAllUsers":
                 users_info = get_all_users()
                 if not users_info:
@@ -136,7 +136,7 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                 return_list = [build_json(user) for user in users_info]
                 logger.info(f"return list: {return_list}")
                 log_audit("INFO", message="all users fetched successfully", status="SUCCESS", **audit_base)
-                return SuccessResponsePayload(data=return_list)
+                return SuccessResponsePayload(data=return_list, meta={})
             case _:
                 log_audit("ERROR", message=f"invalid action {action}", status="ERROR", errorMessage=f"invalid action {action}", **audit_base)
                 return ErrorResponsePayload(error=f"invalid action {action}", code="INVALID_REQUEST")

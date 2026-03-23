@@ -49,6 +49,7 @@ def extract_full_station_instance_from_event(event: dict) -> StationInstance:
         data = event["data"]
         location = data["location"] if data.get("location") else {"longitude": 0.0, "latitude": 0.0}
         timestamp = datetime.now()
+        event_id = str(uuid.uuid4())
         station_instance: StationInstance = {
             "id": str(uuid.uuid4()),
             "code": data["code"],
@@ -68,6 +69,7 @@ def extract_full_station_instance_from_event(event: dict) -> StationInstance:
             "has_free_ports": False,
             "created_at": timestamp,
             "updated_at": timestamp,
+            "event_id": event_id,
         }
         logger.info(f"Station instance extracted successfully: {station_instance}")
         return station_instance
@@ -112,7 +114,6 @@ def insert_station_to_rds(station: StationInstance) -> None:
     try:
         rate_plan = station.get("rate_plan")
         rate_plan_json = json.dumps(rate_plan) if rate_plan else None
-        event_id = str(uuid.uuid4())
         with conn.cursor() as cur:
             cur.execute(
                 """
@@ -144,7 +145,7 @@ def insert_station_to_rds(station: StationInstance) -> None:
                     station["has_free_ports"],
                     station["created_at"],
                     station["updated_at"],
-                    event_id,
+                    station["event_id"],
                 ),
             )
         conn.commit()
@@ -330,7 +331,7 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                 station_instance: StationInstance = extract_full_station_instance_from_event(event)
                 insert_station_to_rds(station_instance)
                 log_audit("INFO", message="station written to RDS successfully", status="SUCCESS", **audit_base)
-                return SuccessResponsePayload(data={"station_id": station_instance["id"]})
+                return SuccessResponsePayload(data={"station_id": station_instance["id"]}, meta={})
             case "changeStationState":
                 station_state = extract_station_state_from_event(event)
                 old_state = station_state["old_state"]
@@ -338,12 +339,12 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                 station_id = station_state["station_id"]
                 updated_at = change_station_state(station_id, old_state, new_state)
                 log_audit("INFO", message=f"{station_id} state changed from {old_state} to {new_state}", status="SUCCESS", **audit_base)
-                return SuccessResponsePayload(data={"updated_at": updated_at.isoformat()})
+                return SuccessResponsePayload(data={"updated_at": updated_at.isoformat()}, meta={})
             case "deleteStation":
                 station_id = event["data"]["stationId"]
                 updated_at = delete_station(station_id)
                 log_audit("INFO", message=f"{station_id} deleted successfully", status="SUCCESS", **audit_base)
-                return SuccessResponsePayload(data={"deleted_at": updated_at.isoformat()})
+                return SuccessResponsePayload(data={"deleted_at": updated_at.isoformat()}, meta={})
             case "update_station_ports":
                 operations = event["data"]
                 for operation in operations:
@@ -353,7 +354,7 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                     update_station_ports(station_id, ports_delta, event_id)
                     logger.info(f"ports count updated with delta {ports_delta} for station {station_id} with event {event_id}")
                 log_audit("INFO", message=f"ports count updated for {len(operations)} stations", status="SUCCESS", **audit_base)
-                return SuccessResponsePayload(data={"operations": operations})
+                return SuccessResponsePayload(data={"operations": operations}, meta={})
             case _:
                 log_audit("ERROR", message=f"invalid action {action}", status="ERROR", errorMessage=f"invalid action {action}", **audit_base)
                 return ErrorResponsePayload(error=f"invalid action {action}", code="INVALID_REQUEST")

@@ -116,7 +116,7 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                 ports = event["data"]["ports"]
                 created_port_keys = insert_station_ports(station_id, ports)
                 log_audit("INFO", message="station ports inserted successfully", status="SUCCESS", **audit_base)
-                return SuccessResponsePayload(data={"created_port_keys": created_port_keys})
+                return SuccessResponsePayload(data={"created_port_keys": created_port_keys}, meta={})
             case _:
                 log_audit("ERROR", message=f"invalid action {action}", status="ERROR", errorMessage=f"invalid action {action}", **audit_base)
                 return ErrorResponsePayload(error=f"invalid action {action}", code="INVALID_REQUEST")

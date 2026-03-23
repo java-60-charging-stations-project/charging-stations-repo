@@ -1,5 +1,6 @@
 from typing import TypedDict, Optional, Literal
 from datetime import datetime
+from decimal import Decimal
 
 class UserInstance(TypedDict):
     user_id: str
@@ -8,7 +9,6 @@ class UserInstance(TypedDict):
     phone: Optional[str]
     created_at: datetime
     updated_at: Optional[datetime]
-    event_id: Optional[str]
 
 class RatePlan(TypedDict):
     currencyCode: str
@@ -32,6 +32,7 @@ class StationInstance(TypedDict):
     ports: Optional[int]
     rate_plan: Optional[RatePlan]
     state: Literal["ACTIVE", "INACTIVE", "OUT_OF_SERVICE", "DELETED"]
+    has_free_ports: bool
     created_at: datetime
     updated_at: Optional[datetime]
     event_id: Optional[str]
@@ -41,10 +42,10 @@ class PortInstance(TypedDict):
     code: str
     entity_key: str
     state: Literal["FREE", "OCCUPIED", "ERROR", "DISABLED"]
-    power: float
-    last_meter_kw: float
-    created_at: datetime
-    updated_at: Optional[datetime]
+    power: float | Decimal
+    last_meter_kw: float | Decimal
+    created_at: str
+    updated_at: Optional[str]
 
 class RequestParameters(TypedDict):
     city: Optional[str]

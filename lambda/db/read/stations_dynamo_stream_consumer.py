@@ -37,7 +37,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         old_image = _deserialize_image(ddb.get("OldImage"))
         new_image = _deserialize_image(ddb.get("NewImage"))
         image = new_image if event_name == "INSERT" else old_image
-        if not _is_port_entity(image):
+        if not image or not _is_port_entity(image):
             continue
         op = {
             "event_id": record["eventID"],
