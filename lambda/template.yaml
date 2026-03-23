@@ -606,6 +606,8 @@ Resources:
           KeyType: RANGE
       SSESpecification:
         SSEEnabled: true
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
   # Allows private-subnet Lambdas to reach DynamoDB via gateway endpoint (no NAT required)
   DynamoDBGatewayEndpoint:
     Type: AWS::EC2::VPCEndpoint
@@ -615,34 +617,6 @@ Resources:
       ServiceName: !Sub "com.amazonaws.${AWS::Region}.dynamodb"
       RouteTableIds:
         - !Ref DynamoDBRouteTable1Id
-
-  # SQS API (interface) — required for VPC Lambdas without NAT to call SendMessage
-  SqsApiEndpointSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Security group for SQS API VPC endpoint
-      VpcId: !Ref VpcId
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          SourceSecurityGroupId: !Ref LambdaSecurityGroup
-      SecurityGroupEgress:
-        - IpProtocol: -1
-          CidrIp: 0.0.0.0/0
-
-  SqsVpcEndpoint:
-    Type: AWS::EC2::VPCEndpoint
-    Properties:
-      VpcId: !Ref VpcId
-      VpcEndpointType: Interface
-      ServiceName: !Sub "com.amazonaws.${AWS::Region}.sqs"
-      SubnetIds:
-        - !Ref PrivateSubnet1Id
-        - !Ref PrivateSubnet2Id
-      SecurityGroupIds:
-        - !Ref SqsApiEndpointSecurityGroup
-      PrivateDnsEnabled: true
 
   StationPortsRdsSyncDLQ:
     Type: AWS::SQS::Queue
@@ -759,8 +733,7 @@ Outputs:
     Description: Backend sets CognitoCrossAccountRoleArn to this — sts:AssumeRole from invoker account(s) (same principals as Lambda invoke)
     Value: !GetAtt BackendCognitoCrossAccountRole.Arn
     Export:
-      Name: !Sub ${AWS::StackName}-CognitoCrossAccountRoleArn
-  StationPortsRdsSyncQueueUrl:
+      Name: !Sub ${AWS::StackName}-CognitoCrossAccountRoleArn  StationPortsRdsSyncQueueUrl:
     Description: URL for station ports → RDS sync (SendMessage from write-station-ports-dynamo)
     Value: !Ref StationPortsRdsSyncQueue
   StationPortsRdsSyncQueueArn:

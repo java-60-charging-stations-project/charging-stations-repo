@@ -24,13 +24,6 @@ SYNC_RDS_QUEUE_URL = os.getenv("SYNC_RDS_QUEUE_URL")
 
 _dynamo = None
 _stations_table = None
-_sqs = None
-
-def get_sqs_client():
-    global _sqs
-    if _sqs is None:
-        _sqs = boto3.client("sqs", region_name=AWS_REGION)
-    return _sqs
 
 def get_dynamo_stations_table():
     global _dynamo, _stations_table
@@ -105,28 +98,6 @@ def delete_station_ports(station_id: str, port_keys: list[str]) -> None:
             {"error": f"error deleting station ports: {e}", "code": "DATABASE_ERROR"}
         )
 
-def enqueue_station_ports_count_sync(station_id: str, ports_delta: int, caller_id: str, request_id: str) -> str | None:
-    if not SYNC_RDS_QUEUE_URL:
-        logger.warning("SYNC_RDS_QUEUE_URL not set; skipping RDS sync enqueue")
-        return None
-    body = {
-        "action": "update_station_ports_count",
-        "station_id": station_id,
-        "ports_delta": ports_delta,
-        "caller_id": caller_id,
-        "correlation_id": request_id,
-    }
-    try:
-        resp = get_sqs_client().send_message(QueueUrl=SYNC_RDS_QUEUE_URL, MessageBody=json.dumps(body))
-        mid = resp.get("MessageId")
-        logger.info(f"enqueued station ports count sync message MessageId={mid}")
-        return mid
-    except Exception as e:
-        logger.error(f"failed to enqueue station ports count sync: {e}")
-        raise LambdaResponseError(
-            {"error": f"station ports count sync queue failed: {e}", "code": "QUEUE_ERROR"}
-        )
-
 def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponsePayload:
     logger.info(f"Handler called with event: {event}")
     try:
@@ -152,7 +123,6 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                 ports = event["data"]["ports"]
                 created_port_keys = insert_station_ports(station_id, ports)
                 log_audit("INFO", message="station ports inserted successfully", status="SUCCESS", **audit_base)
-                enqueue_station_ports_count_sync(station_id, len(ports), caller_id, context.aws_request_id)
                 return SuccessResponsePayload(data={"created_port_keys": created_port_keys})
             case _:
                 log_audit("ERROR", message=f"invalid action {action}", status="ERROR", errorMessage=f"invalid action {action}", **audit_base)

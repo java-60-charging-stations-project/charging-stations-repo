@@ -8,7 +8,6 @@ from datetime import datetime
 from utils.logger import logger, log_audit
 from utils.error_handlers import LambdaResponseError
 from data_types.contract_types import ErrorResponsePayload, SuccessResponsePayload
-from data_types.db_instance_types import RequestParameters
 
 _conn = None
 
@@ -18,6 +17,9 @@ STATIONS_SELECT = """
     (ST_AsGeoJSON(location)::json) AS location,
     ports, rate_plan, state, has_free_ports, created_at, updated_at
 """
+SORTABLE_COLUMNS = {"code" : "code", "name" : "name", "owner" : "owner", "city" : "city", 
+"address" : "address", "email" : "email", "siteTechnician" : "site_technician", 
+"maxPowerKw" : "max_power_kw", "ports" : "ports", "createdAt" : "created_at", "updatedAt" : "updated_at"}
 
 def datetime_to_json(v: Any) -> Any:
     if isinstance(v, datetime):
@@ -78,18 +80,40 @@ def _normalize_pagination(page: int | None, page_size: int | None) -> tuple[int,
     ps = max(min(ps, DEFAULT_PAGE_SIZE), 1)
     return p, ps
 
-def get_request_parameters(meta_parameters: dict) -> RequestParameters:
+def parse_order_by(order_by: str) -> str | None:
+    tokens = order_by.split(",") if order_by else []
+    parameters: list[str] = []
+    for token in tokens:
+        token = token.strip()
+        direction = "ASC"
+        if token.endswith("+"):
+            parameter = token[:-1]
+            direction = "ASC"
+        elif token.endswith("-"):
+            parameter = token[:-1]
+            direction = "DESC"
+        else:
+            parameter = token
+        parameter = parameter.strip()
+        if parameter not in SORTABLE_COLUMNS:
+            logger.error(f"invalid order by parameter: {parameter}")
+            raise LambdaResponseError({"error": f"invalid order by parameter: {parameter}", "code": "INVALID_REQUEST"})
+        parameters.append(f"{SORTABLE_COLUMNS[parameter]} {direction}")
+    return ", ".join(parameters) if parameters else None
+
+def get_request_parameters(data: dict, meta_parameters: dict) -> dict:
     page, page_size = _normalize_pagination(meta_parameters.get("page"), meta_parameters.get("pageSize"))
-    request_parameters: RequestParameters = {
-        "city": meta_parameters.get("city"),
-        "owner": meta_parameters.get("owner"),
-        "state": meta_parameters.get("state"),
+    request_parameters: dict = {
+        "city": data.get("city"),
+        "owner": data.get("owner"),
+        "state": data.get("state"),
+        "order_by": data.get("orderBy"),
         "page": page,
         "page_size": page_size,
     }
     return request_parameters
 
-def get_all_stations(parameters: RequestParameters) -> tuple[list[dict], int, int]:
+def get_all_stations(parameters: dict) -> tuple[list[dict], int, int]:
     try:
         conn = get_connection()
     except Exception as e:
@@ -99,33 +123,38 @@ def get_all_stations(parameters: RequestParameters) -> tuple[list[dict], int, in
     conditions: list[str] = []
     params: list[Any] = []
     if parameters.get("city"):
-        conditions.append("city = %s")
-        params.append(parameters["city"])
+        conditions.append("city ILIKE %s")
+        params.append(f"%{parameters['city']}%")
     if parameters.get("owner"):
-        conditions.append("owner = %s")
-        params.append(parameters["owner"])
+        conditions.append("owner ILIKE %s")
+        params.append(f"%{parameters['owner']}%")
     if parameters.get("state"):
         conditions.append("state = %s")
         params.append(parameters["state"])
     where_sql = " AND ".join(conditions) if conditions else "TRUE"
-    base_from = f"FROM stations WHERE {where_sql}"
+    order_by_sql = "id ASC"
+    if parameters.get("order_by"):  
+        order_by_sql = parse_order_by(parameters["order_by"]) or "id ASC"
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(f"SELECT COUNT(*) AS c {base_from}", tuple(params))
+            cur.execute(f"SELECT COUNT(*) AS c FROM stations WHERE {where_sql}", tuple(params))
             total_items = int(cur.fetchone()["c"])
             total_pages = math.ceil(total_items / parameters["page_size"])
             cur.execute(
-                f"SELECT {STATIONS_SELECT.strip()} {base_from} ORDER BY id DESC LIMIT %s OFFSET %s", 
+                f"SELECT {STATIONS_SELECT.strip()} FROM stations WHERE {where_sql} ORDER BY {order_by_sql} LIMIT %s OFFSET %s", 
                 tuple(params) + (parameters["page_size"], offset),
             )
             rows = cur.fetchall()
         return rows, total_items, total_pages
+    except LambdaResponseError as e:
+        conn.rollback()
+        raise e
     except Exception as e:
         conn.rollback()
         logger.error(f"Error getting all stations: {e}")
         raise LambdaResponseError({"error": f"Error getting all stations: {e}", "code": "DATABASE_ERROR"})
 
-def build_meta_parameters(total_items: int, total_pages: int, parameters: RequestParameters) -> dict:
+def build_meta_parameters(total_items: int, total_pages: int, parameters: dict) -> dict:
     return {
         "total_items": total_items,
         "total_pages": total_pages,
