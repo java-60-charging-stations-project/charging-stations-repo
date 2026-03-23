@@ -22,7 +22,8 @@ const WelcomeTable = () => {
     if (isError) {
         return <p>Error while loading data: {error}</p>;
     }
-    const stations: WelcomeData[] = data?.data ?? [];
+    const allStations: WelcomeData[] = data?.data ?? [];
+    const stations = allStations.slice(0, 10);
 
     console.log('Returning TABLE');
     return (
