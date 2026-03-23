@@ -73,7 +73,7 @@ def create_tables() -> None:
                     ports INT NOT NULL,
                     rate_plan JSONB,
                     state TEXT NOT NULL,
-                    hasFreePorts BOOLEAN NOT NULL,
+                    has_free_ports BOOLEAN NOT NULL,
                     created_at TIMESTAMPTZ NOT NULL,
                     updated_at TIMESTAMPTZ NOT NULL
                 );

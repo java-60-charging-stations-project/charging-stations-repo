@@ -13,7 +13,7 @@ WRITE_STATION_FUNCTION_NAME = os.getenv("WRITE_STATION_FUNCTION_NAME", "charging
 def invoke_change_station_state(station_id: str, old_state: str, new_state: str):
     client = boto3.client("lambda", region_name=AWS_REGION)
     payload = {
-      "service": { "action": "change_station_state", "caller_id": "script" },
+      "service": { "action": "changeStationState", "callerId": "script" },
         "data": {
             "stationId": station_id,
             "oldState": old_state,
@@ -31,7 +31,7 @@ def invoke_change_station_state(station_id: str, old_state: str, new_state: str)
     assert resp.get("StatusCode") == 200
     assert payload is not None
     assert len(payload) > 0
-    updated_at = response_json["data"]["updatedAt"]
+    updated_at = response_json["data"]["updated_at"]
     assert updated_at is not None
     print(updated_at)
     if resp.get("FunctionError"):
@@ -39,7 +39,7 @@ def invoke_change_station_state(station_id: str, old_state: str, new_state: str)
 
 if __name__ == "__main__":
     if len(sys.argv) != 4:
-        print("Usage: python -m tests.integration.write.change_station_state_lambda_invoker <station_id> <old_state> <new_state>")
+        print("Usage: python -m tests.integration.write.change_station_state_lambda_invoker <stationId> <oldState> <newState>")
         sys.exit(1)
     station_id = sys.argv[1]
     old_state = sys.argv[2]

@@ -14,7 +14,7 @@ WRITE_STATION_FUNCTION_NAME = os.getenv("WRITE_STATION_FUNCTION_NAME", "charging
 def main():
     client = boto3.client("lambda", region_name=AWS_REGION)
     payload = {
-      "service": { "action": "write_station", "caller_id": "script" },
+      "service": { "action": "writeStation", "callerId": "script" },
       "data": {
         "code": f"TLV-FAST-{random.randint(1000, 9999)}",
         "name": "Skyline Hub",
@@ -48,7 +48,7 @@ def main():
     assert resp.get("StatusCode") == 200
     assert payload is not None
     assert len(payload) > 0
-    station_id = response_json["data"]["stationId"]
+    station_id = response_json["data"]["station_id"]
     assert station_id is not None
     print(station_id)
     if resp.get("FunctionError"):

@@ -147,7 +147,7 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
     }
     try:
         match action:
-            case "insert_station_ports":
+            case "insertStationPorts":
                 station_id = event["data"]["stationId"]
                 ports = event["data"]["ports"]
                 created_port_keys = insert_station_ports(station_id, ports)

@@ -6,7 +6,7 @@ from typing import Any
 from utils.logger import logger, log_audit
 from utils.error_handlers import LambdaResponseError
 from data_types.db_instance_types import UserInstance
-from utils.data_types.contract_types import SuccessResponsePayload, ErrorResponsePayload
+from data_types.contract_types import SuccessResponsePayload, ErrorResponsePayload
 
 _conn = None
 
@@ -77,7 +77,7 @@ def extract_user_instance_from_event(event: dict) -> UserInstance:
         logger.error(f"Unhandled error: {e}")
         raise LambdaResponseError({"error": f"Unhandled error: {e}", "code": "UNHANDLED_ERROR"})
 
-def change_user_status(user_id: str, user_status: str) -> datetime:
+def change_user_role(user_id: str, user_role: str) -> datetime:
     try:
         conn = get_connection()
     except Exception as e:
@@ -88,24 +88,24 @@ def change_user_status(user_id: str, user_status: str) -> datetime:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                UPDATE users SET status = %s, updated_at = %s WHERE user_id = %s
+                UPDATE users SET role = %s, updated_at = %s WHERE user_id = %s
                 """,
-                (user_status, updated_at, user_id),
+                (user_role, updated_at, user_id),
             )
             conn.commit()
         return updated_at
     except psycopg2.IntegrityError as e:
         conn.rollback()
-        logger.error(f"Constraint violation changing user status: {e}")
+        logger.error(f"Constraint violation changing user role: {e}")
         raise LambdaResponseError({"error": str(e), "code": "CONSTRAINT_VIOLATION"})
     except psycopg2.DatabaseError as e:
         conn.rollback()
-        logger.error(f"Database error changing user status: {e}")
+        logger.error(f"Database error changing user role: {e}")
         raise LambdaResponseError({"error": str(e), "code": "DATABASE_ERROR"})
     except Exception as e:
         conn.rollback()
-        logger.error(f"Unhandled error changing user status: {e}")
-        raise LambdaResponseError({"error": f"Unhandled error changing user status: {e}", "code": "UNHANDLED_ERROR"})
+        logger.error(f"Unhandled error changing user role: {e}")
+        raise LambdaResponseError({"error": f"Unhandled error changing user role: {e}", "code": "UNHANDLED_ERROR"})
 
 def insert_user_to_rds(user: UserInstance) -> None:
     try:
@@ -189,11 +189,11 @@ def handler(event: dict, context: Any) -> dict | SuccessResponsePayload | ErrorR
         audit_base["trigger"] = "user_request"
         try:
             match action:
-                case "changeUserStatus":
-                    user_status = event["data"]["user_status"]
-                    user_id = event["data"]["user_id"]
-                    change_user_status(user_id, user_status)
-                    log_audit("INFO", message="user status changed successfully", status="SUCCESS", **audit_base)
+                case "changeUserRole":
+                    user_role = event["data"]["userRole"]
+                    user_id = event["data"]["userId"]
+                    change_user_role(user_id, user_role)
+                    log_audit("INFO", message="user role changed successfully", status="SUCCESS", **audit_base)
                     return SuccessResponsePayload(data={"user_id": user_id})
                 case _:
                     log_audit("ERROR", message="invalid action", status="ERROR", errorMessage=f"invalid action: {action}", **audit_base)
@@ -202,9 +202,9 @@ def handler(event: dict, context: Any) -> dict | SuccessResponsePayload | ErrorR
             log_audit("ERROR", message="missing data", status="ERROR", errorMessage=f"missing data: {e}", **audit_base)
             return ErrorResponsePayload(error=f"missing data: {e}", code="INVALID_REQUEST")
         except LambdaResponseError as e:
-            log_audit("ERROR", message="error changing user status", status="ERROR", errorMessage=e.response.get("error"), **audit_base)
+            log_audit("ERROR", message="error changing user role", status="ERROR", errorMessage=e.response.get("error"), **audit_base)
             return ErrorResponsePayload(error=e.response["error"], code=e.response["code"])
         except Exception as e:
-            log_audit("ERROR", message="error changing user status", status="ERROR", errorMessage=str(e), **audit_base)
-            return ErrorResponsePayload(error=f"unhandled error changing user status: {e}", code="UNHANDLED_ERROR")
+            log_audit("ERROR", message="error changing user role", status="ERROR", errorMessage=str(e), **audit_base)
+            return ErrorResponsePayload(error=f"unhandled error changing user role: {e}", code="UNHANDLED_ERROR")
     

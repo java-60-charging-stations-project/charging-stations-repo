@@ -115,7 +115,7 @@ def get_all_stations(parameters: RequestParameters) -> tuple[list[dict], int, in
             total_items = int(cur.fetchone()["c"])
             total_pages = math.ceil(total_items / parameters["page_size"])
             cur.execute(
-                f"SELECT {STATIONS_SELECT.strip()} {base_from} ORDER BY created_at DESC LIMIT %s OFFSET %s", 
+                f"SELECT {STATIONS_SELECT.strip()} {base_from} ORDER BY id DESC LIMIT %s OFFSET %s", 
                 tuple(params) + (parameters["page_size"], offset),
             )
             rows = cur.fetchall()

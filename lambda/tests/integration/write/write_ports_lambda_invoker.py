@@ -14,7 +14,7 @@ WRITE_PORTS_FUNCTION_NAME = os.getenv("WRITE_PORTS_FUNCTION_NAME", "charging-sta
 def invoke_write_ports(station_id: str):
     client = boto3.client("lambda", region_name=AWS_REGION)
     payload = {
-      "service": { "action": "insert_station_ports", "caller_id": "script" },
+      "service": { "action": "insertStationPorts", "callerId": "script" },
       "data": {
         "stationId": station_id,
         "ports": [
@@ -37,7 +37,7 @@ def invoke_write_ports(station_id: str):
     assert resp.get("StatusCode") == 200
     assert payload is not None
     assert len(payload) > 0
-    created_port_keys = response_json["data"]["createdPortKeys"]
+    created_port_keys = response_json["data"]["created_port_keys"]
     assert created_port_keys is not None
     assert isinstance(created_port_keys, list)
     assert len(created_port_keys) == 1
@@ -50,7 +50,7 @@ def invoke_write_ports(station_id: str):
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("Usage: python -m tests.integration.write.write_ports_lambda_invoker <station_id>")
+        print("Usage: python -m tests.integration.write.write_ports_lambda_invoker <stationId>")
         sys.exit(1)
     station_id = sys.argv[1]
     invoke_write_ports(station_id)

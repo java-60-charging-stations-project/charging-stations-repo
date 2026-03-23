@@ -14,8 +14,8 @@ def main():
     client = boto3.client("lambda", region_name=AWS_REGION)
     payload = {
         "service": {
-        "action": "get_all_users",
-        "caller_id": "string",
+        "action": "getAllUsers",
+        "callerId": "string",
         }
     }
     resp = client.invoke(
