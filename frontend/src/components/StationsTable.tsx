@@ -5,6 +5,7 @@ import type { StationBase, StationsListParams, StationState } from "@/types/stat
 import { useStationsQuery } from "@/hooks/useStationsQuery";
 import SimpleButton from "./SimpleButton";
 import { getLogger } from "@/services/logging";
+import Paginator from "./Paginator";
 
 const logger = getLogger("StationsTable");
 
@@ -167,28 +168,13 @@ const StationsTable: FC<StationsTableProps> =({ fetchFn, detailPath, renderActio
             </table>
 
             {/* Pagination */}
-            {meta && (
-                <div className="flex items-center gap-2 mt-2">
-                    <SimpleButton
-                        caption="Prev"
-                        size="xs"
-                        color="tertiary"
-                        isDisabled={parameters.page <= 1}
-                        handleClick={() => setters.setPage(parameters.page - 1)}
-                    />
-                    <span>
-                        Page {meta.page} of {meta.totalPages}
-                        <span className="text-slate-400 ml-1">({meta.totalItems} total)</span>
-                    </span>
-                    <SimpleButton
-                        caption="Next"
-                        size="xs"
-                        color="tertiary"
-                        isDisabled={parameters.page >= meta.totalPages}
-                        handleClick={() => setters.setPage(parameters.page + 1)}
-                    />
-                </div>
-            )}
+            {
+                meta && <Paginator
+                    onPageChange={(p) => setters.setPage(p)}
+                    activePage={parameters.page}
+                    totalPages={meta.totalPages}
+                />
+            }
         </div>
     );
 }
