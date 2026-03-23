@@ -89,7 +89,7 @@ const AdminStationsPage = () => {
             <h1>Stations</h1>
             <StationsTable
                 fetchFn={fetchStations}
-                detailPath={(id) => `/admin/stations/create/${id}`}
+                detailPath={(id) => `/admin/stations/view/${id}`}
                 renderActions={(station, refresh) => (
                     <AdminStationActions station={station} refresh={refresh} />
                 )}

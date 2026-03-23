@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type FC } from "react";
 import { useNavigate } from "react-router-dom";
 import type { ApiArrayResponse } from "@/types/apiTypes";
 import type { StationBase, StationsListParams, StationState } from "@/types/stations";
@@ -8,11 +8,11 @@ import SimpleButton from "./SimpleButton";
 const STATE_OPTIONS: StationState[] = ["INACTIVE", "ACTIVE", "OUT_OF_SERVICE"];
 
 export interface StationsTableProps {
-    /** Must be a stable reference (module-level import). Inline arrows will cause infinite refetch. */
+    // Must be a stable reference (module-level import)
     fetchFn: (params: StationsListParams) => Promise<ApiArrayResponse<StationBase>>;
-    /** If provided, station name becomes a clickable link navigating to this path. */
+    // If provided, station name becomes a clickable link navigating to this path.
     detailPath?: (stationId: string) => string;
-    /** Render per-row action buttons. Receives the station and a refresh callback. */
+    // Render per-row action buttons. Receives the station and a refresh callback.
     renderActions?: (station: StationBase, refresh: () => void) => React.ReactNode;
 }
 
@@ -39,7 +39,7 @@ function SortButton({
     );
 }
 
-export function StationsTable({ fetchFn, detailPath, renderActions }: StationsTableProps) {
+const StationsTable: FC<StationsTableProps> =({ fetchFn, detailPath, renderActions }) => {
     const navigate = useNavigate();
     const { isLoading, error, stations, meta, parameters, setters, refresh } =
         useStationsQuery(fetchFn);
@@ -83,9 +83,9 @@ export function StationsTable({ fetchFn, detailPath, renderActions }: StationsTa
                     }
                 >
                     <option value="">All states</option>
-                    {STATE_OPTIONS.map((s) => (
-                        <option key={s} value={s}>
-                            {s}
+                    {STATE_OPTIONS.map((status) => (
+                        <option key={status} value={status}>
+                            {status}
                         </option>
                     ))}
                 </select>
