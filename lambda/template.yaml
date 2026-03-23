@@ -190,6 +190,33 @@ Resources:
         - IpProtocol: -1
           CidrIp: 0.0.0.0/0
 
+  LambdaApiVpcEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VpcId
+      VpcEndpointType: Interface
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.lambda"
+      SubnetIds:
+        - !Ref PrivateSubnet1Id
+        - !Ref PrivateSubnet2Id
+      SecurityGroupIds:
+        - !Ref LambdaApiEndpointSecurityGroup
+      PrivateDnsEnabled: true
+
+  LambdaApiEndpointSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Lambda API VPC endpoint
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          SourceSecurityGroupId: !Ref LambdaSecurityGroup
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+
   # Attach this managed policy to your ECS/Fargate task role (same account) so the backend can change group membership
   BackendCognitoUserGroupManagementPolicy:
     Type: AWS::IAM::ManagedPolicy
@@ -618,45 +645,11 @@ Resources:
       RouteTableIds:
         - !Ref DynamoDBRouteTable1Id
 
-  StationPortsRdsSyncDLQ:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: charging-stations-station-ports-rds-sync-dlq
-      MessageRetentionPeriod: 1209600
-
-  StationPortsRdsSyncQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: charging-stations-station-ports-rds-sync
-      VisibilityTimeout: 120
-      RedrivePolicy:
-        deadLetterTargetArn: !GetAtt StationPortsRdsSyncDLQ.Arn
-        maxReceiveCount: 5
-
-  # Allow main queue to redrive failed messages to DLQ
-  StationPortsRdsSyncDLQPolicy:
-    Type: AWS::SQS::QueuePolicy
-    Properties:
-      Queues:
-        - !Ref StationPortsRdsSyncDLQ
-      PolicyDocument:
-        Statement:
-          - Effect: Allow
-            Principal:
-              AWS: "*"
-            Action: sqs:SendMessage
-            Resource: !GetAtt StationPortsRdsSyncDLQ.Arn
-            Condition:
-              ArnEquals:
-                aws:SourceArn: !GetAtt StationPortsRdsSyncQueue.Arn
-
   WriteStationPortsFunction:
     Type: AWS::Serverless::Function
     DependsOn:
       - StationEntitiesTable
       - DynamoDBGatewayEndpoint
-      - SqsVpcEndpoint
-      - StationPortsRdsSyncQueue
     Properties:
       Runtime: python3.12
       FunctionName: charging-stations-write-station-ports-dynamo
@@ -674,7 +667,6 @@ Resources:
       Environment:
         Variables:
           STATIONS_DYNAMO_TABLE: !Ref StationEntitiesTable
-          SYNC_RDS_QUEUE_URL: !Ref StationPortsRdsSyncQueue
       Policies:
         - Version: '2012-10-17'
           Statement:
@@ -686,10 +678,6 @@ Resources:
                 - dynamodb:Query
                 - dynamodb:UpdateItem
               Resource: !GetAtt StationEntitiesTable.Arn
-            - Effect: Allow
-              Action:
-                - sqs:SendMessage
-              Resource: !GetAtt StationPortsRdsSyncQueue.Arn
     
   WriteStationPortsInvokePermissionA:
     Type: AWS::Lambda::Permission
@@ -707,6 +695,49 @@ Resources:
       Action: lambda:InvokeFunction
       Principal: !Sub "arn:aws:iam::${InvokerAccountIdB}:root"
 
+  StationEntitiesStreamConsumerFunction:
+    Type: AWS::Serverless::Function
+    DependsOn:
+      - StationEntitiesTable
+      - DynamoDBGatewayEndpoint
+      - LambdaApiVpcEndpoint
+    Properties:
+      Runtime: python3.12
+      FunctionName: charging-stations-station-entities-stream-consumer
+      Handler: stations_dynamo_stream_consumer.handler
+      CodeUri: db/read
+      Layers:
+        - !Ref CommonToolsLayer
+      Environment:
+        Variables:
+          REGION: !Ref AWS::Region
+          WRITE_STATION_FUNCTION_NAME: charging-stations-write-station-rds
+          AWS_LAMBDA_HOST_ACCOUNT: !Ref AWS::AccountId
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - lambda:InvokeFunction
+              Resource: !GetAtt WriteStationRDSFunction.Arn
+      Description: Consumes DynamoDB stream records from station entities table
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds:
+          - !Ref PrivateSubnet1Id
+          - !Ref PrivateSubnet2Id
+      Events:
+        StationEntitiesStream:
+          Type: DynamoDB
+          Properties:
+            Stream: !GetAtt StationEntitiesTable.StreamArn
+            StartingPosition: LATEST
+            BatchSize: 100
+            MaximumRetryAttempts: 3
+            BisectBatchOnFunctionError: true
+            Enabled: true
+  
 Outputs:
   UserPoolId:
     Description: Cognito User Pool ID (backend API / Fargate env)
@@ -733,12 +764,4 @@ Outputs:
     Description: Backend sets CognitoCrossAccountRoleArn to this — sts:AssumeRole from invoker account(s) (same principals as Lambda invoke)
     Value: !GetAtt BackendCognitoCrossAccountRole.Arn
     Export:
-      Name: !Sub ${AWS::StackName}-CognitoCrossAccountRoleArn  StationPortsRdsSyncQueueUrl:
-    Description: URL for station ports → RDS sync (SendMessage from write-station-ports-dynamo)
-    Value: !Ref StationPortsRdsSyncQueue
-  StationPortsRdsSyncQueueArn:
-    Description: ARN for event source mapping / IAM
-    Value: !GetAtt StationPortsRdsSyncQueue.Arn
-  StationPortsRdsSyncDLQArn:
-    Description: Dead-letter queue when consumer fails maxReceiveCount times
-    Value: !GetAtt StationPortsRdsSyncDLQ.Arn
+      Name: !Sub ${AWS::StackName}-CognitoCrossAccountRoleArn  

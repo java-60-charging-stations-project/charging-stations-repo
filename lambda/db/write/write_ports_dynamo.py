@@ -1,7 +1,5 @@
 import os
-import json
 import uuid
-import time
 import boto3
 from decimal import Decimal
 from datetime import datetime
@@ -14,13 +12,8 @@ from data_types.db_instance_types import PortInstance
 
 
 
-AWS_REGION = os.getenv("AWS_REGION", "il-central-1")
-AWS_LAMBDA_HOST_ACCOUNT = os.getenv("AWS_LAMBDA_HOST_ACCOUNT", "852215679994")
-STATIONS_DYNAMO_TABLE = os.getenv("STATIONS_DYNAMO_TABLE", "charging-stations-stations")
-WRITE_STATION_FUNCTION_NAME = os.getenv("WRITE_STATION_FUNCTION_NAME", "charging-stations-write-station-rds")
-MAX_RETRIES = int(os.getenv("MAX_RETRIES", "5"))
-ROLLBACK_MAX_RETRIES = int(os.getenv("ROLLBACK_MAX_RETRIES", "3"))
-SYNC_RDS_QUEUE_URL = os.getenv("SYNC_RDS_QUEUE_URL")
+AWS_REGION = os.environ["AWS_REGION"]
+STATIONS_DYNAMO_TABLE = os.environ["STATIONS_DYNAMO_TABLE"]
 
 _dynamo = None
 _stations_table = None

@@ -112,17 +112,18 @@ def insert_station_to_rds(station: StationInstance) -> None:
     try:
         rate_plan = station.get("rate_plan")
         rate_plan_json = json.dumps(rate_plan) if rate_plan else None
+        event_id = str(uuid.uuid4())
         with conn.cursor() as cur:
             cur.execute(
                 """
                     INSERT INTO stations (
                         id, code, name, owner, city, address, email, 
                         site_technician, max_power_kw, location, ports, 
-                        rate_plan, state, has_free_ports, created_at, updated_at
+                        rate_plan, state, has_free_ports, created_at, updated_at, event_id
                     ) VALUES (
                         %s, %s, %s, %s, %s, %s, %s, %s, %s, 
                         ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography, 
-                        %s, %s, %s, %s, %s, %s
+                        %s, %s, %s, %s, %s, %s, %s
                     )
                 """,
                 (
@@ -143,6 +144,7 @@ def insert_station_to_rds(station: StationInstance) -> None:
                     station["has_free_ports"],
                     station["created_at"],
                     station["updated_at"],
+                    event_id,
                 ),
             )
         conn.commit()
@@ -252,7 +254,7 @@ def delete_station(station_id: str) -> datetime:
         logger.error(f"Unhandled error deleting station: {e}")
         raise LambdaResponseError({"error": str(e), "code": "UNHANDLED_ERROR"})
 
-def update_station_ports_count_in_rds(station_id: str, ports_delta: int) -> tuple[int, datetime]:
+def update_station_ports(station_id: str, delta: int, event_id: str) -> datetime | None:
     try:
         conn = get_connection()
     except Exception as e:
@@ -263,21 +265,31 @@ def update_station_ports_count_in_rds(station_id: str, ports_delta: int) -> tupl
             updated_at = datetime.now()
             cur.execute(
                 """
-                    UPDATE stations SET ports = ports + %s, updated_at = %s WHERE id = %s RETURNING ports
+                    UPDATE stations SET ports = ports + %s, updated_at = %s, event_id = %s WHERE id = %s 
+                    AND (event_id IS DISTINCT FROM %s) AND (ports + %s) >= 0
+                    RETURNING ports
                 """,
                 (
-                    ports_delta,
+                    delta,
                     updated_at,
+                    event_id,
                     station_id,
+                    event_id,
+                    delta,
                 ),
             )
             row = cur.fetchone()
             if row is None:
-                logger.error(f"station not found: {station_id}")
-                raise LambdaResponseError({"error": f"station not found: {station_id}", "code": "NOT_FOUND"})
-            ports = row[0]
+                cur.execute("SELECT ports FROM stations WHERE id = %s", (station_id,))
+                row = cur.fetchone()
+                if row is None:
+                    logger.error(f"station not found: {station_id}")
+                    raise LambdaResponseError({"error": f"station not found: {station_id}", "code": "NOT_FOUND"})
+                logger.info(f"duplicate event, no-op for station {station_id}")
+                conn.commit()
+                return None
         conn.commit()
-        return ports, updated_at
+        return updated_at
     except psycopg2.IntegrityError as e:
         conn.rollback()
         logger.error(f"Constraint violation updating station state: {e}")
@@ -332,12 +344,16 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                 updated_at = delete_station(station_id)
                 log_audit("INFO", message=f"{station_id} deleted successfully", status="SUCCESS", **audit_base)
                 return SuccessResponsePayload(data={"deleted_at": updated_at.isoformat()})
-            case "update_station_ports_count":
-                station_id = sqs["station_id"]
-                ports_delta = sqs["ports_delta"]
-                update_station_ports_count_in_rds(station_id, ports_delta)
-                log_audit("INFO", message=f"{station_id} ports count updated to {ports_delta}", status="SUCCESS", **audit_base)
-                return event
+            case "update_station_ports":
+                operations = event["data"]
+                for operation in operations:
+                    station_id = operation["station_id"]
+                    ports_delta = operation["delta"]
+                    event_id = operation["event_id"]
+                    update_station_ports(station_id, ports_delta, event_id)
+                    logger.info(f"ports count updated with delta {ports_delta} for station {station_id} with event {event_id}")
+                log_audit("INFO", message=f"ports count updated for {len(operations)} stations", status="SUCCESS", **audit_base)
+                return SuccessResponsePayload(data={"operations": operations})
             case _:
                 log_audit("ERROR", message=f"invalid action {action}", status="ERROR", errorMessage=f"invalid action {action}", **audit_base)
                 return ErrorResponsePayload(error=f"invalid action {action}", code="INVALID_REQUEST")

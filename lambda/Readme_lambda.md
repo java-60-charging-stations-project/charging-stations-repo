@@ -175,6 +175,8 @@ python run_create_rds_tables.py
 python run_confirm_console_created_admin.py <username> <password> <new_password>
 ```
 
+After successful confirmation, open the Cognito User Pool console and move that user to the **`ADMIN`** group manually. The confirmation flow sets password/name and signs in, but it does not assign admin group membership.
+
 ### Integration tests
 
 From **`lambda`** (with boto3 and IAM allowing `lambda:InvokeFunction` on the target account).

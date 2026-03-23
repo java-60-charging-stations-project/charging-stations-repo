@@ -75,7 +75,8 @@ def create_tables() -> None:
                     state TEXT NOT NULL,
                     has_free_ports BOOLEAN NOT NULL,
                     created_at TIMESTAMPTZ NOT NULL,
-                    updated_at TIMESTAMPTZ NOT NULL
+                    updated_at TIMESTAMPTZ NOT NULL,
+                    event_id TEXT
                 );
             """)
             cur.execute("""CREATE INDEX IF NOT EXISTS idx_stations_location ON stations USING GIST (location);""")
