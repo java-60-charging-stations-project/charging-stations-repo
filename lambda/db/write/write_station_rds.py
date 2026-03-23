@@ -296,28 +296,13 @@ def update_station_ports_count_in_rds(station_id: str, ports_delta: int) -> tupl
 
 def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponsePayload:
     logger.info(f"Handler called with event: {event}")
-    sqs_request_id = None
-    sqs_caller_id = None
-    sqs_action = None
-    sqs_ports_delta = None
-    sqs_station_id = None
-    if event.get("Records"):
-        try:
-            sqs_request_id = event["Records"][0]["body"]["correlation_id"]
-            sqs_caller_id = event["Records"][0]["body"]["caller_id"]
-            sqs_action = event["Records"][0]["body"]["action"]
-            sqs_ports_delta = event["Records"][0]["body"]["ports_delta"]
-            sqs_station_id = event["Records"][0]["body"]["station_id"]
-        except KeyError as e:
-            log_audit("ERROR", message="missing SQS records keys", status="ERROR", errorMessage=f"missing SQS records keys: {e}")
-            return ErrorResponsePayload(error=f"missing SQS records keys: {e}", code="INVALID_REQUEST")
     try:
-        caller_id = event["service"]["callerId"] if event.get("service") else sqs_caller_id
+        caller_id = event["service"]["callerId"]
     except KeyError as e:
         log_audit("ERROR", message="missing callerId", status="ERROR", errorMessage=f"missing callerId: {e}")
         return ErrorResponsePayload(error=f"missing callerId: {e}", code="UNAUTHORIZED")
     try:
-        action = event["service"]["action"] if event.get("service") else sqs_action
+        action = event["service"]["action"] 
     except KeyError as e:
         log_audit("ERROR", message="missing action", status="ERROR", errorMessage=f"missing action: {e}")
         return ErrorResponsePayload(error=f"missing action: {e}", code="INVALID_REQUEST")
@@ -325,7 +310,7 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
         "caller_id": caller_id,
         "service": context.function_name,
         "event": action,
-        "request_id": sqs_request_id if sqs_request_id else context.aws_request_id,
+        "request_id": context.aws_request_id,
     }
     try:
         match action:
@@ -348,8 +333,8 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                 log_audit("INFO", message=f"{station_id} deleted successfully", status="SUCCESS", **audit_base)
                 return SuccessResponsePayload(data={"deleted_at": updated_at.isoformat()})
             case "update_station_ports_count":
-                station_id = sqs_station_id
-                ports_delta = sqs_ports_delta
+                station_id = sqs["station_id"]
+                ports_delta = sqs["ports_delta"]
                 update_station_ports_count_in_rds(station_id, ports_delta)
                 log_audit("INFO", message=f"{station_id} ports count updated to {ports_delta}", status="SUCCESS", **audit_base)
                 return event

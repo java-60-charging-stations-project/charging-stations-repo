@@ -184,10 +184,13 @@ Request:
 ```json
 {
   "service": { "action": "getAllStations", "callerId": "string" },
-  "meta": {
+  "data" : {
     "city": "string|null",
     "owner": "string|null",
     "state": "ACTIVE|INACTIVE|OUT_OF_SERVICE|DELETED",
+    "orderBy" : "city+,name-|..."
+  },
+  "meta": {
     "page": 1,
     "pageSize": 20
   }
