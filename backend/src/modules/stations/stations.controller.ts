@@ -1,10 +1,19 @@
 import type { Request, Response } from 'express';
 import { z } from 'zod';
-import { wrapResponse, wrapResponseList } from '../../common/wrappers';
+import { wrapResponse } from '../../common/wrappers';
 import { ADMIN_GROUP, SUPPORT_GROUP } from '../../common/authRoles';
 import type { StationsService, StationState } from './stations.types';
 
 const idSchema = z.string().min(1);
+
+const listQuerySchema = z.object({
+  city: z.string().optional(),
+  owner: z.string().optional(),
+  state: z.enum(['INACTIVE', 'ACTIVE', 'OUT_OF_SERVICE']).optional(),
+  orderBy: z.string().optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(200).default(200),
+});
 
 const ratePlanSchema = z.object({
   currencyCode: z.string().min(1),
@@ -52,13 +61,10 @@ export class StationsController {
   constructor(private readonly service: StationsService) {}
 
   list = async (req: Request, res: Response) => {
+    const params = listQuerySchema.parse(req.query);
     const callerId = req.user?.sub ?? '';
-    const data = await this.service.list(callerId);
-
-    const totalItems = data.length;
-    const pageSize = totalItems || 1;
-
-    res.status(200).json(wrapResponseList(data, totalItems, pageSize));
+    const result = await this.service.list(params, callerId);
+    res.status(200).json(result);
   };
 
   getById = async (req: Request, res: Response) => {

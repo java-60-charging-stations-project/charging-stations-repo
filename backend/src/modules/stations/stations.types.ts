@@ -174,9 +174,18 @@ export interface AdminUpdateStationStateRequest {
   newState: StationState;
 }
 
+export interface ListStationsParams {
+  city?: string;
+  owner?: string;
+  state?: StationState;
+  orderBy?: string;
+  page?: number;
+  pageSize?: number;
+}
+
 export interface StationsService {
-  list(callerId: string): Promise<StationBase[]>;
-  
+  list(params: ListStationsParams, callerId: string): Promise<StationBaseCollectionResponse>;
+
   getById(stationId: string, callerId: string): Promise<StationBase>;
   
   create(payload: AdminCreateStationRequest, callerId: string): Promise<AdminCreateStationResponse>;
@@ -190,4 +199,3 @@ export interface StationsService {
 
   deleteStation(stationId: string, callerId: string): Promise<AdminDeleteStationResponse>;
 }
-
