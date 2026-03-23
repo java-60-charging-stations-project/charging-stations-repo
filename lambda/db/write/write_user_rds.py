@@ -63,8 +63,6 @@ def extract_user_instance_from_event(event: dict) -> UserInstance:
             "full_name": full_name,
             "email": email,
             "phone": attrs.get('phone_number'),
-            "role": "USER" if not console_created else "ADMIN",
-            "status": "CONFIRMED",
             "created_at": timestamp,
             "updated_at": timestamp,
         }
@@ -77,36 +75,6 @@ def extract_user_instance_from_event(event: dict) -> UserInstance:
         logger.error(f"Unhandled error: {e}")
         raise LambdaResponseError({"error": f"Unhandled error: {e}", "code": "UNHANDLED_ERROR"})
 
-def change_user_role(user_id: str, user_role: str) -> datetime:
-    try:
-        conn = get_connection()
-    except Exception as e:
-        logger.error(f"Error getting connection: {e}")
-        raise LambdaResponseError({"error": f"Error getting connection: {e}", "code": "DATABASE_ERROR"})
-    try:
-        updated_at = datetime.now()
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                UPDATE users SET role = %s, updated_at = %s WHERE user_id = %s
-                """,
-                (user_role, updated_at, user_id),
-            )
-            conn.commit()
-        return updated_at
-    except psycopg2.IntegrityError as e:
-        conn.rollback()
-        logger.error(f"Constraint violation changing user role: {e}")
-        raise LambdaResponseError({"error": str(e), "code": "CONSTRAINT_VIOLATION"})
-    except psycopg2.DatabaseError as e:
-        conn.rollback()
-        logger.error(f"Database error changing user role: {e}")
-        raise LambdaResponseError({"error": str(e), "code": "DATABASE_ERROR"})
-    except Exception as e:
-        conn.rollback()
-        logger.error(f"Unhandled error changing user role: {e}")
-        raise LambdaResponseError({"error": f"Unhandled error changing user role: {e}", "code": "UNHANDLED_ERROR"})
-
 def insert_user_to_rds(user: UserInstance) -> None:
     try:
         conn = get_connection()
@@ -117,16 +85,14 @@ def insert_user_to_rds(user: UserInstance) -> None:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                INSERT INTO users (user_id, full_name, email, phone, role, status, created_at, updated_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO users (user_id, full_name, email, phone, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s)
                 """,
                 (
                     user["user_id"],
                     user["full_name"],
                     user["email"],
                     user["phone"],
-                    user["role"],
-                    user["status"],
                     user["created_at"],
                     user["updated_at"],
                 ),
@@ -189,12 +155,6 @@ def handler(event: dict, context: Any) -> dict | SuccessResponsePayload | ErrorR
         audit_base["trigger"] = "user_request"
         try:
             match action:
-                case "changeUserRole":
-                    user_role = event["data"]["userRole"]
-                    user_id = event["data"]["userId"]
-                    change_user_role(user_id, user_role)
-                    log_audit("INFO", message="user role changed successfully", status="SUCCESS", **audit_base)
-                    return SuccessResponsePayload(data={"user_id": user_id})
                 case _:
                     log_audit("ERROR", message="invalid action", status="ERROR", errorMessage=f"invalid action: {action}", **audit_base)
                     return ErrorResponsePayload(error=f"invalid action: {action}", code="INVALID_REQUEST")
@@ -202,9 +162,9 @@ def handler(event: dict, context: Any) -> dict | SuccessResponsePayload | ErrorR
             log_audit("ERROR", message="missing data", status="ERROR", errorMessage=f"missing data: {e}", **audit_base)
             return ErrorResponsePayload(error=f"missing data: {e}", code="INVALID_REQUEST")
         except LambdaResponseError as e:
-            log_audit("ERROR", message="error changing user role", status="ERROR", errorMessage=e.response.get("error"), **audit_base)
+            log_audit("ERROR", message=f"error performing {action}", status="ERROR", errorMessage=e.response.get("error"), **audit_base)
             return ErrorResponsePayload(error=e.response["error"], code=e.response["code"])
         except Exception as e:
-            log_audit("ERROR", message="error changing user role", status="ERROR", errorMessage=str(e), **audit_base)
-            return ErrorResponsePayload(error=f"unhandled error changing user role: {e}", code="UNHANDLED_ERROR")
+            log_audit("ERROR", message=f"error performing {action}", status="ERROR", errorMessage=str(e), **audit_base)
+            return ErrorResponsePayload(error=f"unhandled error performing {action}: {e}", code="UNHANDLED_ERROR")
     

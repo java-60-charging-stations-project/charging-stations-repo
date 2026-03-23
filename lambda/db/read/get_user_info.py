@@ -1,9 +1,9 @@
 import os
 import boto3
 import psycopg2
+from typing import Any
 from psycopg2.extras import RealDictCursor
 from utils.logger import logger, log_audit
-from typing import Any
 from utils.error_handlers import LambdaResponseError
 from data_types.contract_types import SuccessResponsePayload, ErrorResponsePayload
 from datetime import datetime

@@ -198,7 +198,8 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                     return SuccessResponsePayload(data=result)
             case "getAllStations":
                     meta_parameters = event.get("meta", {})
-                    request_parameters = get_request_parameters(meta_parameters)
+                    data = event.get("data", {})
+                    request_parameters = get_request_parameters(data, meta_parameters)
                     stations_info, total_items, total_pages = get_all_stations(request_parameters)
                     meta_parameters = build_meta_parameters(total_items, total_pages, request_parameters)
                     logger.info(f"meta parameters: {meta_parameters}")

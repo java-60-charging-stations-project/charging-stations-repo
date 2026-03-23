@@ -33,7 +33,6 @@ def main():
     assert all(isinstance(item, dict) for item in list_users)
     assert all(item.get("user_id") is not None for item in list_users)
     assert all(item.get("email") is not None for item in list_users)
-    assert all(item.get("role") is not None for item in list_users)
     assert all(item.get("full_name") is not None for item in list_users)
     print(list_users)
     if resp.get("FunctionError"):

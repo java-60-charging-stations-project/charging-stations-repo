@@ -71,7 +71,16 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             FunctionName=f"arn:aws:lambda:{REGION}:{AWS_LAMBDA_HOST_ACCOUNT}:function:{WRITE_STATION_FUNCTION_NAME}",
             Payload=json.dumps(payload).encode("utf-8"),
         )
-        raw = response["Payload"].read().decode()
+        raw = response["Payload"].read().decode("utf-8") or "{}"
+        try:
+            response_json = json.loads(raw)
+        except json.JSONDecodeError:
+            raise RuntimeError(f"non-JSON payload: {raw}")
+        if not isinstance(response_json, dict):
+            raise RuntimeError(f"unexpected payload shape: {type(response_json)}")
+        if response_json.get("error"):
+            logger.error(f"Forwarded {len(operations)} operations to {WRITE_STATION_FUNCTION_NAME} failed: {response_json.get('error')}")
+            raise RuntimeError(f"station entities stream records forwarding failed: {response_json.get('error')}")
         response_json = json.loads(raw)
         logger.info(f"Forwarded {len(operations)} operations to {WRITE_STATION_FUNCTION_NAME} successfully")
         if response_json.get("error"):

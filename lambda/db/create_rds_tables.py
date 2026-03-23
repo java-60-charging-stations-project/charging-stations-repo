@@ -1,8 +1,8 @@
 import os
 import boto3
 import psycopg2
-from utils.logger import logger, log_audit
 from typing import Any
+from utils.logger import logger, log_audit
 
 _conn = None
 
@@ -52,8 +52,6 @@ def create_tables() -> None:
                     full_name TEXT NOT NULL,
                     email TEXT NOT NULL UNIQUE,
                     phone TEXT UNIQUE,
-                    role TEXT NOT NULL CHECK (role IN ('USER', 'ADMIN', 'SUPPORT')),
-                    status TEXT NOT NULL,
                     created_at TIMESTAMPTZ NOT NULL,
                     updated_at TIMESTAMPTZ NOT NULL
                 );

@@ -6,10 +6,9 @@ class UserInstance(TypedDict):
     full_name: str
     email: str
     phone: Optional[str]
-    role: Literal["USER", "ADMIN", "SUPPORT"]
-    status: Optional[Literal["ACTIVE", "BANNED", "DISABLED"]]
     created_at: datetime
     updated_at: Optional[datetime]
+    event_id: Optional[str]
 
 class RatePlan(TypedDict):
     currencyCode: str
@@ -35,6 +34,7 @@ class StationInstance(TypedDict):
     state: Literal["ACTIVE", "INACTIVE", "OUT_OF_SERVICE", "DELETED"]
     created_at: datetime
     updated_at: Optional[datetime]
+    event_id: Optional[str]
 
 class PortInstance(TypedDict):
     station_id: str
