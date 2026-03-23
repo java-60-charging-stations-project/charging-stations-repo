@@ -3,7 +3,6 @@ import { getLogger } from "@/services/logging";
 import { createStation, fetchStationById } from "@/services/api/adminApi";
 import type { AdminCreateStationRequest } from "@/types/stations";
 import { useForm, type SubmitHandler } from "react-hook-form";
-import { buildHash } from "@/services/utils";
 import { CURRENCY_CODE, CURRENCY_NAME } from "@/types/constants";
 import NavButton from "@/components/NavButton";
 import { useParams } from "react-router-dom";
@@ -55,7 +54,8 @@ const StationEditPage = () => {
         logger.debug('Form submitted', data);
         setSubmitError(null);
         try {
-            const code = await buildHash([data.owner, data.city, data.address]);
+            //const code = await buildHash([data.owner, data.city, data.address]);
+            const code = `${data.owner}=+=${data.city}=+=${data.address}`;
             const fullData: AdminCreateStationRequest = {
                 ...data,
                 code,
