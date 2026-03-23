@@ -168,25 +168,26 @@ export class UsersServiceLambda implements UsersService {
     filters: GetUserDetailsFilters
   ): Promise<AdminUserDetails> {
     logger.debug('Getting user details: ', { adminId, userId, filters });
-        const response = await cognitoApiClient.getUserDetails(userId);
-        if (!response) {
-          throw new ResourceNotFoundError(`User ${userId} not found`, 'USER_NOT_FOUND');
-        }
-        logger.debug('Cognito response: ', { cognitoResponse: response });
-        const user: CognitoUser = unpackAdminGetUserResponse(response);
-        const role = await this.getUserRole(adminId, userId);
+    const response = await cognitoApiClient.getUserDetails(userId);
+    logger.debug('Cognito response: ', { cognitoResponse: response });
+    if (!response) {
+      throw new ResourceNotFoundError(`User ${userId} not found`, 'USER_NOT_FOUND');
+    }
+    logger.debug('Cognito response: ', { cognitoResponse: response });
+    const user: CognitoUser = unpackAdminGetUserResponse(response);
+    const role = await this.getUserRole(adminId, userId);
 
-        return {
-            userId: user.userId,
-            username: user.email,
-            email: user.email,
-            name: user.name,
-            createDate: user.createDate,
-            lastModifiedDate: user.lastModifiedDate,
-            enabled: user.enabled,
-            status: user.status,
-            role: role.role,
-        };
+    return {
+        userId: user.userId,
+        username: user.email,
+        email: user.email,
+        name: user.name,
+        createDate: user.createDate,
+        lastModifiedDate: user.lastModifiedDate,
+        enabled: user.enabled,
+        status: user.status,
+        role: role.role,
+    };
   }
 
   async enableUser(
