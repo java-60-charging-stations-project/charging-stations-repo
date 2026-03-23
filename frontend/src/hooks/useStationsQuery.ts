@@ -66,54 +66,39 @@ export function useStationsQuery(
         });
     };
 
-    const setOrderBy = (orderBy: string) => {
+    const setOrderBy = (orderBy: string | undefined) => {
         setSearchParams(
             (prev) => {
                 const next = new URLSearchParams(prev);
-                next.set('orderBy', orderBy);
+                if (orderBy) {
+                    next.set('orderBy', orderBy);
+                } else {
+                    next.delete('orderBy');
+                }
                 return next;
             }
 
         );
     };
 
-    const setCity = (city: string) => {
+    const setTextFilters = (city: string | undefined, owner: string | undefined) => {
         setSearchParams((prev) => {
             const next = new URLSearchParams(prev);
-            if (city) {
-                next.set('city', city);
-            } else {
-                next.delete('city');
-            }
-            next.set('page', "1");
+            if (city) next.set('city', city);
+            else next.delete('city');
+            if (owner) next.set('owner', owner);
+            else next.delete('owner');
+            next.set('page', '1');
             return next;
         });
     };
-    
-    const setOwner = (owner: string) => {
+
+    const setStateFilter = (state: StationState | undefined) => {
         setSearchParams((prev) => {
             const next = new URLSearchParams(prev);
-            if (owner) {
-                next.set('owner', owner);
-            } else {
-                next.delete('owner');
-            }
-            next.set('page', "1");
-            return next;
-        });
-    };
-    
-    const setState = (state: StationState | undefined) => {
-        setSearchParams((prev) => {
-            const next = new URLSearchParams(prev);
-            
-            if (state) {
-                next.set('state', state);
-            } else {
-                next.delete('state');
-            }
-            
-            next.set('page', "1");
+            if (state) next.set('state', state);
+            else next.delete('state');
+            next.set('page', '1');
             return next;
         });
     };
@@ -124,7 +109,7 @@ export function useStationsQuery(
         stations,
         meta,
         parameters: { city, owner, state, orderBy, page, pageSize },
-        setters: { setPage, setPageSize, setOrderBy, setCity, setOwner, setState },
+        setters: { setPage, setPageSize, setOrderBy, setTextFilters, setStateFilter },
         refresh,
     };
 };

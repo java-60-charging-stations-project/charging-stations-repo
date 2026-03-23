@@ -15,6 +15,9 @@ import type {
     StationBase,
     StationsListParams,
 } from '@/types/stations';
+import { getLogger } from '@/services/logging';
+
+const logger = getLogger("adminApi");
 
 /** USERS */
 export async function fetchAdminUsers(): Promise<AdminGetUserResponse[]> {
@@ -69,17 +72,21 @@ export async function adminDisableUser(userId: string, request:AdminChangeLockSt
 
 /********* STATIONS *********/
 export async function fetchStations(params: StationsListParams): Promise<ApiArrayResponse<StationBase>> {
+    logger.debug("Fetching stations", { params });
     const response = await apiClient.get<ApiArrayResponse<StationBase>>(
         '/admin/stations',
         { params },
     );
+    logger.debug("Stations fetched", { response });
     return response;
 };
 
 export async function fetchStationById(stationId: string): Promise<StationBase> {
+    logger.debug("Fetching station by id", { stationId });
     const response = await apiClient.get<ApiResponse<StationBase>>(
         `/admin/stations/${stationId}`,
     );
+    logger.debug("Station fetched", { response });
     return response.data;
 };
 

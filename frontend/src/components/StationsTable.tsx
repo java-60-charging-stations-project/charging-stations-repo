@@ -4,6 +4,9 @@ import type { ApiArrayResponse } from "@/types/apiTypes";
 import type { StationBase, StationsListParams, StationState } from "@/types/stations";
 import { useStationsQuery } from "@/hooks/useStationsQuery";
 import SimpleButton from "./SimpleButton";
+import { getLogger } from "@/services/logging";
+
+const logger = getLogger("StationsTable");
 
 const STATE_OPTIONS: StationState[] = ["INACTIVE", "ACTIVE", "OUT_OF_SERVICE"];
 
@@ -44,13 +47,16 @@ const StationsTable: FC<StationsTableProps> =({ fetchFn, detailPath, renderActio
     const { isLoading, error, stations, meta, parameters, setters, refresh } =
         useStationsQuery(fetchFn);
 
-    // Local draft state for filter inputs — committed to URL only on "Load"
+    // Local draft state for text inputs — committed to URL only on "Load"
     const [cityInput, setCityInput] = useState(() => parameters.city ?? "");
     const [ownerInput, setOwnerInput] = useState(() => parameters.owner ?? "");
 
     const handleLoad = () => {
-        setters.setCity(cityInput);
-        setters.setOwner(ownerInput);
+        logger.debug("Loading stations", { city: cityInput, owner: ownerInput });
+        setters.setTextFilters(
+            cityInput.length > 0 ? cityInput : undefined,
+            ownerInput.length > 0 ? ownerInput : undefined,
+        );
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -79,7 +85,7 @@ const StationsTable: FC<StationsTableProps> =({ fetchFn, detailPath, renderActio
                     className="border border-slate-300 px-1.5 py-0.5 rounded bg-white"
                     value={parameters.state ?? ""}
                     onChange={(e) =>
-                        setters.setState((e.target.value as StationState) || undefined)
+                        setters.setStateFilter(e.target.value as StationState || undefined)
                     }
                 >
                     <option value="">All states</option>
