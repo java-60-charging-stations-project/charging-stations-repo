@@ -67,7 +67,7 @@ export async function adminDisableUser(userId: string, request:AdminChangeLockSt
     );
 };
 
-/** STATIONS */
+/********* STATIONS *********/
 export async function fetchStations(params: StationsListParams): Promise<ApiArrayResponse<StationBase>> {
     const response = await apiClient.get<ApiArrayResponse<StationBase>>(
         '/admin/stations',
