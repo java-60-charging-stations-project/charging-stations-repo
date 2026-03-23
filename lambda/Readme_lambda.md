@@ -45,7 +45,7 @@ sam deploy --guided   # first time; then sam deploy
 
 Use `--use-container` so dependencies (e.g. psycopg2 on Python 3.12) build correctly. On first deploy, set VPC, subnets, DB secret ARN, invoker account ID(s); save to `samconfig.toml` for later runs.
 
-The template provisions: **Cognito** (User Pool, client, groups ADMIN/USER/SUPPORT), **RDS** PostgreSQL (IAM auth, private), **VPC endpoints** (RDS API for auth tokens, **SQS** so VPC Lambdas can enqueue without NAT, **DynamoDB** gateway for private-subnet access), **SQS** (station ports → RDS sync queue + DLQ), **Lambdas** (WriteUserRDS, GetUserInfo, CreateRDSTables, ConfirmConsoleCreatedAdmin, Health, station read/write, ports writer), and permissions.
+The template provisions: **Cognito** (User Pool, client, groups ADMIN/USER/SUPPORT), **RDS** PostgreSQL (IAM auth, private), **VPC endpoints** (RDS API for auth tokens, **Lambda API** for private Lambda-to-Lambda invoke, **DynamoDB** gateway for private-subnet access), **Lambdas** (WriteUserRDS, GetUserInfo, CreateRDSTables, ConfirmConsoleCreatedAdmin, Health, station read/write, ports writer, Dynamo stream consumer), and permissions.
 
 1. In the RDS console, temporarily:
    - On the **Databases** tab of **Aurora and RDS** page select desired **db**, in Modify - Connectivity - Additional configuration set **Publicly accessible = Yes**, apply the change, and wait for **db** to modify.
@@ -118,7 +118,7 @@ python -m tests.integration.routes.health_invoker <account_id>
 
 ### DB stack – functions
 
-The template provisions **RDS** (PostgreSQL, IAM auth), **VPC endpoints** (RDS API for `generate_db_auth_token`, **DynamoDB gateway**, **SQS interface** for `SendMessage` from VPC without NAT). DB Lambdas run in the VPC and use IAM database authentication (no Secrets Manager at runtime).
+The template provisions **RDS** (PostgreSQL, IAM auth), **VPC endpoints** (RDS API for `generate_db_auth_token`, **DynamoDB gateway**, **Lambda API interface endpoint** for private Lambda invoke without NAT). DB Lambdas run in the VPC and use IAM database authentication (no Secrets Manager at runtime).
 
 | Function | Purpose | Invoker |
 |----------|---------|--------|
@@ -126,25 +126,26 @@ The template provisions **RDS** (PostgreSQL, IAM auth), **VPC endpoints** (RDS A
 | **charging-stations-write-user-rds** | Write user to RDS and add to Cognito group. | Cognito (PostConfirmation + PostAuthentication). |
 | **charging-stations-get-user-info** | Users from RDS (list, by id, by email per actions). | Backend or cross-account. |
 | **charging-stations-confirm-console-created-admin** | Cognito auth (InitiateAuth, NEW_PASSWORD_REQUIRED with `name`). | Script or backend. |
-| **charging-stations-write-station-rds** | Write station to RDS; change state; delete (soft); update port count (incl. from **SQS**). | Admin, cross-account, or SQS trigger. |
+| **charging-stations-write-station-rds** | Write station to RDS; change state; delete (soft); update station `ports` count from stream-forwarded ops. | Admin, cross-account, or Dynamo stream consumer invoke. |
 | **charging-stations-get-station-info** | Read station(s) from RDS. | Backend or cross-account. |
-| **charging-stations-write-station-ports-dynamo** | Insert ports in DynamoDB; enqueue **SQS** to sync `ports` in RDS (when `SYNC_RDS_QUEUE_URL` is set). | Support / backend. |
+| **charging-stations-write-station-ports-dynamo** | Insert ports in DynamoDB single-table. | Support / backend. |
+| **charging-stations-station-entities-stream-consumer** | Consume DynamoDB stream (`INSERT`/`REMOVE` for `PORT#...`) and invoke WriteStationRDS to apply `delta` updates. | DynamoDB stream trigger. |
 
 **WriteUserRDS** – Cognito triggers (e.g. PostConfirmation) **or** direct invoke with `service` + `data` (e.g. `changeUserStatus`). For Cognito: inserts the user into RDS from `request.userAttributes` and returns the **same event** back. For API invokes: `callerId` in `service`. **full_name**: if missing or Cognito sends `cognito:default_val`, stored as **"Console User"**.
 
 **ConfirmConsoleCreatedAdmin** – For first login (NEW_PASSWORD_REQUIRED), the Lambda sends `userAttributes.name` in the challenge response (default **"Console User"**) because console-created user by default does not have `name`. 
 
 **WriteStationRDS** – Action-based single handler (`callerId` in `service`; camelCase in `data`):
-- `write_station`: creates a station row. `data`: `code`, `name`, `owner`, `city`, `address`, `siteTechnician`, `ratePlan`, optional `email`, `phone`, `state`, `maxPowerKw`, `ports`, `location` (`longitude`/`latitude`).
-- `change_station_state`: `stationId`, `oldState`, `newState`. Updates only when current state matches `oldState`.
-- `delete_station`: `data.stationId`. Soft-delete when state is `ACTIVE`, `INACTIVE`, or `OUT_OF_SERVICE`.
-- **SQS**: messages (e.g. port-count sync) are handled separately; body uses snake_case fields expected by the consumer.
+- `writeStation`: creates a station row. `data`: `code`, `name`, `owner`, `city`, `address`, `siteTechnician`, `ratePlan`, optional `email`, `phone`, `state`, `maxPowerKw`, `ports`, `location` (`longitude`/`latitude`).
+- `changeStationState`: `stationId`, `oldState`, `newState`. Updates only when current state matches `oldState`.
+- `deleteStation`: `data.stationId`. Soft-delete when state is `ACTIVE`, `INACTIVE`, or `OUT_OF_SERVICE`.
+- `update_station_ports`: accepts `data` as list of operations (`station_id`, `event_id`, `delta`) from the stream consumer.
 
 **GetStationInfo** – Action-based (`callerId` in `service`):
 - `get_station_by_id`: `data.stationId`.
 - `get_all_stations`: optional `meta` — `city`, `owner`, `state`, `page`, `pageSize`. Response `data` is a list of station objects (**snake_case**); optional **`meta`** with totals/pages when implemented.
 
-**WriteStationPortsDynamo** – `insert_station_ports`: `data.stationId`, `data.ports` (array of `code`, `power`, `lastMeterKw`). Response `data.created_port_keys` (**snake_case**), values are Dynamo `entity_key` strings (`PORT#...`). Enqueues SQS for RDS `ports` update when configured.
+**WriteStationPortsDynamo** – `insertStationPorts`: `data.stationId`, `data.ports` (array of `code`, `power`, `lastMeterKw`). Response `data.created_port_keys` (**snake_case**), values are Dynamo `entity_key` strings (`PORT#...`).
 
 
 ### Request/response (plain JSON)
@@ -157,7 +158,8 @@ See **`lambda_request_responces.md`** for full shapes. Summary:
 - **ConfirmConsoleCreatedAdmin** – Payload: `username`, `password`, `new_password`, `name` (optional). Response tokens / message or error.
 - **WriteStationRDS** – Success `data` uses **snake_case**: `station_id`, `updated_at`, `deleted_at` (ISO strings where applicable).
 - **GetStationInfo** – Station objects in **snake_case**; `location` as GeoJSON when selected.
-- **WriteStationPortsDynamo** – `insert_station_ports`: success `data.created_port_keys` (list of `PORT#...` strings). Possible **`QUEUE_ERROR`** if SQS enqueue fails after Dynamo write.
+- **WriteStationPortsDynamo** – `insertStationPorts`: success `data.created_port_keys` (list of `PORT#...` strings).
+- **StationEntitiesStreamConsumer** – triggered by Dynamo stream; forwards normalized operations (`event_id`, `station_id`, `delta`) to WriteStationRDS action `update_station_ports`.
 
 ### Run scripts
 
@@ -225,7 +227,8 @@ Copy **`lambda/.env.example`** to **`lambda/.env`** and set values for local run
 | **WRITE_STATION_FUNCTION_NAME** | Function name for writing stations to RDS. |
 | **RDS_DB_SECRET_NAME** | Name of your secret used by the SAM template for DB credentials creation Lambdas and (DB requests with IAM tokens). |
 | **STATIONS_DYNAMO_TABLE** | Optional for local invocation of `charging-stations-write-station-ports-dynamo` (single-table name/ARN). |
-| **SYNC_RDS_QUEUE_URL** | Optional for local tests: SQS queue URL for async RDS port-count sync (deployed Lambda gets this from `lambda/template.yaml`; copy from stack output **StationPortsRdsSyncQueueUrl**). |
+| **WRITE_STATION_FUNCTION_NAME** | Required by stream consumer to invoke `charging-stations-write-station-rds`. |
+| **AWS_LAMBDA_HOST_ACCOUNT** | Required by stream consumer when invoking Lambda by ARN. |
 
 
 ---

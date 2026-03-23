@@ -11,7 +11,7 @@ This document describes the JSON **shape** of the payloads sent to (and returned
 
 Nested JSON stored as-is in the DB (e.g. inside `rate_plan`) may still contain camelCase **keys** inside the blob depending on how it was written; **top-level response fields** follow **snake_case** as returned by the handlers.
 
-**Internal** payloads (e.g. **SQS** message bodies between Lambdas) may use **snake_case** keys and are not part of the frontend HTTP contract.
+**Internal** payloads (e.g. Dynamo stream-consumer payloads between Lambdas) may use **snake_case** keys and are not part of the frontend HTTP contract.
 
 ## Global Success Response
 
@@ -32,11 +32,9 @@ On error, Lambdas return:
 ```json
 {
   "error": "Human readable message",
-  "code": "UNHANDLED_ERROR | ALREADY_EXISTS | NOT_FOUND | UNAUTHORIZED | INVALID_REQUEST | CONSTRAINT_VIOLATION | DATABASE_ERROR | INVALID_STATE | QUEUE_ERROR"
+  "code": "UNHANDLED_ERROR | ALREADY_EXISTS | NOT_FOUND | UNAUTHORIZED | INVALID_REQUEST | CONSTRAINT_VIOLATION | DATABASE_ERROR | INVALID_STATE"
 }
 ```
-
-`QUEUE_ERROR` is returned when a **post-write** step fails (e.g. enqueueing the **SQS** message that syncs port counts to RDS from `charging-stations-write-station-ports-dynamo`).
 
 ## Users - `charging-stations-get-user-info`
 
@@ -375,7 +373,24 @@ Key design:
 
 The item also stores the frontend port identifier as attribute `code`. New ports are created with `state: "DISABLED"`.
 
-After a successful Dynamo write, the Lambda **enqueues an SQS message** (when `SYNC_RDS_QUEUE_URL` is set) so a consumer can run `UPDATE stations SET ports = ports + …` in RDS. The message body is JSON with fields such as `action`, `station_id`, `ports_delta`, `caller_id`, `correlation_id`.
+After a successful Dynamo write, DynamoDB Streams trigger `charging-stations-station-entities-stream-consumer`, which forwards normalized operations to `charging-stations-write-station-rds` action `update_station_ports`.
+
+Internal forwarded payload shape:
+
+```json
+{
+  "service": { "action": "update_station_ports", "callerId": "script" },
+  "data": [
+    {
+      "event_id": "dynamodb-stream-event-id",
+      "station_id": "station-uuid",
+      "entity_key": "PORT#<uuid>",
+      "operation": "INSERT|REMOVE",
+      "delta": 1
+    }
+  ]
+}
+```
 
 Request:
 
@@ -412,8 +427,6 @@ Response (error):
 ```json
 {
   "error": "Human readable message",
-  "code": "INVALID_REQUEST|DATABASE_ERROR|QUEUE_ERROR|UNHANDLED_ERROR|..."
+  "code": "INVALID_REQUEST|DATABASE_ERROR|UNHANDLED_ERROR|..."
 }
 ```
-
-`QUEUE_ERROR` means Dynamo writes succeeded but **SQS enqueue** for the RDS port-count sync failed.
