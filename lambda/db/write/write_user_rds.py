@@ -63,7 +63,7 @@ def extract_user_instance_from_event(event: dict) -> UserInstance:
             "full_name": full_name,
             "email": email,
             "phone": attrs.get('phone_number'),
-            "role": "USER",
+            "role": "USER" if not console_created else "ADMIN",
             "status": "CONFIRMED",
             "created_at": timestamp,
             "updated_at": timestamp,
