@@ -35,4 +35,11 @@ export class ConflictError extends ServiceError {
         super(message, 409, errorCode);
         this.name = 'ConflictError';
     }
+};
+
+export class TooManyRequestsError extends ServiceError {
+    constructor(message: string, errorCode: string = 'TOO_MANY_REQUESTS') {
+        super(message, 429, errorCode);
+        this.name = 'ConflictError';
+    }
 }

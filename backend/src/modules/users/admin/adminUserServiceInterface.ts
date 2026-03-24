@@ -1,10 +1,10 @@
 import { UserRole } from "../../../common/authRoles";
-import { ListUserParameters, UserFull, UserShort } from "./types";
+import { ListUserParameters, UserFull, UserShort, UsersListResponse } from "./types";
 
 export interface AdminUserService {
     getUserById(userId: string): Promise<UserFull>;
     
-    listUsers(parameters: ListUserParameters): Promise<UserShort>;
+    listUsers(parameters: ListUserParameters): Promise<UsersListResponse>;
     
     getUserRole(userId: string): Promise<UserRole>;
     changeUserRole(userId: string, oldRole: UserRole, newRole: UserRole): Promise<void>;
