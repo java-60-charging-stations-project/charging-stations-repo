@@ -19,7 +19,7 @@ export class InternalServerError extends ServiceError {
 export class ForbiddenError extends ServiceError {
     constructor(message: string, errorCode: string = 'FORBIDDEN') {
         super(message, 403, errorCode);
-        this.name = 'ResourceNotFoundError';
+        this.name = 'ForbiddenError';
     }
 }
 
@@ -47,6 +47,6 @@ export class ConflictError extends ServiceError {
 export class TooManyRequestsError extends ServiceError {
     constructor(message: string, errorCode: string = 'TOO_MANY_REQUESTS') {
         super(message, 429, errorCode);
-        this.name = 'ConflictError';
+        this.name = 'TooManyRequestsError';
     }
 }
