@@ -1,7 +1,7 @@
 export interface Attribute {
     name: string;
     value?: string;
-}
+};
 
 export interface CognitoUser {
     userId: string;
@@ -12,7 +12,7 @@ export interface CognitoUser {
     enabled: boolean;
     status: string;
     attributes: Attribute[];
-}
+};
 
 //   Username: "STRING_VALUE", // required
 //   UserAttributes: [ // AttributeListType

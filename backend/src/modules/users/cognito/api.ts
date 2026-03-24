@@ -10,11 +10,13 @@ import {
     AdminDisableUserCommand,
     ListUsersCommand,
     ListUsersResponse,
-    
+    AdminDeleteUserCommand,
+
 } from '@aws-sdk/client-cognito-identity-provider';
 import { getCognitoClient } from './client';
 import { createLogger } from '../../../utils/logger';
 import { env } from '../../../config/env';
+import { ListUserParameters } from '../admin/types';
 
 const logger = createLogger('users.cognito.api');
 
@@ -31,7 +33,7 @@ export class CognitoUsersAPI {
         }
     }
 
-    async addUserToGroup(userIdentifier: string, groupName: string) {
+    async addUserToGroup(userIdentifier: string, groupName: string): Promise<void> {
         logger.debug('Adding user to group: ', { userIdentifier, groupName, userPoolId: this.userPoolId });
         const command = new AdminAddUserToGroupCommand({
             UserPoolId: this.userPoolId,
@@ -40,10 +42,9 @@ export class CognitoUsersAPI {
         });
         const response = await this.client.send(command);
         logger.debug('User added to group, response: ', response);
-        return response;
     }
 
-    async removeUserFromGroup(userIdentifier: string, groupName: string) {
+    async removeUserFromGroup(userIdentifier: string, groupName: string): Promise<void> {
         logger.debug('Removing user from group: ', { userIdentifier, groupName, userPoolId: this.userPoolId });
         const command = new AdminRemoveUserFromGroupCommand({
             UserPoolId: this.userPoolId,
@@ -52,10 +53,9 @@ export class CognitoUsersAPI {
         });
         const response = await this.client.send(command);
         logger.debug('User removed from group, response: ', response);
-        return response;
     }
 
-    async getUserDetails(userIdentifier: string): Promise<AdminGetUserResponse> {
+    async getUser(userIdentifier: string): Promise<AdminGetUserResponse> {
         logger.debug('Getting user details: ', { userIdentifier, userPoolId: this.userPoolId });
         const command = new AdminGetUserCommand({
             UserPoolId: this.userPoolId,
@@ -99,13 +99,29 @@ export class CognitoUsersAPI {
         return response;
     }
 
-    async listUsers(): Promise<ListUsersResponse> {
-        logger.debug('Listing users: ', { userPoolId: this.userPoolId });
+    async listUsers(parameters: ListUserParameters): Promise<ListUsersResponse> {
+        logger.debug('Listing users: ', { userPoolId: this.userPoolId, ...parameters });
+        const { limit, filter, paginationToken } = parameters;
+        const condition = filter ? `"${filter.attributeName}"^="${filter.attributeValue}"` : undefined;
+        
         const command = new ListUsersCommand({
             UserPoolId: this.userPoolId,
+            Limit: limit,
+            PaginationToken: paginationToken,
+            Filter: condition,
         });
         return this.client.send(command);
+    }
 
+    async deleteUser(userIdentifier: string) {
+        logger.debug('Deleting user: ', { userIdentifier, userPoolId: this.userPoolId });
+        const input = { // AdminDeleteUserRequest
+            UserPoolId: this.userPoolId,
+            Username: userIdentifier,
+        };
+        const command = new AdminDeleteUserCommand(input);
+        const response = await this.client.send(command);
+        logger.debug('User deleted, response: ', response);
     }
 }
 
