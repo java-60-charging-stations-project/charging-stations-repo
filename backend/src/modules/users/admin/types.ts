@@ -19,11 +19,11 @@ export type UsersListResponse = {
     paginationToken: string | undefined;
 }
 
-export type AttributeName = "email" | "name";
+export type FilterKey = "email" | "name";
 
 export type ListUserFilter = {
-    attributeName: AttributeName;
-    attributeValue: string;
+    filterKey: FilterKey;
+    filterValue: string;
 };
 
 export type ListUserParameters = {

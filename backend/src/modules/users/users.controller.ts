@@ -5,6 +5,7 @@ import { wrapResponse } from '../../common/wrappers';
 import type { UsersService } from './users.service.interface';
 import { AdminUserService } from './admin/adminUserServiceInterface';
 import { adminChangeUserRoleSchema, adminListUsersSchema } from './admin/schemas';
+import { ListUserFilter, ListUserParameters } from './admin/types';
 
 const logger = createLogger('users.controller');
 
@@ -53,10 +54,13 @@ export class UsersController {
     logger.debug(".listUsers");
     const query = adminListUsersSchema.parse(req.query);
     logger.debug(".listUsers, params: ", query);
-    const result = await this.adminService.listUsers(query);
-    logger.debug(".listUsers, service response: ", result);
+    const {limit, paginationToken, filterKey, filterValue} = query;
+    const filter: ListUserFilter | undefined = filterKey && filterValue ? { filterKey, filterValue } : undefined;
+    const parameters: ListUserParameters = { limit, paginationToken, filter }
+    const response = await this.adminService.listUsers(parameters);
+    logger.debug(".listUsers, service response: ", response);
 
-    res.status(200).json(wrapResponse(result));
+    res.status(200).json(wrapResponse(response));
   };
 
   changeUserRole = async (req: Request, res: Response) => {
