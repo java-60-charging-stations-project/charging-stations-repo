@@ -9,16 +9,16 @@ import {
     UpdateUserRolePayload,
     UserInfo,
     UserRole,
-} from './users.types';
-import { UsersService } from './users.service.interface';
-import { ResourceNotFoundError, InternalServerError, BadRequestError } from '../../common/serviceErrors';
-import { cognitoApiClient } from './cognito/api';
+} from '../users.types';
+import { UsersService } from '../users.service.interface';
+import { ResourceNotFoundError, InternalServerError, BadRequestError } from '../../../common/serviceErrors';
+import { cognitoApiClient } from '../cognito/api';
 import { getUserInfoFromCognitoUser,
     unpackAdminGetUserResponse,
-    unpackListUsersResponse } from './cognito/utils';
-import { createLogger } from '../../utils/logger';
-import { CognitoUser } from './cognito/types';
-import { ADMIN_GROUP, SUPPORT_GROUP } from '../../common/authRoles';
+    unpackListUsersResponse } from '../cognito/utils';
+import { createLogger } from '../../../utils/logger';
+import { CognitoUser } from '../cognito/types';
+import { ADMIN_GROUP, SUPPORT_GROUP } from '../../../common/authRoles';
 
 const logger = createLogger('UsersServiceAwsLocal');
 
@@ -26,11 +26,11 @@ function throwUserNotFoundError(userId: string): never {
     throw new ResourceNotFoundError(`User ${userId} not found`, 'USER_NOT_FOUND');
 }
 
-export class UsersServiceAwsLocal implements UsersService {
+export class UsersServiceAwsLocal {
 
     async getMyInfo(_userId: string): Promise<UserInfo> {
         logger.debug('Getting my info: ', { _userId });
-        const cognitoResponse: AdminGetUserResponse = await cognitoApiClient.getUserDetails(_userId);
+        const cognitoResponse: AdminGetUserResponse = await cognitoApiClient.getUser(_userId);
         if (!cognitoResponse) {
             throwUserNotFoundError(_userId);
         }
@@ -41,7 +41,7 @@ export class UsersServiceAwsLocal implements UsersService {
 
     async getUserById(_adminId: string, _userId: string): Promise<UserInfo> {
         logger.debug('Getting user by id: ', { _adminId, _userId });
-        const cognitoResponse = await cognitoApiClient.getUserDetails(_userId);
+        const cognitoResponse = await cognitoApiClient.getUser(_userId);
         if (!cognitoResponse) {
             throwUserNotFoundError(_userId);
         }
@@ -50,19 +50,19 @@ export class UsersServiceAwsLocal implements UsersService {
         return getUserInfoFromCognitoUser(cognitoUser);
     }
 
-    async listUsers(_adminId: string, _filters: ListUsersFilters): Promise<ListUsersResult> {
-        logger.debug('Listing users: ', { _adminId, _filters });
-        const cognitoResponse = await cognitoApiClient.listUsers();
-        if (!cognitoResponse) {
-            throw new InternalServerError();
-        }
-        logger.debug('Cognito response: ', { cognitoResponse });
-        const users: CognitoUser[] = unpackListUsersResponse(cognitoResponse);
-        return {
-            data: users.map(user => getUserInfoFromCognitoUser(user)),
-            totalItems: users.length,
-        };
-    }
+    // async listUsers(_adminId: string, _filters: ListUsersFilters): Promise<ListUsersResult> {
+    //     logger.debug('Listing users: ', { _adminId, _filters });
+    //     const cognitoResponse = await cognitoApiClient.listUsers();
+    //     if (!cognitoResponse) {
+    //         throw new InternalServerError();
+    //     }
+    //     logger.debug('Cognito response: ', { cognitoResponse });
+    //     const users: CognitoUser[] = unpackListUsersResponse(cognitoResponse);
+    //     return {
+    //         data: users.map(user => getUserInfoFromCognitoUser(user)),
+    //         totalItems: users.length,
+    //     };
+    // }
 
     async updateUserRole(adminId: string, userId: string, payload: UpdateUserRolePayload): Promise<void> {
         logger.debug('Updating user role: ', { adminId, userId, payload });
@@ -101,7 +101,7 @@ export class UsersServiceAwsLocal implements UsersService {
 
     async getUserDetails(adminId: string, userId: string, filters: GetUserDetailsFilters): Promise<AdminUserDetails> {
         logger.debug('Getting user details: ', { adminId, userId, filters });
-        const response = await cognitoApiClient.getUserDetails(userId);
+        const response = await cognitoApiClient.getUser(userId);
         if (!response) {
             throwUserNotFoundError(userId);
         }
