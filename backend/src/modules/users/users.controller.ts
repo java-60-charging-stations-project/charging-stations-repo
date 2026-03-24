@@ -1,10 +1,10 @@
 import type { Request, Response } from 'express';
 import { z } from 'zod';
 import { createLogger } from '../../utils/logger';
-import { wrapResponse, wrapResponseList } from '../../common/wrappers';
+import { wrapResponse } from '../../common/wrappers';
 import type { UsersService } from './users.service.interface';
 import { AdminUserService } from './admin/adminUserServiceInterface';
-import { BadRequestError, ConflictError } from '../../common/serviceErrors';
+import { adminChangeUserRoleSchema, adminListUsersSchema } from './admin/schemas';
 
 const logger = createLogger('users.controller');
 
@@ -31,25 +31,6 @@ const listUsersQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().min(1).max(200).default(200)
 });
-
-// Admin requests schemas
-const adminListUsersSchema = z.object({
-  limit: z.coerce.number().int().positive(),
-  paginationToken: z.string().min(1).optional(),
-  filterKey: z.enum(["email", "name"]).optional(),
-  filterValue: z.string().min(1).optional()
-}).refine(
-  (data) => (!!data.filterKey == !!data.filterValue),
-  { message: "filterKey and filterValue must be provided together" }
-);
-
-const adminChangeUserRoleSchema = z.object({
-  oldRole: z.literal(["USER", "ADMIN", "SUPPORT"]),
-  newRole: z.literal(["USER", "ADMIN", "SUPPORT"]),
-}).refine(
-  (data) => (data.oldRole !== data.newRole),
-  {message: "The old user's role cannot be equal to the new role"}
-);
 
 export class UsersController {
   constructor(
