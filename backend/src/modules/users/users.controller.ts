@@ -69,7 +69,7 @@ export class UsersController {
     await this.adminService.changeUserRole({ userId, oldRole, newRole });
     logger.debug(".changeUserRole, service call completed");
 
-    res.status(204);
+    res.status(204).send();
   };
 
   deleteUser = async (req: Request, res: Response) => {
@@ -80,7 +80,7 @@ export class UsersController {
     await this.adminService.deleteUser(userId);
     logger.debug(".deleteUser, service call completed");
 
-    res.status(204);
+    res.status(204).send();
   };
 
   disableUser = async (req: Request, res: Response) => {
@@ -91,18 +91,18 @@ export class UsersController {
     await this.adminService.disableUser(userId);
     logger.debug(".disableUser, service call completed");
 
-    res.status(204);
+    res.status(204).send();
   };
 
   enableUser = async (req: Request, res: Response) => {
-    logger.debug(".disableUser");
+    logger.debug(".enableUser");
     const { userId } = req.params;
     logger.debug(".enableUser, params: ", { userId });
 
     await this.adminService.enableUser(userId);
     logger.debug(".enableUser, service call completed");
 
-    res.status(204);
+    res.status(204).send();
   };
 
   // Basic user operations

@@ -9,20 +9,21 @@ import { unpackAdminGetUserResponse, unpackListUsersResponse } from "./utils";
 
 const logger = createLogger("AdminUserService");
 
-function processCognitoError(error: unknown, options?: {userId: string}) {
+function mapCognitoError(error: unknown, options?: {userId: string}) {
     logger.error("Error: ", error);
     if (error instanceof UserNotFoundException) {
-        throw new ResourceNotFoundError(`Cognito user id=${options?.userId ?? ""} not found`, "USER_NOT_FOUND");
+        return new ResourceNotFoundError(`Cognito user id=${options?.userId ?? ""} not found`, "USER_NOT_FOUND");
     }
     else if (error instanceof TooManyRequestsException) {
-        throw new TooManyRequestsError("Too many Cognito requests");
+        return new TooManyRequestsError("Too many Cognito requests");
     }
     else if (error instanceof NotAuthorizedException) {
-        throw new BadRequestError("Cognito authorization error");
+        return new BadRequestError("Cognito authorization error");
     }
     else if (error instanceof InvalidParameterException) {
-        throw new BadRequestError(error.message);
+        return new BadRequestError(error.message);
     }
+    return null;
 }
 
 export class AdminUserServiceCognito implements AdminUserService {
@@ -42,7 +43,10 @@ export class AdminUserServiceCognito implements AdminUserService {
             return userRole;
         }
         catch (error) {
-            processCognitoError(error, { userId });
+            const mappedError = mapCognitoError(error, { userId });
+            if (mappedError) {
+                throw mappedError;
+            }
             throw new InternalServerError();
         }
     };
@@ -56,7 +60,10 @@ export class AdminUserServiceCognito implements AdminUserService {
             const userShort = unpackAdminGetUserResponse(cognitoResponse);
             return {...userShort, role: userRole};
         } catch (error) {
-            processCognitoError(error, { userId });
+            const mappedError = mapCognitoError(error, { userId });
+            if (mappedError) {
+                throw mappedError;
+            }
             throw new InternalServerError();
         }
     }
@@ -71,7 +78,10 @@ export class AdminUserServiceCognito implements AdminUserService {
             return { users, paginationToken };
         }
         catch (error) {
-            processCognitoError(error);
+            const mappedError = mapCognitoError(error);
+            if (mappedError) {
+                throw mappedError;
+            }
             throw new InternalServerError();
         }
     };
@@ -83,7 +93,10 @@ export class AdminUserServiceCognito implements AdminUserService {
             logger.debug('Cognito response: ', { cognitoResponse });
         }
         catch (error) {
-            processCognitoError(error);
+            const mappedError = mapCognitoError(error, { userId });
+            if (mappedError) {
+                throw mappedError;
+            }
             throw new InternalServerError();
         }
     }
@@ -95,7 +108,10 @@ export class AdminUserServiceCognito implements AdminUserService {
             logger.debug('Cognito response: ', { cognitoResponse });
         }
         catch (error) {
-            processCognitoError(error);
+            const mappedError = mapCognitoError(error, { userId });
+            if (mappedError) {
+                throw mappedError;
+            }
             throw new InternalServerError();
         }
     }
@@ -127,7 +143,10 @@ export class AdminUserServiceCognito implements AdminUserService {
             logger.debug('Cognito response: ', { cognitoResponse });
         }
         catch (error) {
-            processCognitoError(error);
+            const mappedError = mapCognitoError(error, { userId });
+            if (mappedError) {
+                throw mappedError;
+            }
             throw new InternalServerError();
         }
     };
@@ -139,7 +158,10 @@ export class AdminUserServiceCognito implements AdminUserService {
             logger.debug('Cognito response: ', { cognitoResponse });
         }
         catch (error) {
-            processCognitoError(error);
+            const mappedError = mapCognitoError(error, { userId });
+            if (mappedError) {
+                throw mappedError;
+            }
             throw new InternalServerError();
         }
     };
@@ -151,7 +173,10 @@ export class AdminUserServiceCognito implements AdminUserService {
             logger.debug('Cognito response: ', { cognitoResponse });
         }
         catch (error) {
-            processCognitoError(error);
+            const mappedError = mapCognitoError(error, { userId });
+            if (mappedError) {
+                throw mappedError;
+            }
             throw new InternalServerError();
         }
     };

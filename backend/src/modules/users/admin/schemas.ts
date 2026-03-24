@@ -11,8 +11,8 @@ export const adminListUsersSchema = z.object({
 );
 
 export const adminChangeUserRoleSchema = z.object({
-  oldRole: z.literal(["USER", "ADMIN", "SUPPORT"]),
-  newRole: z.literal(["USER", "ADMIN", "SUPPORT"]),
+  oldRole: z.enum(["USER", "ADMIN", "SUPPORT"]),
+  newRole: z.enum(["USER", "ADMIN", "SUPPORT"]),
 }).refine(
   (data) => (data.oldRole !== data.newRole),
   {message: "The old user's role cannot be equal to the new role"}

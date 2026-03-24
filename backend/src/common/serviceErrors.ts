@@ -16,6 +16,13 @@ export class InternalServerError extends ServiceError {
     }
 };
 
+export class ForbiddenError extends ServiceError {
+    constructor(message: string, errorCode: string = 'FORBIDDEN') {
+        super(message, 403, errorCode);
+        this.name = 'ResourceNotFoundError';
+    }
+}
+
 export class ResourceNotFoundError extends ServiceError {
     constructor(message: string, errorCode: string = 'RESOURCE_NOT_FOUND') {
         super(message, 404, errorCode);
