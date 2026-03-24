@@ -13,4 +13,4 @@ export const requireParam = (paramName: string) =>
     };
 
 
-export const requireUserid = requireParam("userId");
+export const requireUserId = requireParam("userId");
