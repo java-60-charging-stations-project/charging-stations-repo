@@ -117,14 +117,14 @@ export class AdminUserServiceCognito implements AdminUserService {
     }
 
     async changeUserRole({ userId, oldRole, newRole }: ChangeRoleParameters): Promise<void> {
-        if (newRole == "USER") {
+        if (newRole === "USER") {
             const group = getGroupByRole(oldRole);
             if (!group) {
                 throw new BadRequestError(`Cannot infer user's current group to change ${oldRole} to ${newRole}`);
             }
             await this.removeUserFromGroup(userId, group);
         }
-        else if (oldRole == "USER") {
+        else if (oldRole === "USER") {
             const group = getGroupByRole(newRole);
             if (!group) {
                 throw new BadRequestError(`Cannot infer user's new group to change ${oldRole} to ${newRole}`);

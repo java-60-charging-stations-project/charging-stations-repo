@@ -92,14 +92,14 @@ export class UsersController {
 
   // Basic user operations
   getMe = async (req: Request, res: Response) => {
-    const userId = req.user?.sub!;
+    const userId = req.user!.sub;
     const userInfo = await this.service.getMyInfo(userId);
 
     res.status(200).json(wrapResponse(userInfo));
   };
 
   updateMyProfile = async (req: Request, res: Response) => {
-    const userId = req.user?.sub!;
+    const userId = req.user!.sub;
     
     const payload = updateProfileSchema.parse(req.body);
     await this.service.updateOwnProfile(userId, payload);
