@@ -1,6 +1,6 @@
 import { ADMIN_GROUP, getGroupByRole, SUPPORT_GROUP, UserRole } from '../../../common/authRoles';
 import { AdminUserService } from "./adminUserServiceInterface";
-import { UserFull, ListUserParameters, UserShort, UsersListResponse } from "./types";
+import { UserFull, ListUserParameters, UserShort, UsersListResponse, ChangeRoleParameters } from './types';
 import { createLogger } from '../../../utils/logger';
 import { cognitoApiClient } from "../cognito/api";
 import { InvalidParameterException, NotAuthorizedException, TooManyRequestsException, UserNotFoundException } from "@aws-sdk/client-cognito-identity-provider";
@@ -100,11 +100,8 @@ export class AdminUserServiceCognito implements AdminUserService {
         }
     }
 
-    async changeUserRole(userId: string, oldRole: UserRole, newRole: UserRole): Promise<void> {
-        if (oldRole == newRole) {
-            throw new ConflictError(`User's old role cannot be equal to a new role`);
-        }
-        else if (newRole == "USER") {
+    async changeUserRole({ userId, oldRole, newRole }: ChangeRoleParameters): Promise<void> {
+        if (newRole == "USER") {
             const group = getGroupByRole(oldRole);
             if (!group) {
                 throw new BadRequestError(`Cannot infer user's current group to change ${oldRole} to ${newRole}`);
@@ -119,7 +116,7 @@ export class AdminUserServiceCognito implements AdminUserService {
             await this.addUserToGroup(userId, group);
         }
         else {
-            throw new ConflictError(`Unsupported operation. Cannot change role ${oldRole} to ${newRole}`);
+            throw new BadRequestError(`Unsupported operation. Cannot change role ${oldRole} to ${newRole}`);
         }
     }
 

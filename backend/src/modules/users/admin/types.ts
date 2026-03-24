@@ -32,9 +32,15 @@ export type ListUserParameters = {
     paginationToken?: string;
 }
 
-export interface Attribute {
+export type Attribute = {
     name: string;
     value?: string;
+};
+
+export type ChangeRoleParameters = {
+    userId: string;
+    oldRole: UserRole;
+    newRole: UserRole;
 };
 
 //   Username: "STRING_VALUE", // required
