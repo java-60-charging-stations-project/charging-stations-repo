@@ -14,25 +14,6 @@ const updateProfileSchema = z.object({
   address: z.string().min(1).optional()
 });
 
-const updateRoleSchema = z.object({
-  email: z.string(),
-  oldRole: z.string().min(1),
-  newRole: z.string().min(1),
-  updatedAt: z.string(),
-});
-
-const enableUserSchema = z.object({
-  email: z.string(),
-  updatedAt: z.string(),
-});
-
-const listUsersQuerySchema = z.object({
-  role: z.string().optional(),
-  status: z.string().optional(),
-  page: z.coerce.number().int().positive().default(1),
-  pageSize: z.coerce.number().int().min(1).max(200).default(200)
-});
-
 export class UsersController {
   constructor(
     private readonly service: UsersService,
@@ -111,24 +92,15 @@ export class UsersController {
 
   // Basic user operations
   getMe = async (req: Request, res: Response) => {
-    if (!req.user?.sub) {
-      return res
-        .status(401)
-        .json({ error: { code: 'UNAUTHENTICATED', message: 'Authentication required' } });
-    }
-
-    const userId = req.user.sub;
+    const userId = req.user?.sub!;
     const userInfo = await this.service.getMyInfo(userId);
 
     res.status(200).json(wrapResponse(userInfo));
   };
 
   updateMyProfile = async (req: Request, res: Response) => {
-    const userId = req.user?.sub;
-    if (!userId) {
-      return res.status(401).json({ code: 401, error: { message: 'Unauthorized' } });
-    }
-
+    const userId = req.user?.sub!;
+    
     const payload = updateProfileSchema.parse(req.body);
     await this.service.updateOwnProfile(userId, payload);
     res.json({ code: 200, data: { userId, ...payload } });

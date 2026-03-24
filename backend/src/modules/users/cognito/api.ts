@@ -102,7 +102,7 @@ export class CognitoUsersAPI {
     async listUsers(parameters: ListUserParameters): Promise<ListUsersResponse> {
         logger.debug('Listing users: ', { userPoolId: this.userPoolId, ...parameters });
         const { limit, filter, paginationToken } = parameters;
-        const condition = filter ? `"${filter.filterKey}"^="${filter.attributeValue}"` : undefined;
+        const condition = filter ? `"${filter.filterKey}"^="${filter.filterValue}"` : undefined;
         
         const command = new ListUsersCommand({
             UserPoolId: this.userPoolId,
