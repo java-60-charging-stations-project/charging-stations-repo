@@ -988,144 +988,126 @@ paths:
   /admin/users:
     get:
       operationId: listUsers
-      summary: Get list of all users
-      description: Returns a paginated list of all users. Requires admin privileges.
+      summary: List users
+      description: Returns users from Cognito with cursor-based pagination. Requires admin privileges.
       x-roles: [ADMIN]
       parameters:
-        - name: role
+        - name: limit
           in: query
-          required: false
-          description: Filter by user role
-          schema:
-            type: string
-            enum: [USER, TECH_SUPPORT, ADMIN]
-        - name: status
-          in: query
-          required: false
-          description: Filter by user status
-          schema:
-            type: string
-            enum: [active, blocked]
-        - name: page
-          in: query
-          required: false
-          description: Page number for pagination (defaults to 1 if omitted)
+          required: true
+          description: Maximum number of users to return.
           schema:
             type: integer
-            default: 1
             minimum: 1
-        - name: pageSize
+        - name: paginationToken
           in: query
           required: false
-          description: Number of items per page (defaults to 200 if omitted)
+          description: Cursor token from a previous list call for the next page.
           schema:
-            type: integer
-            default: 200
-            minimum: 1
-            maximum: 200
+            type: string
+        - name: filterKey
+          in: query
+          required: false
+          description: Optional filter key. Must be sent together with filterValue.
+          schema:
+            type: string
+            enum: [email, name]
+        - name: filterValue
+          in: query
+          required: false
+          description: Optional filter value. Must be sent together with filterKey.
+          schema:
+            type: string
       responses:
         '200':
-          description: List of users
+          description: Users page returned successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserCollectionResponse'
+                $ref: '#/components/schemas/AdminUsersListResponse'
 
+        '400':
+          $ref: '#/components/responses/BadRequestResponse'
         '401':
           $ref: '#/components/responses/UnauthenticatedResponse'
-
         '403':
           $ref: '#/components/responses/ForbiddenResponse'
-
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
         '500':
           $ref: '#/components/responses/ErrorResponse'
 
-        '503':
-          $ref: '#/components/responses/ServiceUnavailableResponse'
-
-  /admin/users/search:
+  /admin/users/{userId}:
     get:
-      operationId: getUserByIdOrEmail
-      summary: Get user by ID or email
-      description: Returns a single user by their ID or email address. Exactly one of the parameters must be provided. Requires admin privileges.
+      operationId: getUserById
+      summary: Get user by ID
+      description: Returns a single Cognito user with role information. Requires admin privileges.
       x-roles: [ADMIN]
       parameters:
-        - name: id
-          in: query
-          required: false
-          description: User identifier (exactly one of id or email must be provided)
+        - name: userId
+          in: path
+          required: true
+          description: Cognito user identifier.
           schema:
             type: string
-        - name: email
-          in: query
-          required: false
-          description: User email address (exactly one of id or email must be provided)
-          schema:
-            type: string
-            format: email
       responses:
         '200':
-          description: User data
+          description: User details returned successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserSingleResponse'
-
+                $ref: '#/components/schemas/AdminUserSingleResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestResponse'
         '401':
           $ref: '#/components/responses/UnauthenticatedResponse'
-
         '403':
           $ref: '#/components/responses/ForbiddenResponse'
-
         '404':
           $ref: '#/components/responses/UserNotFoundResponse'
-
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
         '500':
           $ref: '#/components/responses/ErrorResponse'
-
-        '503':
-          $ref: '#/components/responses/ServiceUnavailableResponse'
+    delete:
+      operationId: deleteUser
+      summary: Delete user
+      description: Deletes a Cognito user account. Admins cannot delete their own account.
+      x-roles: [ADMIN]
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: Cognito user identifier.
+          schema:
+            type: string
+      responses:
+        '204':
+          description: User deleted successfully
+        '400':
+          $ref: '#/components/responses/BadRequestResponse'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          $ref: '#/components/responses/UserNotFoundResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
 
   /admin/users/{userId}/role:
-    get:
-      operationId: getUserRole
-      summary: Get user role
-      description: Returns the current role of a user. Requires admin privileges.
-      x-roles: [ADMIN]
-      parameters:
-        - name: userId
-          in: path
-          required: true
-          description: User identifier
-          schema:
-            type: string
-      responses:
-        '200':
-          description: User role
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserRoleSingleResponse'
-        '401':
-          $ref: '#/components/responses/UnauthenticatedResponse'
-        '403':
-          $ref: '#/components/responses/ForbiddenResponse'
-        '404':
-          $ref: '#/components/responses/UserNotFoundResponse'
-        '500':
-          $ref: '#/components/responses/ErrorResponse'
-        '503':
-          $ref: '#/components/responses/ServiceUnavailableResponse'
     patch:
-      operationId: updateUserRole
+      operationId: changeUserRole
       summary: Change user role
-      description: Changes the role of a user. Setting the role to USER effectively revokes TECH_SUPPORT or ADMIN privileges. Triggers Cognito group sync and permission cascade. Requires admin privileges. The updatedAt field must match the server value to prevent concurrent modification conflicts.
+      description: Changes a user's role via Cognito groups. The request must provide both oldRole and newRole, and they must differ. Admins cannot modify their own role.
       x-roles: [ADMIN]
       parameters:
         - name: userId
           in: path
           required: true
-          description: User identifier
+          description: Cognito user identifier.
           schema:
             type: string
       requestBody:
@@ -1135,54 +1117,8 @@ paths:
             schema:
               $ref: '#/components/schemas/UpdateUserRoleRequest'
       responses:
-        '200':
-          description: Role updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserSingleResponse'
-
-        '400':
-          $ref: '#/components/responses/BadRequestResponse'
-
-        '401':
-          $ref: '#/components/responses/UnauthenticatedResponse'
-
-        '403':
-          $ref: '#/components/responses/ForbiddenResponse'
-
-        '404':
-          $ref: '#/components/responses/UserNotFoundResponse'
-
-        '409':
-          $ref: '#/components/responses/ConflictResponse'
-
-        '500':
-          $ref: '#/components/responses/ErrorResponse'
-
-        '503':
-          $ref: '#/components/responses/ServiceUnavailableResponse'
-
-  /admin/users/{userId}/details:
-    get:
-      operationId: getUserDetails
-      summary: Get user details
-      description: Returns Cognito-backed details for a user. Requires admin privileges.
-      x-roles: [ADMIN]
-      parameters:
-        - name: userId
-          in: path
-          required: true
-          description: User identifier
-          schema:
-            type: string
-      responses:
-        '200':
-          description: User details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AdminUserDetailsSingleResponse'
+        '204':
+          description: Role changed successfully
         '400':
           $ref: '#/components/responses/BadRequestResponse'
         '401':
@@ -1191,30 +1127,24 @@ paths:
           $ref: '#/components/responses/ForbiddenResponse'
         '404':
           $ref: '#/components/responses/UserNotFoundResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
         '500':
           $ref: '#/components/responses/ErrorResponse'
-        '503':
-          $ref: '#/components/responses/ServiceUnavailableResponse'
 
   /admin/users/{userId}/enable:
     patch:
       operationId: enableUser
       summary: Enable user
-      description: Enables a user account. Requires admin privileges. The updatedAt field must match the server value to prevent concurrent modification conflicts.
+      description: Enables a Cognito user account. Admins cannot enable their own account.
       x-roles: [ADMIN]
       parameters:
         - name: userId
           in: path
           required: true
-          description: User identifier
+          description: Cognito user identifier.
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateUserEnabledRequest'
       responses:
         '204':
           description: User enabled successfully
@@ -1226,32 +1156,24 @@ paths:
           $ref: '#/components/responses/ForbiddenResponse'
         '404':
           $ref: '#/components/responses/UserNotFoundResponse'
-        '409':
-          $ref: '#/components/responses/ConflictResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
         '500':
           $ref: '#/components/responses/ErrorResponse'
-        '503':
-          $ref: '#/components/responses/ServiceUnavailableResponse'
 
   /admin/users/{userId}/disable:
     patch:
       operationId: disableUser
       summary: Disable user
-      description: Disables a user account. Requires admin privileges. The updatedAt field must match the server value to prevent concurrent modification conflicts.
+      description: Disables a Cognito user account. Admins cannot disable their own account.
       x-roles: [ADMIN]
       parameters:
         - name: userId
           in: path
           required: true
-          description: User identifier
+          description: Cognito user identifier.
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateUserEnabledRequest'
       responses:
         '204':
           description: User disabled successfully
@@ -1263,108 +1185,10 @@ paths:
           $ref: '#/components/responses/ForbiddenResponse'
         '404':
           $ref: '#/components/responses/UserNotFoundResponse'
-        '409':
-          $ref: '#/components/responses/ConflictResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
         '500':
           $ref: '#/components/responses/ErrorResponse'
-        '503':
-          $ref: '#/components/responses/ServiceUnavailableResponse'
-
-  /admin/users/{userId}/status:
-    patch:
-      operationId: updateUserStatus
-      summary: Block or unblock a user
-      description: Changes the status of a user (block or unblock). May trigger active session termination and token revocation. Requires admin privileges. The updatedAt field must match the server value to prevent concurrent modification conflicts.
-      x-roles: [ADMIN]
-      parameters:
-        - name: userId
-          in: path
-          required: true
-          description: User identifier
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateUserStatusRequest'
-      responses:
-        '200':
-          description: Status updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserSingleResponse'
-
-        '400':
-          $ref: '#/components/responses/BadRequestResponse'
-
-        '401':
-          $ref: '#/components/responses/UnauthenticatedResponse'
-
-        '403':
-          $ref: '#/components/responses/ForbiddenResponse'
-
-        '404':
-          $ref: '#/components/responses/UserNotFoundResponse'
-
-        '409':
-          $ref: '#/components/responses/ConflictResponse'
-
-        '500':
-          $ref: '#/components/responses/ErrorResponse'
-
-        '503':
-          $ref: '#/components/responses/ServiceUnavailableResponse'
-
-  /admin/users/{userId}/profile:
-    patch:
-      operationId: updateUserProfileAsAdmin
-      summary: Update user profile as admin
-      description: Updates profile fields of a user. Requires admin privileges. The updatedAt field must match the server value to prevent concurrent modification conflicts.
-      x-roles: [ADMIN]
-      parameters:
-        - name: userId
-          in: path
-          required: true
-          description: User identifier
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateUserProfileRequest'
-      responses:
-        '200':
-          description: Profile updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserSingleResponse'
-
-        '400':
-          $ref: '#/components/responses/BadRequestResponse'
-
-        '401':
-          $ref: '#/components/responses/UnauthenticatedResponse'
-
-        '403':
-          $ref: '#/components/responses/ForbiddenResponse'
-
-        '404':
-          $ref: '#/components/responses/UserNotFoundResponse'
-
-        '409':
-          $ref: '#/components/responses/ConflictResponse'
-
-        '500':
-          $ref: '#/components/responses/ErrorResponse'
-
-        '503':
-          $ref: '#/components/responses/ServiceUnavailableResponse'
 
 components:
 
@@ -2076,11 +1900,14 @@ components:
         data:
           $ref: '#/components/schemas/UserRole'
 
-    AdminUserDetails:
+    AdminUserRole:
+      type: string
+      enum: [ADMIN, USER, SUPPORT]
+
+    AdminUser:
       type: object
       required:
         - userId
-        - username
         - email
         - name
         - createDate
@@ -2090,8 +1917,6 @@ components:
         - role
       properties:
         userId:
-          type: string
-        username:
           type: string
         email:
           type: string
@@ -2108,33 +1933,70 @@ components:
         status:
           type: string
         role:
-          type: string
-          enum: [ADMIN, USER, SUPPORT]
+          $ref: '#/components/schemas/AdminUserRole'
 
-    AdminUserDetailsSingleResponse:
+    AdminUserSummary:
+      type: object
+      required:
+        - userId
+        - email
+        - name
+        - createDate
+        - lastModifiedDate
+        - enabled
+        - status
+      properties:
+        userId:
+          type: string
+        email:
+          type: string
+        name:
+          type: string
+        createDate:
+          type: string
+          format: date-time
+        lastModifiedDate:
+          type: string
+          format: date-time
+        enabled:
+          type: boolean
+        status:
+          type: string
+
+    AdminUserSingleResponse:
       type: object
       required: [data]
       properties:
         data:
-          $ref: '#/components/schemas/AdminUserDetails'
+          $ref: '#/components/schemas/AdminUser'
+
+    AdminUsersListPayload:
+      type: object
+      required: [users]
+      properties:
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminUserSummary'
+        paginationToken:
+          type: string
+          nullable: true
+
+    AdminUsersListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/AdminUsersListPayload'
 
     UpdateUserRoleRequest:
       type: object
-      required: [email, oldRole, newRole, updatedAt]
+      required: [oldRole, newRole]
       properties:
-        email:
-          type: string
-          format: email
         oldRole:
-          type: string
-          enum: [USER, TECH_SUPPORT, ADMIN]
+          $ref: '#/components/schemas/AdminUserRole'
         newRole:
-          type: string
-          enum: [USER, TECH_SUPPORT, ADMIN]
-        updatedAt:
-          type: string
-          format: date-time
-          description: Last known updatedAt value for optimistic concurrency control
+          $ref: '#/components/schemas/AdminUserRole'
 
     UpdateUserEnabledRequest:
       type: object
@@ -2219,6 +2081,12 @@ components:
 
     ConflictResponse:
       description: "Conflict: concurrent modification or business rule violation (code: OUTDATED_DATA | SELF_MODIFICATION_NOT_ALLOWED)"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    TooManyRequestsResponse:
+      description: "Too many requests (code: TOO_MANY_REQUESTS)"
       content:
         application/json:
           schema:
