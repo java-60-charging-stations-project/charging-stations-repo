@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import type { FC } from 'react';
-import type { AdminUserDetailsResponse } from '@/types/users';
-import { adminDisableUser, adminEnableUser, updateUserRole } from '@/services/api/adminApi';
+import type { UserFullType } from '@/types/users';
+import { adminDisableUser, adminEnableUser, changeUserRole } from '@/services/api/adminApi';
 import SimpleButton from '@/components/SimpleButton';
+import type { UserRole } from '@/types';
 
 const ALL_ROLES = ['USER', 'ADMIN', 'SUPPORT'] as const;
 
 interface EditUserFormProps {
-    user: AdminUserDetailsResponse;
+    user: UserFullType;
     onUserUpdated: () => void;
 }
 
@@ -16,7 +17,7 @@ const EditUserForm: FC<EditUserFormProps> = ({ user, onUserUpdated }) => {
     const [lockError, setLockError] = useState<string | null>(null);
 
     const [changeRoleFlag, setChangeRoleFlag] = useState(false);
-    const [selectedRole, setSelectedRole] = useState<string>(user.role);
+    const [selectedRole, setSelectedRole] = useState<UserRole>(user.role);
     const [roleLoading, setRoleLoading] = useState(false);
     const [roleError, setRoleError] = useState<string | null>(null);
 
@@ -25,9 +26,9 @@ const EditUserForm: FC<EditUserFormProps> = ({ user, onUserUpdated }) => {
         setLockLoading(true);
         try {
             if (user.enabled) {
-                await adminDisableUser(user.userId, { email: user.email, updatedAt: user.lastModifiedDate });
+                await adminDisableUser(user.userId);
             } else {
-                await adminEnableUser(user.userId, { email: user.email, updatedAt: user.lastModifiedDate});
+                await adminEnableUser(user.userId);
             }
             onUserUpdated();
         } catch (e) {
@@ -41,11 +42,9 @@ const EditUserForm: FC<EditUserFormProps> = ({ user, onUserUpdated }) => {
         setRoleError(null);
         setRoleLoading(true);
         try {
-            await updateUserRole(user.userId, {
-                email: user.email,
+            await changeUserRole(user.userId, {
                 oldRole: user.role,
                 newRole: selectedRole,
-                updatedAt: new Date().toISOString(),
             });
             setChangeRoleFlag(false);
             onUserUpdated();
@@ -115,7 +114,7 @@ const EditUserForm: FC<EditUserFormProps> = ({ user, onUserUpdated }) => {
                             <select
                                 value={selectedRole}
                                 disabled={!changeRoleFlag}
-                                onChange={(e) => setSelectedRole(e.target.value)}
+                                onChange={(e) => setSelectedRole(e.target.value as UserRole)}
                                 className="text-xs border rounded px-1 py-0.5 disabled:opacity-50"
                             >
                                 {ALL_ROLES.map((role) => (

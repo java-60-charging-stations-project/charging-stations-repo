@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router';
-import type { AdminUserDetailsResponse } from '@/types/users';
-import { fetchAdminUserDetails } from '@/services/api/adminApi';
+import type { UserFullType } from '@/types/users';
+import { fetchAdminUserById } from '@/services/api/adminApi';
 import { getLogger } from '@/services/logging';
 import NavButton from '@/components/NavButton';
 import EditUserForm from '@/components/EditUserForm';
@@ -13,7 +13,7 @@ const USERS_LIST_PATH = '/admin/users';
 const AdminUserEditPage = () => {
     const { userId } = useParams<{ userId: string }>();
 
-    const [user, setUser] = useState<AdminUserDetailsResponse | null>(null);
+    const [user, setUser] = useState<UserFullType | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -22,7 +22,7 @@ const AdminUserEditPage = () => {
         setIsLoading(true);
         setError(null);
         try {
-            const data = await fetchAdminUserDetails(userId);
+            const data = await fetchAdminUserById(userId);
             logger.debug('user details:', data);
             setUser(data);
         } catch (e) {
