@@ -1,11 +1,10 @@
 import { apiClient } from './api';
 import type { ApiArrayResponse, ApiResponse } from '@/types/apiTypes';
 import type { 
-    AdminChangeLockStateUserRequest,
-    AdminGetUserResponse,
-    AdminUserDetailsResponse,
-    AdminUserRoleResponse,
-    UpdateUserRoleRequest,
+    UserFullType,
+    UserShortListResponseType,
+    ChangeUserRoleRequestType,
+    ListUsersRequestParamsType
 } from '@/types/users';
 import type { 
     ChangeStationStateRequest,
@@ -20,53 +19,44 @@ import { getLogger } from '@/services/logging';
 const logger = getLogger("adminApi");
 
 /** USERS */
-export async function fetchAdminUsers(): Promise<AdminGetUserResponse[]> {
-    const response = await apiClient.get<ApiArrayResponse<AdminGetUserResponse>>(
+export async function fetchAdminUsers(params: ListUsersRequestParamsType): Promise<UserShortListResponseType> {
+    const response = await apiClient.get<ApiResponse<UserShortListResponseType>>(
         '/admin/users',
-        { params: { page: 1, pageSize: 200 } },
+        { params },
     );
     return response.data;
 }
 
-export async function fetchAdminUserById(userId: string): Promise<AdminGetUserResponse> {
-    const response = await apiClient.get<ApiResponse<AdminGetUserResponse>>(
+export async function fetchAdminUserById(userId: string): Promise<UserFullType> {
+    const response = await apiClient.get<ApiResponse<UserFullType>>(
         `/admin/users/${userId}`,
     );
     return response.data;
 }
 
-export async function fetchAdminUserDetails(userId: string): Promise<AdminUserDetailsResponse> {
-    const response = await apiClient.get<ApiResponse<AdminUserDetailsResponse>>(
-        `/admin/users/${userId}/details`,
-    );
-    return response.data;
-}
 
-export async function fetchAdminUserRole(userId: string): Promise<AdminUserRoleResponse> {
-    const response = await apiClient.get<ApiResponse<AdminUserRoleResponse>>(
-        `/admin/users/${userId}/role`,
-    );
-    return response.data;
-}
-
-export async function updateUserRole(userId: string, request: UpdateUserRoleRequest): Promise<void> {
+export async function changeUserRole(userId: string, request: ChangeUserRoleRequestType): Promise<void> {
     await apiClient.patch<ApiResponse<void>>(
         `/admin/users/${userId}/role`,
         request,
     );
 };
 
-export async function adminEnableUser(userId: string, request:AdminChangeLockStateUserRequest): Promise<void> {
+export async function adminEnableUser(userId: string): Promise<void> {
     await apiClient.patch<ApiResponse<void>>(
         `/admin/users/${userId}/enable`,
-        request,
     );
 };
 
-export async function adminDisableUser(userId: string, request:AdminChangeLockStateUserRequest): Promise<void> {
+export async function adminDisableUser(userId: string): Promise<void> {
     await apiClient.patch<ApiResponse<void>>(
         `/admin/users/${userId}/disable`,
-        request,
+    );
+};
+
+export async function deleteUser(userId: string): Promise<void> {
+    await apiClient.delete<ApiResponse<void>>(
+        `/admin/users/${userId}`,
     );
 };
 

@@ -1,66 +1,48 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
-import { fetchAdminUsers } from '@/services/api/adminApi';
-import type { AdminGetUserResponse } from '@/types/users';
-import { getLogger } from '@/services/logging';
+//import { getLogger } from '@/services/logging';
+import { useUsersListQuery } from '@/hooks/useUsersListQuery';
 
-const logger = getLogger("admin");
+//const logger = getLogger("AdminUsersPage");
 
 const AdminUsersPage = () => {
-  const [users, setUsers] = useState<AdminGetUserResponse[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const loadUsers = async () => {
-      try {
-        const data = await fetchAdminUsers();
-        logger.debug("data users: ", data);
-        setUsers(data);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Failed to load users');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    loadUsers();
-  }, []);
-
-  if (isLoading) {
-    return <div><p>Loading...</p></div>;
-  }
-
-  if (error) {
-    return <div><p>Error: {error}</p></div>;
-  }
-
+  const { isLoading, error, users, hasMore, fetchMore } = useUsersListQuery();
+  
   return (
     <div>
       <h1>Users</h1>
-      <table>
+      <table  className="w-full">
         <thead>
           <tr>
+            <th>Number</th>
             <th>Email</th>
             <th>Name</th>
-            <th>Phone</th>
+            <th>Blocked</th>
             <th>Status</th>
           </tr>
         </thead>
         <tbody>
-          {users.map((user) => (
+          {users.map((user, index) => (
             <tr key={user.userId}>
+              <td>{index + 1}</td>
               <td>
                 <Link to={`/admin/users/${user.userId}`}>{user.email}</Link>
               </td>
               <td>
-                <Link to={`/admin/users/${user.userId}`}>{user.username}</Link>
+                <Link to={`/admin/users/${user.userId}`}>{user.name}</Link>
               </td>
-              <td>{user.phone}</td>
+              <td>{user.enabled ? 'No' : 'Yes'}</td>
               <td>{user.status}</td>
             </tr>
           ))}
         </tbody>
       </table>
+      {isLoading && <div>Loading...</div>}
+      {error && <div>Error: {error}</div>}
+      <button 
+        onClick={fetchMore}
+        disabled={isLoading || !hasMore}
+        className="bg-blue-500 text-white px-4 py-2 rounded-md"
+      >Load more</button>
     </div>
   );
 };
