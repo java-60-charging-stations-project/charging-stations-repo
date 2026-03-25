@@ -1,3 +1,5 @@
+import { InternalServerError } from '../../common/serviceErrors';
+
 /** Station state per API spec (GET /stations, /admin/stations) */
 export type StationState = 'INACTIVE' | 'ACTIVE' | 'OUT_OF_SERVICE';
 
@@ -184,6 +186,20 @@ export function mapLambdaAdminUpdateStationPortsResponse(raw: { updated_at: stri
 /** Response for DELETE /admin/stations/{stationId} */
 export interface AdminDeleteStationResponse {
   deletedAt: string;
+}
+
+/** Raw delete payload from `write_station_rds` (snake_case). */
+export interface LambdaDeleteStationResponse {
+  deleted_at?: string;
+  deletedAt?: string;
+}
+
+export function mapLambdaDeleteStationResponse(raw: LambdaDeleteStationResponse): AdminDeleteStationResponse {
+  const at = raw.deleted_at ?? raw.deletedAt;
+  if (!at) {
+    throw new InternalServerError('Lambda deleteStation: missing deleted_at', 'LAMBDA_CONTRACT');
+  }
+  return { deletedAt: at };
 }
 
 export interface AdminUpdateStationStateRequest {

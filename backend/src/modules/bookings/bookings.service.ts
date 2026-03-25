@@ -1,17 +1,20 @@
 import type { BookingDto, CreateBookingRequest } from './bookings.types';
 import { updateStationStateLocal, findStationById } from '../stations/local/stations.service.local';
-import { createLogger } from '../../utils/logger';
 
 export interface BookingsService {
   listForUser(userId: string): Promise<BookingDto[]>;
   create(userId: string, req: CreateBookingRequest): Promise<BookingDto>;
   cancel(userId: string, bookingId: string): Promise<boolean>;
   processExpiredBookings(): Promise<void>;
-  getActiveBookingForUserStation(userId: string, stationId: string, at?: Date): Promise<BookingDto | null>;
-  markPaid(userId: string, bookingId: string): Promise<boolean>;
+  /** Booking with status `created` whose slot contains `at` (half-open [slotFrom, slotTo)). */
+  getActiveBookingForUserStation(
+    userId: string,
+    stationId: string,
+    at: Date
+  ): Promise<BookingDto | null>;
+  /** After a charging session successfully starts, mark the booking as paid/consumed. */
+  markPaid(userId: string, bookingId: string): Promise<void>;
 }
-
-const logger = createLogger('bookings.service');
 
 export class MockBookingsService implements BookingsService {
   private bookings: BookingDto[] = [];
@@ -19,7 +22,7 @@ export class MockBookingsService implements BookingsService {
   constructor() {
     setInterval(() => {
       this.processExpiredBookings().catch((err) => {
-        logger.error('failed processing expired bookings', { error: err instanceof Error ? err.message : String(err) });
+        console.error('[MockBookingsService] failed processing expired bookings', err);
       });
     }, 60 * 1000);
   }
@@ -51,30 +54,6 @@ export class MockBookingsService implements BookingsService {
     return true;
   }
 
-  async getActiveBookingForUserStation(userId: string, stationId: string, at: Date = new Date()): Promise<BookingDto | null> {
-    await this.processExpiredBookings();
-    const now = at.getTime();
-    for (const booking of this.bookings) {
-      if (booking.userId !== userId) continue;
-      if (booking.stationId !== stationId) continue;
-      if (booking.status !== 'created') continue;
-      const from = new Date(booking.slotFrom).getTime();
-      const to = new Date(booking.slotTo).getTime();
-      if (Number.isNaN(from) || Number.isNaN(to)) continue;
-      if (from <= now && now <= to) return booking;
-    }
-    return null;
-  }
-
-  async markPaid(userId: string, bookingId: string): Promise<boolean> {
-    const idx = this.bookings.findIndex((b) => b.userId === userId && b.bookingId === bookingId);
-    if (idx === -1) return false;
-    const cur = this.bookings[idx];
-    if (cur.status !== 'created') return false;
-    this.bookings[idx] = { ...cur, status: 'paid', processedAt: new Date().toISOString() };
-    return true;
-  }
-
   async processExpiredBookings(): Promise<void> {
     const now = new Date();
     for (const booking of this.bookings) {
@@ -84,29 +63,49 @@ export class MockBookingsService implements BookingsService {
       if (slotTo <= now) {
         booking.status = 'expired';
         booking.processedAt = new Date().toISOString();
-        // Эмуляция оплаты по максимальному тарифу станции (best-effort в mock/local).
-        const station = findStationById(booking.stationId);
-        const maxRate = station?.ratePlan ? Math.max(station.ratePlan.peakRate, station.ratePlan.offPeakRate) : null;
-        // Штраф: считаем 10 kWh по maxRate (в центах); если тариф неизвестен — 1000 центов как fallback.
-        booking.penaltyBillingCents = maxRate !== null ? Math.round(maxRate * 10 * 100) : 1000;
-        logger.warn('booking expired, applying penalty and blocking station', {
-          bookingId: booking.bookingId,
-          stationId: booking.stationId,
-          penaltyBillingCents: booking.penaltyBillingCents,
-        });
+        booking.penaltyBillingCents = 1000; // максимальная эмуляция платежа: 10.00 единиц
 
+        const station = findStationById(booking.stationId);
         if (station) {
-          station.state = 'INACTIVE';
+          station.state = 'OUT_OF_SERVICE';
           station.occupiedPorts = 0;
           station.updatedAt = new Date().toISOString();
         }
       }
     }
   }
+
+  async getActiveBookingForUserStation(
+    userId: string,
+    stationId: string,
+    at: Date
+  ): Promise<BookingDto | null> {
+    await this.processExpiredBookings();
+    const t = at.getTime();
+    for (const b of this.bookings) {
+      if (b.userId !== userId || b.stationId !== stationId || b.status !== 'created') continue;
+      const from = new Date(b.slotFrom).getTime();
+      const to = new Date(b.slotTo).getTime();
+      if (Number.isNaN(from) || Number.isNaN(to)) continue;
+      if (t >= from && t < to) return b;
+    }
+    return null;
+  }
+
+  async markPaid(userId: string, bookingId: string): Promise<void> {
+    await this.processExpiredBookings();
+    const idx = this.bookings.findIndex((b) => b.userId === userId && b.bookingId === bookingId);
+    if (idx === -1) return;
+    const b = this.bookings[idx];
+    if (b.status !== 'created') return;
+    this.bookings[idx] = {
+      ...b,
+      status: 'paid',
+      processedAt: new Date().toISOString()
+    };
+  }
 }
 
-let singleton: MockBookingsService | null = null;
 export function buildBookingsService(): BookingsService {
-  if (!singleton) singleton = new MockBookingsService();
-  return singleton;
+  return new MockBookingsService();
 }

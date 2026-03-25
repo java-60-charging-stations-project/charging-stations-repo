@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose';
+import { InternalServerError, ServiceError, UnauthorizedError } from '../common/serviceErrors';
 import { env } from '../config/env';
 import { createLogger } from '../utils/logger';
 
@@ -34,7 +35,10 @@ let jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
 function getJwks() {
   if (jwks) return jwks;
   if (!env.cognitoUserPoolId || !env.cognitoRegion) {
-    throw new Error('COGNITO_USER_POOL_ID / COGNITO_REGION are not configured');
+    throw new InternalServerError(
+      'COGNITO_USER_POOL_ID / COGNITO_REGION are not configured',
+      'AUTH_CONFIG_MISSING'
+    );
   }
   const issuer = `https://cognito-idp.${env.cognitoRegion}.amazonaws.com/${env.cognitoUserPoolId}`;
   jwks = createRemoteJWKSet(new URL(`${issuer}/.well-known/jwks.json`));
@@ -63,10 +67,10 @@ export async function verifyCognitoJwt(req: Request, res: Response, next: NextFu
     const { payload } = await jwtVerify(token, getJwks(), { issuer });
 
     if (payload.token_use !== 'access') {
-      throw new Error('Invalid token_use, expected "access"');
+      throw new UnauthorizedError('Invalid token_use, expected "access"', 'INVALID_TOKEN_USE');
     }
     if (env.cognitoClientId && payload.client_id !== env.cognitoClientId) {
-      throw new Error('Invalid client_id');
+      throw new UnauthorizedError('Invalid client_id', 'INVALID_CLIENT_ID');
     }
 
     const groups = Array.isArray(payload['cognito:groups'])
@@ -88,13 +92,26 @@ export async function verifyCognitoJwt(req: Request, res: Response, next: NextFu
 
     return next();
   } catch (e) {
+    if (e instanceof ServiceError && e.statusCode >= 500) {
+      logger.error('JWT / auth configuration error', { error: e.message });
+      return res.status(e.statusCode).json({
+        error: { code: e.errorCode, message: e.message },
+      });
+    }
     const message = e instanceof Error ? e.message : 'Invalid token';
     logger.error('JWT verification failed', {
       path: req.path,
       method: req.method,
       error: message
     });
-    return res.status(401).json({ code: 401, error: { message } });
+    const errCode = e instanceof UnauthorizedError ? e.errorCode : undefined;
+    return res.status(401).json({
+      code: 401,
+      error: {
+        message,
+        ...(errCode ? { code: errCode } : {}),
+      },
+    });
   }
 }
 
