@@ -373,25 +373,6 @@ Key design:
 
 The item also stores the frontend port identifier as attribute `code`. New ports are created with `state: "DISABLED"`.
 
-After a successful Dynamo write, DynamoDB Streams trigger `charging-stations-station-entities-stream-consumer`, which forwards normalized operations to `charging-stations-write-station-rds` action `update_station_ports`.
-
-Internal forwarded payload shape:
-
-```json
-{
-  "service": { "action": "update_station_ports", "callerId": "script" },
-  "data": [
-    {
-      "event_id": "dynamodb-stream-event-id",
-      "station_id": "station-uuid",
-      "entity_key": "PORT#<uuid>",
-      "operation": "INSERT|REMOVE",
-      "delta": 1
-    }
-  ]
-}
-```
-
 Request:
 
 ```json
@@ -421,6 +402,25 @@ Response (success):
 ```
 
 `created_port_keys` values are the DynamoDB **sort key** strings (`entity_key`), suitable for deletes or follow-up APIs.
+
+After a successful Dynamo write, DynamoDB Streams trigger `charging-stations-station-entities-stream-consumer`, which forwards normalized operations to `charging-stations-write-station-rds` action `update_station_ports`.
+
+Internal forwarded payload shape:
+
+```json
+{
+  "service": { "action": "update_station_ports", "callerId": "script" },
+  "data": [
+    {
+      "event_id": "dynamodb-stream-event-id",
+      "station_id": "station-uuid",
+      "entity_key": "PORT#<uuid>",
+      "operation": "INSERT|REMOVE",
+      "delta": 1
+    }
+  ]
+}
+```
 
 Response (error):
 

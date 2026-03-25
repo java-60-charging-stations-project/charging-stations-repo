@@ -677,6 +677,8 @@ Resources:
                 - dynamodb:GetItem
                 - dynamodb:Query
                 - dynamodb:UpdateItem
+                - dynamodb:DeleteItem
+                - dynamodb:TransactWriteItems
               Resource: !GetAtt StationEntitiesTable.Arn
     
   WriteStationPortsInvokePermissionA:
