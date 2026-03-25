@@ -29,6 +29,8 @@ export interface StationBase {
   location?: Location;
   maxPowerKw: number | null;
   ports: number;
+  occupiedPorts?: number;
+  blockedUntil?: string | null;
   state: StationState;
   ratePlan?: RatePlan;
   createdAt: string;
@@ -155,6 +157,12 @@ export interface AdminUpdateStationStateResponse {
   updatedAt: string;
 }
 
+export interface AdminUpdateStationPortsResponse {
+  updatedAt: string;
+  ports: number;
+  occupiedPorts: number;
+}
+
 export interface LambdaAdminUpdateStationStateResponse {
   updated_at: string;
 }
@@ -162,6 +170,14 @@ export interface LambdaAdminUpdateStationStateResponse {
 export function mapLambdaAdminUpdateStationStateResponse(raw: LambdaAdminUpdateStationStateResponse): AdminUpdateStationStateResponse {
   return {
     updatedAt: raw.updated_at,
+  };
+}
+
+export function mapLambdaAdminUpdateStationPortsResponse(raw: { updated_at: string; ports: number; occupied_ports?: number | null; }): AdminUpdateStationPortsResponse {
+  return {
+    updatedAt: raw.updated_at,
+    ports: raw.ports,
+    occupiedPorts: raw.occupied_ports ?? 0,
   };
 }
 

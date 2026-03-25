@@ -111,6 +111,46 @@ Role-based JSON (`USER` / `SUPPORT` / `ADMIN`). **Data is currently in-memory mo
 - `GET /sessions?userId=...` — JWT; user only own `userId`; staff any.
 - `GET /sessions/all` — JWT + **ADMIN** or **SUPPORT** — all sessions, projection by role.
 
+### Sessions + bookings flow (current behavior)
+
+Current implementation is in local/mock services:
+- `src/modules/sessions/sessions.service.ts`
+- `src/modules/bookings/bookings.service.ts`
+
+Business rules implemented:
+- **Start charge requires active booking**: `POST /sessions` is allowed only when user has a `created` booking for the same station and current time is inside `[slotFrom, slotTo]`.
+- **Minute verification**: bookings service runs expiration processing every 60 seconds.
+- **Expired booking handling**:
+  - booking status changes to `expired`
+  - penalty is simulated in `penaltyBillingCents` using station max tariff (`max(peakRate, offPeakRate)`, mock model: 10 kWh)
+  - station is moved to `INACTIVE`
+  - station ports are released (`occupiedPorts = 0`)
+- **Payment start simulation**: when starting a session, simulated payment fails with ~20% probability.
+  - on failure, station gets `blockedUntil` for 5 minutes
+  - repeated start attempts are rejected while station is blocked
+
+Important note:
+- This flow is currently process-memory mock logic for local development.
+- Station port updates for support/admin (`PATCH /support/stations/:stationId/ports`, `PATCH /admin/stations/:stationId/ports`) are already wired to write lambda in non-local environments via `changeStationPorts`.
+
+### Quick verification (manual)
+
+Use `API_PREFIX` if configured (example below assumes `/api/v1`):
+
+1. **JWT check**
+   - Call any secured endpoint without token (e.g. `GET /api/v1/sessions?userId=x`) -> expect `401`.
+2. **Support updates ports**
+   - `PATCH /api/v1/support/stations/{stationId}/ports` with support token and `{ "deltaPorts": 1 }` -> expect `200`.
+3. **Booking required for charge**
+   - `POST /api/v1/bookings` (valid slot in near future) -> expect `201`.
+   - `POST /api/v1/sessions` with same `stationId` -> expect `201` (or payment-fail simulation error).
+4. **Blocked retry after payment fail**
+   - If start returns payment failure, retry immediately -> expect rejection while blocked window is active.
+5. **Expiration flow**
+   - Create short booking (`slotTo` near now), wait 1-2 minutes, then:
+     - `GET /api/v1/bookings` -> booking becomes `expired`, has `penaltyBillingCents`
+     - `GET /api/v1/stations/{stationId}` -> `state=INACTIVE`, `occupiedPorts=0`
+
 ## Welcome
 
 ```Bash:

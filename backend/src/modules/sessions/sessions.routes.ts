@@ -17,6 +17,8 @@ export function sessionsRouter(): Router {
   );
 
   router.get('/sessions', verifyCognitoJwt, controller.listByUser);
+  router.post('/sessions', verifyCognitoJwt, controller.startSession);
+  router.post('/sessions/:sessionId/stop', verifyCognitoJwt, controller.stopSession);
 
   router.get('/sessions/:sessionId', verifyCognitoJwt, controller.getById);
 

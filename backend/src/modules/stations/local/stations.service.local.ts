@@ -7,6 +7,7 @@ import type {
   AdminCreateStationResponse,
   AdminDeleteStationResponse,
   AdminUpdateStationStateResponse,
+  AdminUpdateStationPortsResponse,
   StationBase,
   StationBaseCollectionResponse,
   StationState,
@@ -25,6 +26,30 @@ function loadStations(): StationBase[] {
 }
 
 const STATIONS: StationBase[] = loadStations();
+
+export function findStationById(stationId: string): StationBase | undefined {
+  return STATIONS.find((s) => s.id === stationId);
+}
+
+export function updateStationStateLocal(stationId: string, newState: StationState): StationBase {
+  const station = findStationById(stationId);
+  if (!station) throw new ResourceNotFoundError('Station not found');
+  station.state = newState;
+  station.updatedAt = new Date().toISOString();
+  return station;
+}
+
+export function updateStationPortsLocal(stationId: string, deltaPorts: number): StationBase {
+  const station = findStationById(stationId);
+  if (!station) throw new ResourceNotFoundError('Station not found');
+  if (deltaPorts <= 0) {
+    throw new BadRequestError('deltaPorts must be positive');
+  }
+  station.ports += deltaPorts;
+  station.occupiedPorts = station.occupiedPorts ?? 0;
+  station.updatedAt = new Date().toISOString();
+  return station;
+}
 
 export class StationsServiceLocal implements StationsService {
   async list(params: ListStationsParams, _callerId: string): Promise<StationBaseCollectionResponse> {
@@ -63,7 +88,10 @@ export class StationsServiceLocal implements StationsService {
     const totalItems = stations.length;
     const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
     const start = (page - 1) * pageSize;
-    const paged = stations.slice(start, start + pageSize);
+    const paged = stations.slice(start, start + pageSize).map((s) => ({
+      ...s,
+      hasFreePorts: (s.ports - (s.occupiedPorts ?? 0)) > 0,
+    }));
 
     return { data: paged, meta: { page, pageSize, totalItems, totalPages } };
   }
@@ -73,7 +101,10 @@ export class StationsServiceLocal implements StationsService {
     if (!station) {
       throw new ResourceNotFoundError('Station not found');
     }
-    return station;
+    return {
+      ...station,
+      hasFreePorts: (station.ports - (station.occupiedPorts ?? 0)) > 0,
+    };
   }
 
   async create(
@@ -95,6 +126,8 @@ export class StationsServiceLocal implements StationsService {
       siteTechnician: payload.siteTechnician,
       maxPowerKw: 0,
       ports: 0,
+      occupiedPorts: 0,
+      blockedUntil: null,
       state: 'INACTIVE',
       ratePlan: payload.ratePlan,
       createdAt: now,
@@ -126,6 +159,30 @@ export class StationsServiceLocal implements StationsService {
     station.state = newState;
     station.updatedAt = new Date().toISOString();
     return { updatedAt: station.updatedAt };
+  }
+
+  async updateStationPorts(
+    stationId: string,
+    deltaPorts: number,
+    _callerId: string
+  ): Promise<AdminUpdateStationPortsResponse> {
+    if (deltaPorts <= 0) {
+      throw new BadRequestError('deltaPorts must be positive');
+    }
+    const station = STATIONS.find((s) => s.id === stationId);
+    if (!station) {
+      throw new ResourceNotFoundError('Station not found');
+    }
+
+    station.ports = (station.ports ?? 0) + deltaPorts;
+    station.occupiedPorts = station.occupiedPorts ?? 0;
+    station.updatedAt = new Date().toISOString();
+
+    return {
+      updatedAt: station.updatedAt,
+      ports: station.ports,
+      occupiedPorts: station.occupiedPorts,
+    };
   }
 
   async deleteStation(

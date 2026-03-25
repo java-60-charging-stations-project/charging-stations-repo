@@ -5,6 +5,11 @@ import { projectSession, resolveViewerRole, type ViewerRole } from './sessions.t
 
 const sessionIdParam = z.string().min(1);
 
+const startSessionSchema = z.object({
+  stationId: z.string().min(1),
+  portId: z.string().min(1),
+});
+
 export class SessionsController {
   constructor(private readonly service: SessionsService) {}
 
@@ -69,5 +74,23 @@ export class SessionsController {
 
     const data = projectSession(row, viewer);
     res.status(200).json({ code: 200, data, meta: { role: viewer } });
+  };
+
+  startSession = async (req: Request, res: Response) => {
+    const sub = req.user?.sub;
+    if (!sub) return res.status(401).json({ code: 401, error: { message: 'Unauthorized' } });
+
+    const payload = startSessionSchema.parse(req.body);
+    const session = await this.service.startSession(sub, payload.stationId, payload.portId);
+    res.status(201).json({ code: 201, data: session });
+  };
+
+  stopSession = async (req: Request, res: Response) => {
+    const sub = req.user?.sub;
+    if (!sub) return res.status(401).json({ code: 401, error: { message: 'Unauthorized' } });
+
+    const sessionId = sessionIdParam.parse(req.params.sessionId);
+    const session = await this.service.stopSession(sub, sessionId);
+    res.status(200).json({ code: 200, data: session });
   };
 }

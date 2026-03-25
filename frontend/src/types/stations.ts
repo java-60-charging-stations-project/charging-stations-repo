@@ -24,6 +24,8 @@ export interface StationBase {
     location?: Location;
     maxPowerKw: number | null;
     ports: number;
+    occupiedPorts?: number;
+    blockedUntil?: string | null;
     state: StationState;
     ratePlan?: RatePlan;
     createdAt: string;
