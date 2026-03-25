@@ -1,11 +1,20 @@
 import type { ChargingSessionRecord } from './sessions.types';
+import { findStationById } from '../stations/local/stations.service.local';
+import { buildBookingsService, type BookingsService } from '../bookings/bookings.service';
+import {
+  BadRequestError,
+  ConflictError,
+  ForbiddenError,
+  ResourceNotFoundError,
+} from '../../common/serviceErrors';
 
 export interface SessionsService {
   getById(sessionId: string): Promise<ChargingSessionRecord | null>;
   listByUserId(userId: string): Promise<ChargingSessionRecord[]>;
   listAll(): Promise<ChargingSessionRecord[]>;
+  startSession(userId: string, stationId: string, portId: string): Promise<ChargingSessionRecord>;
+  stopSession(userId: string, sessionId: string): Promise<ChargingSessionRecord>;
 }
-
 /** In-memory mock — swap for Lambda-backed implementation when available */
 const MOCK: ChargingSessionRecord[] = [
   {
@@ -50,19 +59,115 @@ const MOCK: ChargingSessionRecord[] = [
 ];
 
 export class MockSessionsService implements SessionsService {
+  private sessions: ChargingSessionRecord[] = [...MOCK];
+  constructor(private readonly bookings: BookingsService) {}
+
   async getById(sessionId: string): Promise<ChargingSessionRecord | null> {
-    return MOCK.find((s) => s.sessionId === sessionId) ?? null;
+    return this.sessions.find((s) => s.sessionId === sessionId) ?? null;
   }
 
   async listByUserId(userId: string): Promise<ChargingSessionRecord[]> {
-    return MOCK.filter((s) => s.userId === userId);
+    return this.sessions.filter((s) => s.userId === userId);
   }
 
   async listAll(): Promise<ChargingSessionRecord[]> {
-    return [...MOCK];
+    return [...this.sessions];
+  }
+
+  async startSession(userId: string, stationId: string, portId: string): Promise<ChargingSessionRecord> {
+    // Сессия возможна только при активном бронировании в текущий момент (mock/local правило).
+    const booking = await this.bookings.getActiveBookingForUserStation(userId, stationId, new Date());
+    if (!booking) {
+      throw new ForbiddenError('No active booking for this station (booking required and must be within slot)');
+    }
+
+    const station = findStationById(stationId);
+    if (!station) {
+      throw new ResourceNotFoundError('Station not found');
+    }
+    if (station.state !== 'ACTIVE') {
+      throw new ConflictError('Station not in ACTIVE state');
+    }
+    station.occupiedPorts = station.occupiedPorts ?? 0;
+
+    if (station.occupiedPorts >= station.ports) {
+      throw new ConflictError('No free ports available');
+    }
+
+    if (station.blockedUntil) {
+      const blockedUntil = new Date(station.blockedUntil);
+      if (blockedUntil > new Date()) {
+        throw new ConflictError('Station temporarily blocked due to previous payment failure', 'STATION_BLOCKED');
+      }
+      station.blockedUntil = null;
+    }
+
+    // Эмуляция оплаты в начале сессии (20% шанс ошибки).
+    if (Math.random() < 0.2) {
+      station.blockedUntil = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+      throw new BadRequestError('Payment start failed, station blocked for 5 minutes', 'PAYMENT_START_FAILED');
+    }
+
+    station.occupiedPorts += 1;
+    const now = new Date().toISOString();
+    const session: ChargingSessionRecord = {
+      sessionId: `sess-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      userId,
+      stationId,
+      portId,
+      startedAt: now,
+      endedAt: null,
+      status: 'ACTIVE',
+      energyKwh: null,
+      diagnostics: 'Session started',
+      internalNote: null,
+      billingCents: null,
+    };
+    this.sessions.push(session);
+    await this.bookings.markPaid(userId, booking.bookingId);
+    return session;
+  }
+
+  async stopSession(userId: string, sessionId: string): Promise<ChargingSessionRecord> {
+    const session = this.sessions.find((s) => s.sessionId === sessionId);
+    if (!session) {
+      throw new ResourceNotFoundError('Session not found');
+    }
+    if (session.userId !== userId) {
+      throw new ForbiddenError('Forbidden');
+    }
+    if (session.status !== 'ACTIVE') {
+      throw new ConflictError('Session is not active');
+    }
+
+    const station = findStationById(session.stationId);
+    if (station) {
+      station.occupiedPorts = Math.max(0, (station.occupiedPorts ?? 1) - 1);
+      if (station.state === 'OUT_OF_SERVICE') {
+        station.state = 'INACTIVE';
+      }
+      station.updatedAt = new Date().toISOString();
+    }
+
+    const endedAt = new Date().toISOString();
+    const startedAt = new Date(session.startedAt);
+    const durationMin = Math.max(1, Math.floor((new Date(endedAt).getTime() - startedAt.getTime()) / 60000));
+    const energyKwh = Number((durationMin * 0.7).toFixed(2));
+    let billingCents = 0;
+    if (station?.ratePlan) {
+      const maxRate = Math.max(station.ratePlan.peakRate, station.ratePlan.offPeakRate);
+      billingCents = Math.round((energyKwh * maxRate) * 100);
+    }
+
+    session.endedAt = endedAt;
+    session.status = 'COMPLETED';
+    session.energyKwh = energyKwh;
+    session.billingCents = billingCents;
+    session.diagnostics = 'Session completed normally';
+    return session;
   }
 }
 
 export function buildSessionsService(): SessionsService {
-  return new MockSessionsService();
+  return new MockSessionsService(buildBookingsService());
 }

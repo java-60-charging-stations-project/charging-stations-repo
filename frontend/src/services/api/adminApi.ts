@@ -106,6 +106,14 @@ export async function changeStationState(stationId: string, request: ChangeStati
     return response.data;
 };
 
+export async function addStationPorts(stationId: string, deltaPorts: number): Promise<{ updatedAt: string; ports: number; occupiedPorts: number; }> {
+    const response = await apiClient.patch<ApiResponse<{ updatedAt: string; ports: number; occupiedPorts: number; }>>(
+        `/admin/stations/${stationId}/ports`,
+        { deltaPorts },
+    );
+    return response.data;
+};
+
 export async function deleteStation(stationId: string): Promise<void> {
     await apiClient.delete<ApiResponse<void>>(
         `/admin/stations/${stationId}`,

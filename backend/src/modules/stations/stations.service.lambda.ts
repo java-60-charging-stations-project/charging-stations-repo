@@ -10,6 +10,7 @@ import type {
   AdminDeleteStationResponse,
   AdminUpdateStationStateRequest,
   AdminUpdateStationStateResponse,
+  AdminUpdateStationPortsResponse,
   LambdaAdminCreateStationResponse,
   LambdaAdminUpdateStationStateResponse,
   LambdaStation,
@@ -23,6 +24,7 @@ import {
   mapLambdaStation,
   mapLambdaStationList,
   mapLambdaAdminUpdateStationStateResponse,
+  mapLambdaAdminUpdateStationPortsResponse,
 } from './stations.types';
 import type { ListStationsParams, StationsService } from './stations.interface';
 
@@ -63,7 +65,7 @@ export class StationsServiceLambda implements StationsService {
       wrapLambdaRequest(
         'getStationById',
         callerId,
-        {stationId,}
+        { stationId, }
       )
     );
     if (!result.data) {
@@ -84,7 +86,7 @@ export class StationsServiceLambda implements StationsService {
     );
     return mapLambdaAdminCreateStationResponse(result.data);
   }
-  
+
   async updateStationState(
     stationId: string,
     oldState: StationState,
@@ -96,16 +98,39 @@ export class StationsServiceLambda implements StationsService {
       oldState,
       newState,
       callerId
-    });    
+    });
     const result = await LAMBDA_INVOKER.invokeJson<{ data: LambdaAdminUpdateStationStateResponse }>(
       env.stationsLambdaWriteFunctionName,
       wrapLambdaRequest<AdminUpdateStationStateRequest, unknown>(
-          'changeStationState',
-          callerId,
-          { stationId, oldState, newState },
+        'changeStationState',
+        callerId,
+        { stationId, oldState, newState },
       )
     );
     return mapLambdaAdminUpdateStationStateResponse(result.data);
+  }
+
+  async updateStationPorts(
+    stationId: string,
+    deltaPorts: number,
+    callerId: string
+  ): Promise<AdminUpdateStationPortsResponse> {
+    logger.debug('Invoking stations write lambda: updateStationPorts', {
+      stationId,
+      deltaPorts,
+      callerId
+    });
+
+    const result = await LAMBDA_INVOKER.invokeJson<{ data: { updated_at: string; ports: number; occupied_ports?: number } }>(
+      env.stationsLambdaWriteFunctionName,
+      wrapLambdaRequest<unknown, unknown>(
+        'changeStationPorts',
+        callerId,
+        { stationId, deltaPorts },
+      )
+    );
+
+    return mapLambdaAdminUpdateStationPortsResponse(result.data);
   }
 
   async deleteStation(

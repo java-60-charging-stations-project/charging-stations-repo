@@ -4,7 +4,9 @@ export interface BookingDto {
   stationId: string;
   slotFrom: string; // ISO
   slotTo: string;   // ISO
-  status: 'created' | 'cancelled';
+  status: 'created' | 'cancelled' | 'expired' | 'paid';
+  penaltyBillingCents?: number;
+  processedAt?: string;
 }
 
 export interface CreateBookingRequest {
