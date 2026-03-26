@@ -16,6 +16,7 @@ export function stationsRouter(): Router {
   router.get('/support/stations', verifyCognitoJwt, requireGroups([SUPPORT_GROUP]), controller.list);
   router.get('/support/stations/:stationId', verifyCognitoJwt, requireGroups([SUPPORT_GROUP]), controller.getById);
   router.patch('/support/stations/:stationId/ports', verifyCognitoJwt, requireGroups([SUPPORT_GROUP]), controller.updateStationPorts);
+  router.patch('/support/stations/:stationId/state', verifyCognitoJwt, requireGroups([SUPPORT_GROUP]), controller.updateStationState);
 
   // Admin endpoints
   router.get('/admin/stations', verifyCognitoJwt, requireGroups([ADMIN_GROUP]), controller.list);
