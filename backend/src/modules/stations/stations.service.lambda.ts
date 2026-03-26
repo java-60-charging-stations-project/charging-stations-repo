@@ -1,4 +1,13 @@
-import { ResourceNotFoundError } from '../../common/serviceErrors';
+import { randomUUID } from 'node:crypto';
+import {
+  BadRequestError,
+  ConflictError,
+  ResourceNotFoundError,
+  ServiceError,
+  UnauthorizedError,
+} from '../../common/serviceErrors';
+import { isLambdaErrorPayload } from '../../common/lambdaContracts';
+import { type LambdaErrorResponse } from '../../common/wrapperTypes';
 import { env } from '../../config/env';
 import { AwsLambdaInvoker, type LambdaInvoker } from '../../utils/lambdaInvoker';
 import { createLogger } from '../../utils/logger';
@@ -12,41 +21,49 @@ import type {
   AdminUpdateStationStateResponse,
   AdminUpdateStationPortsResponse,
   LambdaAdminCreateStationResponse,
+  LambdaAdminDeleteStationResponse,
   LambdaAdminUpdateStationStateResponse,
-  LambdaDeleteStationResponse,
   LambdaStation,
   Meta,
   StationBase,
   StationBaseCollectionResponse,
-  StationState,
+  StationLifecycleState,
 } from './stations.types';
 import {
   mapLambdaAdminCreateStationResponse,
+  mapLambdaDeleteStationResponse,
   mapLambdaStation,
   mapLambdaStationList,
   mapLambdaAdminUpdateStationStateResponse,
-  mapLambdaAdminUpdateStationPortsResponse,
-  mapLambdaDeleteStationResponse,
+  mapLambdaStationsListMeta,
 } from './stations.types';
 import type { ListStationsParams, StationsService } from './stations.interface';
 
 const logger = createLogger('stations.service');
 const LAMBDA_INVOKER: LambdaInvoker = new AwsLambdaInvoker(env.awsRegion);
 
-/** `get_station_info` returns meta in snake_case (`total_items`, `page_size`, …). */
-function normalizeListMeta(meta: Meta | Record<string, unknown> | undefined, fallback: Meta): Meta {
-  if (!meta) return fallback;
-  const m = meta as Record<string, unknown>;
-  const page = Number(m.page ?? fallback.page);
-  const pageSize = Number(m.pageSize ?? m.page_size ?? fallback.pageSize);
-  const totalItems = Number(m.totalItems ?? m.total_items ?? fallback.totalItems);
-  const totalPages = Number(m.totalPages ?? m.total_pages ?? fallback.totalPages);
-  return {
-    page: Number.isFinite(page) ? page : fallback.page,
-    pageSize: Number.isFinite(pageSize) ? pageSize : fallback.pageSize,
-    totalItems: Number.isFinite(totalItems) ? totalItems : fallback.totalItems,
-    totalPages: Number.isFinite(totalPages) ? totalPages : fallback.totalPages
-  };
+function throwFromStationsLambdaError(result: LambdaErrorResponse): never {
+  const msg = result.error;
+  const code = result.code ?? 'UNKNOWN';
+  if (code === 'NOT_FOUND') {
+    throw new ResourceNotFoundError(msg, 'NOT_FOUND');
+  }
+  if (code === 'UNAUTHORIZED') {
+    throw new UnauthorizedError(msg, code);
+  }
+  if (code === 'INVALID_REQUEST' || code === 'INVALID_STATE') {
+    throw new BadRequestError(msg, String(code));
+  }
+  if (code === 'TRANSACTION_CANCELED') {
+    throw new ConflictError(msg, String(code));
+  }
+  if (code === 'ALREADY_EXISTS') {
+    throw new ConflictError(msg, code);
+  }
+  if (code === 'CONSTRAINT_VIOLATION') {
+    throw new ConflictError(msg, code);
+  }
+  throw new ServiceError(`stations lambda: ${msg}`, 502, code);
 }
 
 export class StationsServiceLambda implements StationsService {
@@ -60,33 +77,36 @@ export class StationsServiceLambda implements StationsService {
     if (state !== undefined) data.state = state;
     if (orderBy !== undefined) data.orderBy = orderBy;
 
-    const result = await LAMBDA_INVOKER.invokeJson<{ data: LambdaStation[] | LambdaStation | null; meta?: Meta }>(
-      env.stationsLambdaFunctionName,
-      wrapLambdaRequest('getAllStations', callerId, data, { page, pageSize })
-    );
+    const result = await LAMBDA_INVOKER.invokeJson<{
+      data: LambdaStation[] | LambdaStation | null;
+      meta?: Record<string, unknown>;
+    } | LambdaErrorResponse>(env.stationsLambdaFunctionName, wrapLambdaRequest('getAllStations', callerId, data, { page, pageSize }));
+
+    if (isLambdaErrorPayload(result)) {
+      throwFromStationsLambdaError(result);
+    }
 
     const stations = mapLambdaStationList(result.data);
     const fallbackMeta: Meta = {
       page,
       pageSize,
       totalItems: stations.length,
-      totalPages: Math.max(1, Math.ceil(stations.length / pageSize))
+      totalPages: Math.max(1, Math.ceil(stations.length / pageSize)),
     };
-    const meta = normalizeListMeta(result.meta, fallbackMeta);
+    const meta = mapLambdaStationsListMeta(result.meta as Parameters<typeof mapLambdaStationsListMeta>[0], fallbackMeta);
 
     return { data: stations, meta };
   }
 
   async getById(stationId: string, callerId: string): Promise<StationBase> {
     logger.debug('Invoking stations lambda: getById', { stationId, callerId });
-    const result = await LAMBDA_INVOKER.invokeJson<{ data: LambdaStation | null }>(
+    const result = await LAMBDA_INVOKER.invokeJson<{ data: LambdaStation | null } | LambdaErrorResponse>(
       env.stationsLambdaFunctionName,
-      wrapLambdaRequest(
-        'getStationById',
-        callerId,
-        { stationId, }
-      )
+      wrapLambdaRequest('getStationById', callerId, { stationId })
     );
+    if (isLambdaErrorPayload(result)) {
+      throwFromStationsLambdaError(result);
+    }
     if (!result.data) {
       throw new ResourceNotFoundError('Station not found');
     }
@@ -95,37 +115,35 @@ export class StationsServiceLambda implements StationsService {
 
   async create(payload: AdminCreateStationRequest, callerId: string): Promise<AdminCreateStationResponse> {
     logger.debug('Invoking stations lambda: create', { payload, callerId });
-    const result = await LAMBDA_INVOKER.invokeJson<{ data: LambdaAdminCreateStationResponse }>(
+    const result = await LAMBDA_INVOKER.invokeJson<{ data: LambdaAdminCreateStationResponse } | LambdaErrorResponse>(
       env.stationsLambdaWriteFunctionName,
-      wrapLambdaRequest(
-        'writeStation',
-        callerId,
-        payload
-      )
+      wrapLambdaRequest('writeStation', callerId, payload)
     );
+    if (isLambdaErrorPayload(result)) {
+      throwFromStationsLambdaError(result);
+    }
     return mapLambdaAdminCreateStationResponse(result.data);
   }
 
   async updateStationState(
     stationId: string,
-    oldState: StationState,
-    newState: StationState,
+    oldState: StationLifecycleState,
+    newState: StationLifecycleState,
     callerId: string
   ): Promise<AdminUpdateStationStateResponse> {
     logger.debug('Invoking stations write lambda: updateStationState', {
       stationId,
       oldState,
       newState,
-      callerId
+      callerId,
     });
-    const result = await LAMBDA_INVOKER.invokeJson<{ data: LambdaAdminUpdateStationStateResponse }>(
+    const result = await LAMBDA_INVOKER.invokeJson<{ data: LambdaAdminUpdateStationStateResponse } | LambdaErrorResponse>(
       env.stationsLambdaWriteFunctionName,
-      wrapLambdaRequest<AdminUpdateStationStateRequest, unknown>(
-        'changeStationState',
-        callerId,
-        { stationId, oldState, newState },
-      )
+      wrapLambdaRequest<AdminUpdateStationStateRequest, unknown>('changeStationState', callerId, { stationId, oldState, newState })
     );
+    if (isLambdaErrorPayload(result)) {
+      throwFromStationsLambdaError(result);
+    }
     return mapLambdaAdminUpdateStationStateResponse(result.data);
   }
 
@@ -134,42 +152,53 @@ export class StationsServiceLambda implements StationsService {
     deltaPorts: number,
     callerId: string
   ): Promise<AdminUpdateStationPortsResponse> {
-    logger.debug('Invoking stations write lambda: updateStationPorts', {
+    logger.debug('Invoking stations write lambda: update_station_ports', {
       stationId,
       deltaPorts,
-      callerId
+      callerId,
     });
 
-    const result = await LAMBDA_INVOKER.invokeJson<{ data: { updated_at: string; ports: number; occupied_ports?: number } }>(
+    const operations = [
+      {
+        station_id: stationId,
+        delta: deltaPorts,
+        event_id: randomUUID(),
+      },
+    ];
+
+    const result = await LAMBDA_INVOKER.invokeJson<
+      { data: { operations: typeof operations } } | LambdaErrorResponse
+    >(
       env.stationsLambdaWriteFunctionName,
-      wrapLambdaRequest<unknown, unknown>(
-        'changeStationPorts',
-        callerId,
-        { stationId, deltaPorts },
-      )
+      wrapLambdaRequest('update_station_ports', callerId, operations)
     );
 
-    return mapLambdaAdminUpdateStationPortsResponse(result.data);
+    if (isLambdaErrorPayload(result)) {
+      throwFromStationsLambdaError(result);
+    }
+
+    const station = await this.getById(stationId, callerId);
+    return {
+      updatedAt: station.updatedAt,
+      ports: station.ports,
+      occupiedPorts: station.occupiedPorts ?? 0,
+    };
   }
 
-  async deleteStation(
-    stationId: string,
-    callerId: string
-  ): Promise<AdminDeleteStationResponse> {
+  async deleteStation(stationId: string, callerId: string): Promise<AdminDeleteStationResponse> {
     logger.debug('Invoking stations write lambda: deleteStation', {
       stationId,
-      callerId
+      callerId,
     });
-    const result = await LAMBDA_INVOKER.invokeJson<{ data: LambdaDeleteStationResponse }>(
+    const result = await LAMBDA_INVOKER.invokeJson<{ data: LambdaAdminDeleteStationResponse } | LambdaErrorResponse>(
       env.stationsLambdaWriteFunctionName,
-      wrapLambdaRequest(
-        'deleteStation',
-        callerId,
-        {
-          stationId
-        }
-      )
+      wrapLambdaRequest('deleteStation', callerId, {
+        stationId,
+      })
     );
+    if (isLambdaErrorPayload(result)) {
+      throwFromStationsLambdaError(result);
+    }
     return mapLambdaDeleteStationResponse(result.data);
   }
 }

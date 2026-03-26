@@ -6,14 +6,6 @@ export interface BookingsService {
   create(userId: string, req: CreateBookingRequest): Promise<BookingDto>;
   cancel(userId: string, bookingId: string): Promise<boolean>;
   processExpiredBookings(): Promise<void>;
-  /** Booking with status `created` whose slot contains `at` (half-open [slotFrom, slotTo)). */
-  getActiveBookingForUserStation(
-    userId: string,
-    stationId: string,
-    at: Date
-  ): Promise<BookingDto | null>;
-  /** After a charging session successfully starts, mark the booking as paid/consumed. */
-  markPaid(userId: string, bookingId: string): Promise<void>;
 }
 
 export class MockBookingsService implements BookingsService {
@@ -73,36 +65,6 @@ export class MockBookingsService implements BookingsService {
         }
       }
     }
-  }
-
-  async getActiveBookingForUserStation(
-    userId: string,
-    stationId: string,
-    at: Date
-  ): Promise<BookingDto | null> {
-    await this.processExpiredBookings();
-    const t = at.getTime();
-    for (const b of this.bookings) {
-      if (b.userId !== userId || b.stationId !== stationId || b.status !== 'created') continue;
-      const from = new Date(b.slotFrom).getTime();
-      const to = new Date(b.slotTo).getTime();
-      if (Number.isNaN(from) || Number.isNaN(to)) continue;
-      if (t >= from && t < to) return b;
-    }
-    return null;
-  }
-
-  async markPaid(userId: string, bookingId: string): Promise<void> {
-    await this.processExpiredBookings();
-    const idx = this.bookings.findIndex((b) => b.userId === userId && b.bookingId === bookingId);
-    if (idx === -1) return;
-    const b = this.bookings[idx];
-    if (b.status !== 'created') return;
-    this.bookings[idx] = {
-      ...b,
-      status: 'paid',
-      processedAt: new Date().toISOString()
-    };
   }
 }
 

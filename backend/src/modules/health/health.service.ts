@@ -3,6 +3,10 @@ import { AwsLambdaInvoker, type LambdaInvoker } from '../../utils/lambdaInvoker'
 import { createLogger } from '../../utils/logger';
 import { wrapLambdaRequest } from '../../common/wrappers';
 
+/**
+ * `charging-stations-health` returns this directly — not `LambdaSuccessPayload`
+ * (`lambda/routes/health/app.py`).
+ */
 export interface HealthResponse {
   code: number;
   status: string;

@@ -1,12 +1,5 @@
 import type { ChargingSessionRecord } from './sessions.types';
 import { findStationById } from '../stations/local/stations.service.local';
-import { buildBookingsService, type BookingsService } from '../bookings/bookings.service';
-import {
-  BadRequestError,
-  ConflictError,
-  ForbiddenError,
-  ResourceNotFoundError,
-} from '../../common/serviceErrors';
 
 export interface SessionsService {
   getById(sessionId: string): Promise<ChargingSessionRecord | null>;
@@ -60,7 +53,6 @@ const MOCK: ChargingSessionRecord[] = [
 
 export class MockSessionsService implements SessionsService {
   private sessions: ChargingSessionRecord[] = [...MOCK];
-  constructor(private readonly bookings: BookingsService) {}
 
   async getById(sessionId: string): Promise<ChargingSessionRecord | null> {
     return this.sessions.find((s) => s.sessionId === sessionId) ?? null;
@@ -75,29 +67,23 @@ export class MockSessionsService implements SessionsService {
   }
 
   async startSession(userId: string, stationId: string, portId: string): Promise<ChargingSessionRecord> {
-    // Сессия возможна только при активном бронировании в текущий момент (mock/local правило).
-    const booking = await this.bookings.getActiveBookingForUserStation(userId, stationId, new Date());
-    if (!booking) {
-      throw new ForbiddenError('No active booking for this station (booking required and must be within slot)');
-    }
-
     const station = findStationById(stationId);
     if (!station) {
-      throw new ResourceNotFoundError('Station not found');
+      throw new Error('Station not found');
     }
     if (station.state !== 'ACTIVE') {
-      throw new ConflictError('Station not in ACTIVE state');
+      throw new Error('Station not in ACTIVE state');
     }
     station.occupiedPorts = station.occupiedPorts ?? 0;
 
     if (station.occupiedPorts >= station.ports) {
-      throw new ConflictError('No free ports available');
+      throw new Error('No free ports available');
     }
 
     if (station.blockedUntil) {
       const blockedUntil = new Date(station.blockedUntil);
       if (blockedUntil > new Date()) {
-        throw new ConflictError('Station temporarily blocked due to previous payment failure', 'STATION_BLOCKED');
+        throw new Error('Station temporarily blocked due to previous payment failure');
       }
       station.blockedUntil = null;
     }
@@ -105,7 +91,7 @@ export class MockSessionsService implements SessionsService {
     // Эмуляция оплаты в начале сессии (20% шанс ошибки).
     if (Math.random() < 0.2) {
       station.blockedUntil = new Date(Date.now() + 5 * 60 * 1000).toISOString();
-      throw new BadRequestError('Payment start failed, station blocked for 5 minutes', 'PAYMENT_START_FAILED');
+      throw new Error('Payment start failed, station blocked for 5 minutes');
     }
 
     station.occupiedPorts += 1;
@@ -124,20 +110,19 @@ export class MockSessionsService implements SessionsService {
       billingCents: null,
     };
     this.sessions.push(session);
-    await this.bookings.markPaid(userId, booking.bookingId);
     return session;
   }
 
   async stopSession(userId: string, sessionId: string): Promise<ChargingSessionRecord> {
     const session = this.sessions.find((s) => s.sessionId === sessionId);
     if (!session) {
-      throw new ResourceNotFoundError('Session not found');
+      throw new Error('Session not found');
     }
     if (session.userId !== userId) {
-      throw new ForbiddenError('Forbidden');
+      throw new Error('Unauthorized');
     }
     if (session.status !== 'ACTIVE') {
-      throw new ConflictError('Session is not active');
+      throw new Error('Session is not active');
     }
 
     const station = findStationById(session.stationId);
@@ -169,5 +154,5 @@ export class MockSessionsService implements SessionsService {
 }
 
 export function buildSessionsService(): SessionsService {
-  return new MockSessionsService(buildBookingsService());
+  return new MockSessionsService();
 }

@@ -1,4 +1,4 @@
-export interface apiMetadata{
+export interface apiMetadata {
     page: number;
     pageSize: number;
     totalItems: number;
@@ -14,10 +14,10 @@ export interface apiResponseList<T> {
     meta: apiMetadata;
 }
 
-export interface LambdaErrorResponse {
-    error: string;
-    code?: string;
-}
+import type { LambdaErrorPayload } from './lambdaContracts';
+
+/** Alias for Lambda `{ error, code }` body (see `lambdaContracts.ts`). */
+export type LambdaErrorResponse = LambdaErrorPayload;
 
 export interface LambdaRequest<T, M = unknown> {
     service: {

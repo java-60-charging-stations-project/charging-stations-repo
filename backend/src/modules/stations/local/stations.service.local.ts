@@ -10,6 +10,7 @@ import type {
   AdminUpdateStationPortsResponse,
   StationBase,
   StationBaseCollectionResponse,
+  StationLifecycleState,
   StationState,
 } from '../stations.types';
 import type { ListStationsParams, StationsService } from '../stations.interface';
@@ -31,7 +32,7 @@ export function findStationById(stationId: string): StationBase | undefined {
   return STATIONS.find((s) => s.id === stationId);
 }
 
-export function updateStationStateLocal(stationId: string, newState: StationState): StationBase {
+export function updateStationStateLocal(stationId: string, newState: StationLifecycleState): StationBase {
   const station = findStationById(stationId);
   if (!station) throw new ResourceNotFoundError('Station not found');
   station.state = newState;
@@ -141,8 +142,8 @@ export class StationsServiceLocal implements StationsService {
 
   async updateStationState(
     stationId: string,
-    oldState: StationState,
-    newState: StationState,
+    oldState: StationLifecycleState,
+    newState: StationLifecycleState,
     _callerId: string
   ): Promise<AdminUpdateStationStateResponse> {
     const station = STATIONS.find((s) => s.id === stationId);
@@ -197,9 +198,8 @@ export class StationsServiceLocal implements StationsService {
     if (station.state !== 'INACTIVE') {
       throw new BadRequestError('Station cannot be deleted in state: ' + station.state);
     }
-    STATIONS[stationIndex].state = 'DELETED';
-    STATIONS[stationIndex].updatedAt = new Date().toISOString();
-    
-    return { deletedAt: station.updatedAt };
+    STATIONS.splice(stationIndex, 1);
+
+    return { deletedAt: new Date().toISOString() };
   }
 }

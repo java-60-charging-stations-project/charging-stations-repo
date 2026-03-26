@@ -6,6 +6,7 @@ import type {
   AdminUpdateStationPortsResponse,
   StationBase,
   StationBaseCollectionResponse,
+  StationLifecycleState,
   StationState,
 } from './stations.types';
 
@@ -27,8 +28,8 @@ export interface StationsService {
 
   updateStationState(
     stationId: string,
-    oldState: StationState,
-    newState: StationState,
+    oldState: StationLifecycleState,
+    newState: StationLifecycleState,
     callerId: string
   ): Promise<AdminUpdateStationStateResponse>;
 
