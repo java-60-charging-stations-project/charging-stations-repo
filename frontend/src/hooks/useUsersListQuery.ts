@@ -1,6 +1,9 @@
 import { fetchAdminUsers } from "@/services/api/adminApi";
-import type { UserShortType } from "@/types/users";
+import type { ListUsersFilterType, UserShortType } from "@/types/users";
 import { useEffect, useState } from "react";
+import { getLogger } from "@/services/logging";
+
+const logger = getLogger("useUsersListQuery");
 
 const FETCH_LIMIT = 5;
 
@@ -9,6 +12,7 @@ export function useUsersListQuery() {
     const [error, setError] = useState<string | null>(null);
     const [users, setUsers] = useState<UserShortType[]>([]);
     const [nextToken, setNextToken] = useState<string | undefined>(undefined);
+    const [filters, setFilters] = useState<ListUsersFilterType | undefined>(undefined);
 
     const fetchUsers = async (isReplacing: boolean, token?: string) => {
         setIsLoading(true);
@@ -18,8 +22,10 @@ export function useUsersListQuery() {
                 setUsers([]);
                 setNextToken(undefined);
             }
+            logger.debug('Fetching users', { filters, token });
             const {users: fetchedUsers, paginationToken} = await fetchAdminUsers({
                 limit: FETCH_LIMIT,
+                ...(filters? {filter: filters}: {}),
                 ...(token? {paginationToken: token}: {})
             });
             setNextToken(paginationToken);
@@ -40,7 +46,7 @@ export function useUsersListQuery() {
 
     useEffect(() => {
         fetchUsers(true);
-    }, []);
+    }, [filters?.filterKey, filters?.filterValue]);
 
     const fetchMore = async () => {
         if (!nextToken) {
@@ -54,6 +60,7 @@ export function useUsersListQuery() {
         error,
         users,
         hasMore: !!nextToken,
-        fetchMore, 
+        fetchMore,
+        setFilters,
     }
 }

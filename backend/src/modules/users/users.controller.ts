@@ -33,6 +33,7 @@ export class UsersController {
 
   listUsers = async (req: Request, res: Response) => {
     logger.debug(".listUsers");
+    logger.debug(".listUsers, request query: ", req.query);
     const query = adminListUsersSchema.parse(req.query);
     logger.debug(".listUsers, params: ", query);
     const {limit, paginationToken, filterKey, filterValue} = query;

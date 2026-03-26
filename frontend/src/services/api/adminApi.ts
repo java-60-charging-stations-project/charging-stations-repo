@@ -19,7 +19,11 @@ import { getLogger } from '@/services/logging';
 const logger = getLogger("adminApi");
 
 /** USERS */
-export async function fetchAdminUsers(params: ListUsersRequestParamsType): Promise<UserShortListResponseType> {
+export async function fetchAdminUsers(requestParameters: ListUsersRequestParamsType): Promise<UserShortListResponseType> {
+    const {limit, paginationToken, filter} = requestParameters;
+    const filterParams = filter ? { ...filter } : {};
+    const paginationParams = paginationToken ? { paginationToken } : {};
+    const params = {limit, ...filterParams, ...paginationParams };
     const response = await apiClient.get<ApiResponse<UserShortListResponseType>>(
         '/admin/users',
         { params },

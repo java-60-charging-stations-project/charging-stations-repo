@@ -110,7 +110,10 @@ export class CognitoUsersAPI {
             PaginationToken: paginationToken,
             Filter: condition,
         });
-        return this.client.send(command);
+        logger.debug('Cognito users list command: ', command);
+        const response = await this.client.send(command);
+        logger.debug('Cognito users list response: ', response);
+        return response;
     }
 
     async deleteUser(userIdentifier: string) {
