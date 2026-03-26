@@ -1,7 +1,7 @@
 import type { FC, ReactNode } from "react";
 import type { StationState } from "@/types/stations";
 
-export interface StatusBadgeProps {
+export type StatusBadgeProps ={
     labelText: ReactNode;
     /** Background color (CSS color value) */
     color: string;
@@ -112,4 +112,36 @@ export function StationStateBadge({ state }: { state: StationState }) {
             return <StationStatusBadgeDeleted />;
         }
     }
+}
+
+export function UserStatusBadgeDisabled() {
+    return (
+        <StatusBadge
+            labelText="Disabled"
+            color="#4b5563"
+            textColor="#e5e7eb"
+            borderColor="#374151"
+            textSize="text-[10px]"
+            textWeight="font-medium"
+            size="px-2 py-0.5"
+        />
+    );
+}
+
+export function UserStatusBadgeEnabled() {
+    return (
+        <StatusBadge
+            labelText="Enabled"
+            color="#bbf7d0"
+            textColor="#166534"
+            borderColor="#4ade80"
+            textSize="text-[10px]"
+            textWeight="font-medium"
+            size="px-2 py-0.5"
+        />
+    );
+}
+
+export function UserStatusBadge({ enabled }: { enabled: boolean }) {
+    return enabled ? <UserStatusBadgeEnabled /> : <UserStatusBadgeDisabled />;
 }
