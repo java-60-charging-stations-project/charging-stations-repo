@@ -197,8 +197,9 @@ export class StationsServiceLocal implements StationsService {
     if (station.state !== 'INACTIVE') {
       throw new BadRequestError('Station cannot be deleted in state: ' + station.state);
     }
-    STATIONS.splice(stationIndex, 1);
-
-    return { deletedAt: new Date().toISOString() };
+    STATIONS[stationIndex].state = 'DELETED';
+    STATIONS[stationIndex].updatedAt = new Date().toISOString();
+    
+    return { deletedAt: station.updatedAt };
   }
 }

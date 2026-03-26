@@ -1,7 +1,7 @@
 import { InternalServerError } from '../../common/serviceErrors';
 
 /** Station state per API spec (GET /stations, /admin/stations) */
-export type StationState = 'INACTIVE' | 'ACTIVE' | 'OUT_OF_SERVICE';
+export type StationState = 'INACTIVE' | 'ACTIVE' | 'OUT_OF_SERVICE' | 'DELETED';
 
 /** ISO 4217 currency code, peak/off-peak rates */
 export interface RatePlan {

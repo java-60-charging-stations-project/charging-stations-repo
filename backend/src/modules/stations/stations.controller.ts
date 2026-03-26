@@ -10,7 +10,7 @@ const idSchema = z.string().min(1);
 const listQuerySchema = z.object({
   city: z.string().optional(),
   owner: z.string().optional(),
-  state: z.enum(['INACTIVE', 'ACTIVE', 'OUT_OF_SERVICE']).optional(),
+  state: z.enum(['INACTIVE', 'ACTIVE', 'OUT_OF_SERVICE', 'DELETED']).optional(),
   orderBy: z.string().optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(200).default(200),
