@@ -1,11 +1,13 @@
-import { Link } from 'react-router';
-//import { getLogger } from '@/services/logging';
+import { getLogger } from '@/services/logging';
 import { useUsersListQuery } from '@/hooks/useUsersListQuery';
 import type { ChangeEvent, KeyboardEvent } from 'react';
-import { useMemo, useState } from 'react';
-import type { ListUsersFilterType } from '@/types/users';
+import { useEffect, useMemo, useState } from 'react';
+import type { ListUsersFilterType, UserFullType } from '@/types/users';
+import { fetchAdminUserById } from '@/services/api/adminApi';
+import EditUserForm from '@/components/EditUserForm';
+import Modal from '@/components/Modal';
 
-//const logger = getLogger("AdminUsersPage");
+const logger = getLogger("AdminUsersPage");
 
 function buildFilters(emailInput: string, nameInput: string): ListUsersFilterType | undefined {
   const trimmedEmail = emailInput.trim();
@@ -29,10 +31,40 @@ function buildFilters(emailInput: string, nameInput: string): ListUsersFilterTyp
 }
 
 const AdminUsersPage = () => {
-  const { isLoading, error, users, appliedFilters, hasMore, fetchMore, applyFilters } = useUsersListQuery();
+  const { isLoading, error, users, appliedFilters, hasMore, fetchMore, applyFilters, refresh } = useUsersListQuery();
 
   const [emailInput, setEmailInput] = useState('');
   const [nameInput, setNameInput] = useState('');
+
+  const [editUserId, setEditUserId] = useState<string | null>(null);
+  const [editUser, setEditUser] = useState<UserFullType | null>(null);
+  const [errorEditUser, setErrorEditUser] = useState<string | null>(null);
+  
+  useEffect(() => {
+    const loadEditUser = async () => {
+      if (!editUserId) return;
+      try {
+        setErrorEditUser(null);
+        const user = await fetchAdminUserById(editUserId);
+        logger.debug('user details:', user);
+        setEditUser(user);
+      } catch (error) {
+        logger.error('error loading user details:', error);
+        setErrorEditUser(error instanceof Error ? error.message : 'Failed to load user details');
+        setEditUser(null);
+      }
+    }
+    loadEditUser();
+  }, [editUserId]);
+
+  const onModalClose = () => {
+    setEditUserId(null);
+    setEditUser(null);
+  }
+
+  const onUserUpdated = () => {
+    refresh();
+  }
 
   const draftFilters = useMemo(
     () => buildFilters(emailInput, nameInput),
@@ -144,10 +176,16 @@ const AdminUsersPage = () => {
             <tr key={user.userId}>
               <td>{index + 1}</td>
               <td>
-                <Link to={`/admin/users/${user.userId}`}>{user.email}</Link>
+              <button
+                type="button"
+                onClick={() => setEditUserId(user.userId)}
+                className="text-blue-600 underline hover:text-blue-800 p-0 bg-transparent border-0 cursor-pointer text-left font-inherit"
+              >
+                {user.email}
+              </button>
               </td>
               <td>
-                <Link to={`/admin/users/${user.userId}`}>{user.name}</Link>
+                {user.name}
               </td>
               <td>{user.enabled ? 'No' : 'Yes'}</td>
               <td>{user.status}</td>
@@ -157,6 +195,7 @@ const AdminUsersPage = () => {
       </table>
       {isLoading && <div>Loading...</div>}
       {error && <div>Error: {error}</div>}
+      {errorEditUser && <div>Error loading user details: {errorEditUser}</div>}
       {hasMore && (
         <button
           onClick={fetchMore}
@@ -166,6 +205,13 @@ const AdminUsersPage = () => {
           Load more
         </button>
       )}
+      <Modal 
+        isOpen={!!editUserId && !!editUser}
+        onClose={onModalClose} title="Edit User" showCloseButton={true}>
+          {!!editUser && (
+            <EditUserForm user={editUser} onUserUpdated={onUserUpdated} />
+          )}
+        </Modal>
     </div>
   );
 };
