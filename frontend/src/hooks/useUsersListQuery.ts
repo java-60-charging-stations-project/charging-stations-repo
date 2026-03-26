@@ -67,6 +67,10 @@ export function useUsersListQuery() {
         await fetchUsers(filters, false, nextToken);
     }, [fetchUsers, filters, nextToken]);
 
+    const refresh = useCallback(async () => {
+        await fetchUsers(filters, true);
+    }, [fetchUsers, filters]);
+
     const applyFilters = useCallback((newFilters: ListUsersFilterType | undefined) => {
         setFilters((currentFilters) => {
             const isSameFilter =
@@ -84,6 +88,7 @@ export function useUsersListQuery() {
         appliedFilters: filters,
         hasMore: !!nextToken,
         fetchMore,
+        refresh,
         applyFilters,
     };
 }
