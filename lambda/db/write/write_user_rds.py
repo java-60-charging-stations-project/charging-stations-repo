@@ -54,10 +54,9 @@ def extract_user_instance_from_event(event: dict) -> UserInstance:
         logger.info(f"Extracting user instance")
         attrs = event['request']['userAttributes']
         email = attrs['email']
-        full_name = attrs['name'] if not console_created else "Console User"
+        name = attrs.get('name')
+        full_name = name if name and not name.startswith("cognito:") else "Console User"
         timestamp = datetime.now()
-        if full_name.startswith("cognito:"):
-            full_name = "Console User"
         user_instance: UserInstance = {
             "user_id": attrs['sub'] if not console_created else event["userName"],
             "full_name": full_name,

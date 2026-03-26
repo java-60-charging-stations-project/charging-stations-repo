@@ -40,12 +40,12 @@ class StationInstance(TypedDict):
 class PortInstance(TypedDict):
     station_id: str
     code: str
-    entity_key: str
-    state: Literal["FREE", "OCCUPIED", "ERROR", "DISABLED"]
-    power: float | Decimal
-    last_meter_kw: float | Decimal
-    created_at: str
-    updated_at: Optional[str]
+    entity_key: str | None
+    state: Literal["FREE", "OCCUPIED", "ERROR", "DISABLED", "BOOKED"]
+    last_meter_kw: float | Decimal | None
+    created_at: str | None
+    updated_at: str | None
+    last_event_id: str | None
 
 class RequestParameters(TypedDict):
     city: Optional[str]
@@ -53,3 +53,22 @@ class RequestParameters(TypedDict):
     state: Optional[Literal["ACTIVE", "INACTIVE", "OUT_OF_SERVICE", "DELETED"]]
     page: Optional[int]
     page_size: Optional[int]
+
+class PortSessionInstance(TypedDict):
+    station_id: str
+    entity_key: str
+    session_id: str
+    state: Literal["BOOKED", "ACTIVE", "COMPLETED", "CANCELLED", "FAILED", "UNPAID", "PAID"]
+    energy_consumed_kwh: float | Decimal
+    tariff: float | Decimal
+    current_cost: float | Decimal
+    estimated_minutes_remaining: int | None
+    duration_minutes: int | None
+    booking_duration_minutes: int | None
+    charge_level_percent: int | None
+    created_at: str
+    updated_at: str | None
+    booked_at: str | None
+    started_at: str | None
+    ended_at: str | None
+    last_event_id: str | None

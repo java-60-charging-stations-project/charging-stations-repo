@@ -383,8 +383,6 @@ Request:
     "ports": [
       {
         "code": "PORT-CODE-FROM-FRONTEND",
-        "power": 22.0,
-        "lastMeterKw": 0.0
       }
     ]
   }

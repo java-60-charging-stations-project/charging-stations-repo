@@ -653,7 +653,7 @@ Resources:
     Properties:
       Runtime: python3.12
       FunctionName: charging-stations-write-station-ports-dynamo
-      Handler: write_ports_dynamo.handler
+      Handler: write_ports_sessions_dynamo.handler
       CodeUri: db/write
       Layers:
         - !Ref CommonToolsLayer
@@ -667,6 +667,8 @@ Resources:
       Environment:
         Variables:
           STATIONS_DYNAMO_TABLE: !Ref StationEntitiesTable
+          AWS_LAMBDA_HOST_ACCOUNT: !Ref AWS::AccountId
+          GET_STATION_FUNCTION_NAME: !Ref GetStationInfoFunction
       Policies:
         - Version: '2012-10-17'
           Statement:
@@ -712,9 +714,9 @@ Resources:
         - !Ref CommonToolsLayer
       Environment:
         Variables:
-          REGION: !Ref AWS::Region
           WRITE_STATION_FUNCTION_NAME: charging-stations-write-station-rds
           AWS_LAMBDA_HOST_ACCOUNT: !Ref AWS::AccountId
+          WRITE_SESSION_FUNCTION_NAME: charging-stations-write-station-ports-dynamo
       Policies:
         - Version: '2012-10-17'
           Statement:
