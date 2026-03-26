@@ -1,59 +1,99 @@
 import { Link } from 'react-router';
 //import { getLogger } from '@/services/logging';
 import { useUsersListQuery } from '@/hooks/useUsersListQuery';
-import { useState } from 'react';
+import type { ChangeEvent, KeyboardEvent } from 'react';
+import { useMemo, useState } from 'react';
 import type { ListUsersFilterType } from '@/types/users';
 
 //const logger = getLogger("AdminUsersPage");
 
+function buildFilters(emailInput: string, nameInput: string): ListUsersFilterType | undefined {
+  const trimmedEmail = emailInput.trim();
+  const trimmedName = nameInput.trim();
+
+  if (trimmedEmail.length > 0) {
+    return {
+      filterKey: 'email',
+      filterValue: trimmedEmail,
+    };
+  }
+
+  if (trimmedName.length > 0) {
+    return {
+      filterKey: 'name',
+      filterValue: trimmedName,
+    };
+  }
+
+  return undefined;
+}
+
 const AdminUsersPage = () => {
-  const { isLoading, error, users, hasMore, fetchMore, setFilters } = useUsersListQuery();
-  
+  const { isLoading, error, users, appliedFilters, hasMore, fetchMore, applyFilters } = useUsersListQuery();
+
   const [emailInput, setEmailInput] = useState('');
   const [nameInput, setNameInput] = useState('');
 
-  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const draftFilters = useMemo(
+    () => buildFilters(emailInput, nameInput),
+    [emailInput, nameInput],
+  );
+
+  const hasPendingFilterChanges =
+    draftFilters?.filterKey !== appliedFilters?.filterKey
+    || draftFilters?.filterValue !== appliedFilters?.filterValue;
+
+  const handleEmailChange = (e: ChangeEvent<HTMLInputElement>) => {
     setEmailInput(e.target.value);
     setNameInput('');
   };
-  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+
+  const handleNameChange = (e: ChangeEvent<HTMLInputElement>) => {
     setNameInput(e.target.value);
     setEmailInput('');
   };
 
-  const buildFilters = (): ListUsersFilterType | undefined => {
-    if (emailInput.trim().length > 0) {
-      return {
-        filterKey: 'email',
-        filterValue: emailInput.trim(),
-      };
-    }
-    else if (nameInput.trim().length > 0) {
-      return {
-        filterKey: 'name',
-        filterValue: nameInput.trim(),
-      };
-    }
-    return undefined;
+  const applyDraftFilters = () => {
+    applyFilters(draftFilters);
   };
 
-  const sendNewFiltersState = () => {
-    if (isLoading) {
-      return;
-    }
-    setFilters(buildFilters());
+  const clearFilters = () => {
+    setEmailInput('');
+    setNameInput('');
+    applyFilters(undefined);
   };
-  
-  const handleSetFilters = (e: React.KeyboardEvent<HTMLInputElement>) => {
+
+  const handleSetFilters = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      sendNewFiltersState();
-    };
+      applyDraftFilters();
+    }
   };
 
   return (
     <div>
       <h1>Users</h1>
-      <table  className="w-full">
+      <div className="mb-4 flex items-center gap-3">
+        <button
+          onClick={applyDraftFilters}
+          disabled={!hasPendingFilterChanges}
+          className="bg-blue-500 text-white px-4 py-2 rounded-md disabled:bg-slate-300"
+        >
+          Apply filters
+        </button>
+        <button
+          onClick={clearFilters}
+          disabled={!appliedFilters && !draftFilters}
+          className="bg-slate-200 text-slate-800 px-4 py-2 rounded-md disabled:bg-slate-100 disabled:text-slate-400"
+        >
+          Clear filters
+        </button>
+        <div className="text-sm text-slate-600">
+          {appliedFilters
+            ? `Applied filter: ${appliedFilters.filterKey} starts with "${appliedFilters.filterValue}"`
+            : 'Applied filter: none'}
+        </div>
+      </div>
+      <table className="w-full">
         <thead>
           <tr>
             <th>Number</th>
@@ -88,13 +128,18 @@ const AdminUsersPage = () => {
             </td>
             <td> </td>
             <td>
-              <button 
-                onClick={sendNewFiltersState}
-                disabled={isLoading}
-                className="bg-blue-500 text-white px-4 py-2 rounded-md"
-              >Set Filters</button>
+              <span className="text-sm text-slate-500">
+                {hasPendingFilterChanges ? 'Draft differs from applied filter' : 'Draft matches applied filter'}
+              </span>
             </td>
           </tr>
+          {users.length === 0 && !isLoading && !error && (
+            <tr>
+              <td colSpan={5} className="py-4 text-center text-slate-500">
+                No users found.
+              </td>
+            </tr>
+          )}
           {users.map((user, index) => (
             <tr key={user.userId}>
               <td>{index + 1}</td>
@@ -112,11 +157,15 @@ const AdminUsersPage = () => {
       </table>
       {isLoading && <div>Loading...</div>}
       {error && <div>Error: {error}</div>}
-      <button 
-        onClick={fetchMore}
-        disabled={isLoading || !hasMore}
-        className="bg-blue-500 text-white px-4 py-2 rounded-md"
-      >Load more</button>
+      {hasMore && (
+        <button
+          onClick={fetchMore}
+          disabled={isLoading}
+          className="bg-blue-500 text-white px-4 py-2 rounded-md disabled:bg-slate-300"
+        >
+          Load more
+        </button>
+      )}
     </div>
   );
 };
