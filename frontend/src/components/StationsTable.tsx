@@ -6,10 +6,16 @@ import { useStationsQuery } from "@/hooks/useStationsQuery";
 import SimpleButton from "./SimpleButton";
 import { getLogger } from "@/services/logging";
 import Paginator from "./Paginator";
+import { StationStateBadge } from "./StatusBadge";
 
 const logger = getLogger("StationsTable");
 
-const STATE_OPTIONS: StationState[] = ["INACTIVE", "ACTIVE", "OUT_OF_SERVICE"];
+const STATE_OPTIONS: StationState[] = [
+    "INACTIVE",
+    "ACTIVE",
+    "OUT_OF_SERVICE",
+    "DELETED",
+];
 
 export interface StationsTableProps {
     // Must be a stable reference (module-level import)
@@ -156,7 +162,9 @@ const StationsTable: FC<StationsTableProps> =({ fetchFn, detailPath }) => {
                             <td>{station.owner}</td>
                             <td>{station.city}</td>
                             <td>{station.address}</td>
-                            <td>{station.state}</td>
+                            <td>
+                                <StationStateBadge state={station.state} />
+                            </td>
                             <td>{station.ports}</td>
                         </tr>
                     ))}

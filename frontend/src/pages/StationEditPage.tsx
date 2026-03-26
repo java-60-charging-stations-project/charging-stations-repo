@@ -1,18 +1,23 @@
 import { useCallback, useEffect, useState } from "react";
 import { getLogger } from "@/services/logging";
 import {
-    addStationPorts,
+    addStationPorts as adminAddStationPorts,
     createStation,
-    fetchStationById,
+    fetchStationById as adminFetchStationById,
     changeStationState as adminChangeStationState,
     deleteStation,
 } from "@/services/api/adminApi";
-import { changeStationState as supportChangeStationState } from "@/services/api/supportApi";
+import {
+    addStationPorts as supportAddStationPorts,
+    fetchStationById as supportFetchStationById,
+    changeStationState as supportChangeStationState,
+} from "@/services/api/supportApi";
 import type { AdminCreateStationRequest, StationState } from "@/types/stations";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { CURRENCY_CODE, CURRENCY_NAME, MAX_PORTS_PER_STATION } from "@/types/constants";
 import NavButton from "@/components/NavButton";
-import { useNavigate, useParams } from "react-router-dom";
+import { StationStateBadge } from "@/components/StatusBadge";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 
 const logger = getLogger('StationEditPage');
@@ -28,12 +33,6 @@ const FieldRow = ({ label, error, children }: { label: string; error?: string; c
         {error && <p className="w-full text-right text-red-500 text-xs mt-0.5 pr-0">{error}</p>}
     </div>
 );
-
-const STATE_COLORS: Record<StationState, string> = {
-    INACTIVE: "bg-gray-200 text-gray-700",
-    OUT_OF_SERVICE: "bg-amber-100 text-amber-800",
-    ACTIVE: "bg-green-100 text-green-700",
-};
 
 interface StationStateActionsProps {
     stationId: string;
@@ -138,9 +137,7 @@ const StationStateActions: React.FC<StationStateActionsProps> = ({
         <div className="mt-3 border-t border-neutral-200 pt-3 text-xs">
             <div className="flex items-center gap-2 mb-2">
                 <span className="font-semibold">State:</span>
-                <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${STATE_COLORS[stationState]}`}>
-                    {stationState}
-                </span>
+                <StationStateBadge state={stationState} />
             </div>
             {actions && (
                 <div className="flex items-center gap-2">
@@ -156,6 +153,8 @@ const StationStateActions: React.FC<StationStateActionsProps> = ({
 const StationEditPage = () => {
     const { stationId } = useParams<{ stationId: string }>();
     const isViewMode = !!stationId;
+    const { pathname } = useLocation();
+    const useSupportStationApi = pathname.startsWith("/support/stations");
     const { userRole } = useAuth();
     const [isSupportUser, setIsSupportUser] = useState(false);
     const [currentStationState, setCurrentStationState] = useState<StationState | null>(null);
@@ -195,6 +194,9 @@ const StationEditPage = () => {
 
     const loadStation = useCallback(async () => {
         if (!stationId) return;
+        const fetchStationById = useSupportStationApi
+            ? supportFetchStationById
+            : adminFetchStationById;
         try {
             const station = await fetchStationById(stationId);
             setCurrentStationState(station.state);
@@ -215,7 +217,7 @@ const StationEditPage = () => {
         } catch (err) {
             setLoadError(err instanceof Error ? err.message : "Failed to load station");
         }
-    }, [stationId, reset]);
+    }, [stationId, reset, useSupportStationApi]);
 
     useEffect(() => {
         void loadStation();
@@ -264,8 +266,11 @@ const StationEditPage = () => {
 
         setAddPortsError(null);
         setIsAddingPorts(true);
+        const addPorts = useSupportStationApi
+            ? supportAddStationPorts
+            : adminAddStationPorts;
         try {
-            await addStationPorts(stationId, portsToAdd);
+            await addPorts(stationId, portsToAdd);
             await loadStation();
             setIsAddPortsModalOpen(false);
         } catch (err) {
