@@ -1,28 +1,75 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { FC } from 'react';
 import type { UserFullType } from '@/types/users';
-import { adminDisableUser, adminEnableUser, changeUserRole } from '@/services/api/adminApi';
-import SimpleButton from '@/components/SimpleButton';
 import type { UserRole } from '@/types';
-import { UserStatusBadge } from '@/components/StatusBadge';
+import { adminDisableUser, adminEnableUser, changeUserRole, fetchAdminUserById } from '@/services/api/adminApi';
+import SimpleButton from '@/components/SimpleButton';
+import type { ButtonColor } from '@/components/SimpleButton';
+import { UserStatusBadge, UserRoleBadge } from '@/components/StatusBadge';
+import { getLogger } from '@/services/logging';
 
-const ALL_ROLES = ['USER', 'ADMIN', 'SUPPORT'] as const;
+const logger = getLogger('EditUserForm');
 
 interface EditUserFormProps {
-    user: UserFullType;
-    onUserUpdated: () => void;
+    userId: string;
+    onUserUpdated?: () => void;
 }
 
-const EditUserForm: FC<EditUserFormProps> = ({ user, onUserUpdated }) => {
+type RoleAction = { label: string; newRole: UserRole; color: ButtonColor };
+
+function getRoleActions(currentRole: UserRole): RoleAction[] {
+    switch (currentRole) {
+        case 'USER':
+            return [
+                { label: 'Grant Support', newRole: 'SUPPORT', color: 'secondary' },
+                { label: 'Grant Admin',   newRole: 'ADMIN',   color: 'secondary'   },
+            ];
+        case 'SUPPORT':
+            return [
+                { label: 'Revoke Support',  newRole: 'USER',  color: 'tertiary'  },
+            ];
+        case 'ADMIN':
+            return [
+                { label: 'Revoke Admin',  newRole: 'USER',    color: 'tertiary'  },
+            ];
+        default:
+            return [];
+    }
+}
+
+const EditUserForm: FC<EditUserFormProps> = ({ userId, onUserUpdated }) => {
+    const [user, setUser] = useState<UserFullType | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [loadError, setLoadError] = useState<string | null>(null);
+
     const [lockLoading, setLockLoading] = useState(false);
     const [lockError, setLockError] = useState<string | null>(null);
 
-    const [changeRoleFlag, setChangeRoleFlag] = useState(false);
-    const [selectedRole, setSelectedRole] = useState<UserRole>(user.role);
     const [roleLoading, setRoleLoading] = useState(false);
     const [roleError, setRoleError] = useState<string | null>(null);
 
+    const loadUser = useCallback(async () => {
+        setIsLoading(true);
+        setLoadError(null);
+        try {
+            const data = await fetchAdminUserById(userId);
+            logger.debug('user details:', data);
+            setUser(data);
+        } catch (e) {
+            logger.error('error loading user details:', e);
+            setLoadError(e instanceof Error ? e.message : 'Failed to load user');
+            setUser(null);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [userId]);
+
+    useEffect(() => {
+        void loadUser();
+    }, [loadUser]);
+
     const handleToggleLock = async () => {
+        if (!user) return;
         setLockError(null);
         setLockLoading(true);
         try {
@@ -31,7 +78,8 @@ const EditUserForm: FC<EditUserFormProps> = ({ user, onUserUpdated }) => {
             } else {
                 await adminEnableUser(user.userId);
             }
-            onUserUpdated();
+            await loadUser();
+            onUserUpdated?.();
         } catch (e) {
             setLockError(e instanceof Error ? e.message : 'Action failed');
         } finally {
@@ -39,16 +87,14 @@ const EditUserForm: FC<EditUserFormProps> = ({ user, onUserUpdated }) => {
         }
     };
 
-    const handleUpdateRole = async () => {
+    const handleChangeRole = async (newRole: UserRole) => {
+        if (!user) return;
         setRoleError(null);
         setRoleLoading(true);
         try {
-            await changeUserRole(user.userId, {
-                oldRole: user.role,
-                newRole: selectedRole,
-            });
-            setChangeRoleFlag(false);
-            onUserUpdated();
+            await changeUserRole(user.userId, { oldRole: user.role, newRole });
+            await loadUser();
+            onUserUpdated?.();
         } catch (e) {
             setRoleError(e instanceof Error ? e.message : 'Failed to update role');
         } finally {
@@ -56,15 +102,15 @@ const EditUserForm: FC<EditUserFormProps> = ({ user, onUserUpdated }) => {
         }
     };
 
-    const isRoleChanged = selectedRole !== user.role;
+    if (isLoading && !user) {
+        return <p className="mt-4 text-slate-600">Loading...</p>;
+    }
 
-    const handleChangeRoleFlag = (checked: boolean) => {
-        setChangeRoleFlag(checked);
-        if (!checked) {
-            setSelectedRole(user.role);
-            setRoleError(null);
-        }
-    };
+    if (loadError) {
+        return <p className="mt-4 text-red-600 text-sm">{loadError}</p>;
+    }
+
+    if (!user) return null;
 
     return (
         <table className="mt-4 border-collapse">
@@ -104,36 +150,20 @@ const EditUserForm: FC<EditUserFormProps> = ({ user, onUserUpdated }) => {
                     <td className="pr-6 py-2 font-semibold align-top">Role</td>
                     <td className="py-2">
                         <div className="flex items-center gap-3 flex-wrap">
-                            <label className="flex items-center gap-1 cursor-pointer text-sm">
-                                <input
-                                    type="checkbox"
-                                    checked={changeRoleFlag}
-                                    onChange={(e) => handleChangeRoleFlag(e.target.checked)}
+                            <UserRoleBadge role={user.role} />
+                            {getRoleActions(user.role).map(({ label, newRole, color }) => (
+                                <SimpleButton
+                                    key={newRole}
+                                    size="xs"
+                                    caption={label}
+                                    isLoading={roleLoading}
+                                    loadingCaption="Updating..."
+                                    color={color}
+                                    handleClick={() => { void handleChangeRole(newRole); }}
                                 />
-                                Change role
-                            </label>
-                            <select
-                                value={selectedRole}
-                                disabled={!changeRoleFlag}
-                                onChange={(e) => setSelectedRole(e.target.value as UserRole)}
-                                className="text-xs border rounded px-1 py-0.5 disabled:opacity-50"
-                            >
-                                {ALL_ROLES.map((role) => (
-                                    <option key={role} value={role}>
-                                        {role}
-                                    </option>
-                                ))}
-                            </select>
-                            <SimpleButton
-                                size="xs"
-                                caption="Update role"
-                                isLoading={roleLoading}
-                                loadingCaption="Updating..."
-                                isDisabled={!changeRoleFlag || !isRoleChanged}
-                                handleClick={handleUpdateRole}
-                            />
+                            ))}
                             {roleError && (
-                                <span className="text-error-500 text-xs">{roleError}</span>
+                                <span className="text-red-500 text-xs">{roleError}</span>
                             )}
                         </div>
                     </td>

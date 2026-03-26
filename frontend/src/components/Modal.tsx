@@ -6,10 +6,14 @@ type ModalProps = {
     children: ReactNode;
     title?: string;
     showCloseButton: boolean;
+    /** Tailwind max-width class for the panel, e.g. "max-w-sm" (default) or "max-w-3xl". */
+    panelClassName?: string;
 };
 
-const Modal: FC<ModalProps> = ({ isOpen, onClose, showCloseButton, title, children }) => {
+const Modal: FC<ModalProps> = ({ isOpen, onClose, showCloseButton, title, children, panelClassName }) => {
     if (!isOpen) return null;
+
+    const panelMax = panelClassName ?? "max-w-sm";
 
     return (
         <div 
@@ -17,7 +21,7 @@ const Modal: FC<ModalProps> = ({ isOpen, onClose, showCloseButton, title, childr
             onClick={onClose}
         >
             <div 
-                className="bg-white p-6 rounded-lg shadow-xl z-10 max-w-sm mx-auto"
+                className={`bg-white p-6 rounded-lg shadow-xl z-10 w-full mx-auto ${panelMax}`}
                 onClick={(e) => e.stopPropagation()}
             >
                 {title && (

@@ -1,5 +1,6 @@
 import type { FC, ReactNode } from "react";
 import type { StationState } from "@/types/stations";
+import type { UserRole } from "@/types";
 
 export type StatusBadgeProps ={
     labelText: ReactNode;
@@ -144,4 +145,54 @@ export function UserStatusBadgeEnabled() {
 
 export function UserStatusBadge({ enabled }: { enabled: boolean }) {
     return enabled ? <UserStatusBadgeEnabled /> : <UserStatusBadgeDisabled />;
+}
+
+export function UserRoleBadgeUser() {
+    return (
+        <StatusBadge
+            labelText="USER"
+            color="#bbf7d0"
+            textColor="#166534"
+            borderColor="#4ade80"
+            textSize="text-[10px]"
+            textWeight="font-medium"
+            size="px-2 py-0.5"
+        />
+    );
+}
+
+export function UserRoleBadgeSupport() {
+    return (
+        <StatusBadge
+            labelText="SUPPORT"
+            color="#fed7aa"
+            textColor="#9a3412"
+            borderColor="#fb923c"
+            textSize="text-[10px]"
+            textWeight="font-medium"
+            size="px-2 py-0.5"
+        />
+    );
+}
+
+export function UserRoleBadgeAdmin() {
+    return (
+        <StatusBadge
+            labelText="ADMIN"
+            color="#bfdbfe"
+            textColor="#1e40af"
+            borderColor="#60a5fa"
+            textSize="text-[10px]"
+            textWeight="font-medium"
+            size="px-2 py-0.5"
+        />
+    );
+}
+
+export function UserRoleBadge({ role }: { role: UserRole }) {
+    switch (role) {
+        case 'ADMIN':   return <UserRoleBadgeAdmin />;
+        case 'SUPPORT': return <UserRoleBadgeSupport />;
+        default:        return <UserRoleBadgeUser />;
+    }
 }

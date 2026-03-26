@@ -1,9 +1,8 @@
 import { getLogger } from '@/services/logging';
 import { useUsersListQuery } from '@/hooks/useUsersListQuery';
 import type { ChangeEvent, KeyboardEvent } from 'react';
-import { useEffect, useMemo, useState } from 'react';
-import type { ListUsersFilterType, UserFullType } from '@/types/users';
-import { fetchAdminUserById } from '@/services/api/adminApi';
+import { useMemo, useState } from 'react';
+import type { ListUsersFilterType } from '@/types/users';
 import EditUserForm from '@/components/EditUserForm';
 import Modal from '@/components/Modal';
 import { UserStatusBadge } from '@/components/StatusBadge';
@@ -38,34 +37,15 @@ const AdminUsersPage = () => {
   const [nameInput, setNameInput] = useState('');
 
   const [editUserId, setEditUserId] = useState<string | null>(null);
-  const [editUser, setEditUser] = useState<UserFullType | null>(null);
-  const [errorEditUser, setErrorEditUser] = useState<string | null>(null);
-  
-  useEffect(() => {
-    const loadEditUser = async () => {
-      if (!editUserId) return;
-      try {
-        setErrorEditUser(null);
-        const user = await fetchAdminUserById(editUserId);
-        logger.debug('user details:', user);
-        setEditUser(user);
-      } catch (error) {
-        logger.error('error loading user details:', error);
-        setErrorEditUser(error instanceof Error ? error.message : 'Failed to load user details');
-        setEditUser(null);
-      }
-    }
-    loadEditUser();
-  }, [editUserId]);
 
   const onModalClose = () => {
     setEditUserId(null);
-    setEditUser(null);
-  }
+  };
 
   const onUserUpdated = () => {
-    refresh();
-  }
+    logger.debug('user updated, refreshing list');
+    void refresh();
+  };
 
   const draftFilters = useMemo(
     () => buildFilters(emailInput, nameInput),
@@ -140,7 +120,7 @@ const AdminUsersPage = () => {
           <tr key="filters">
             <td> </td>
             <td>
-              <input 
+              <input
                 type="text"
                 placeholder="Email"
                 className="border border-slate-300 px-1.5 py-0.5 rounded"
@@ -177,17 +157,15 @@ const AdminUsersPage = () => {
             <tr key={user.userId}>
               <td>{index + 1}</td>
               <td>
-              <button
-                type="button"
-                onClick={() => setEditUserId(user.userId)}
-                className="text-blue-600 underline hover:text-blue-800 p-0 bg-transparent border-0 cursor-pointer text-left font-inherit"
-              >
-                {user.email}
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setEditUserId(user.userId)}
+                  className="text-blue-600 underline hover:text-blue-800 p-0 bg-transparent border-0 cursor-pointer text-left font-inherit"
+                >
+                  {user.email}
+                </button>
               </td>
-              <td>
-                {user.name}
-              </td>
+              <td>{user.name}</td>
               <td><UserStatusBadge enabled={user.enabled} /></td>
               <td>{user.status}</td>
             </tr>
@@ -196,7 +174,6 @@ const AdminUsersPage = () => {
       </table>
       {isLoading && <div>Loading...</div>}
       {error && <div>Error: {error}</div>}
-      {errorEditUser && <div>Error loading user details: {errorEditUser}</div>}
       {hasMore && (
         <button
           onClick={fetchMore}
@@ -206,13 +183,17 @@ const AdminUsersPage = () => {
           Load more
         </button>
       )}
-      <Modal 
-        isOpen={!!editUserId && !!editUser}
-        onClose={onModalClose} title="Edit User" showCloseButton={true}>
-          {!!editUser && (
-            <EditUserForm user={editUser} onUserUpdated={onUserUpdated} />
-          )}
-        </Modal>
+      <Modal
+        isOpen={!!editUserId}
+        onClose={onModalClose}
+        title="Edit User"
+        showCloseButton={true}
+        panelClassName="max-w-3xl"
+      >
+        {editUserId && (
+          <EditUserForm key={editUserId} userId={editUserId} onUserUpdated={onUserUpdated} />
+        )}
+      </Modal>
     </div>
   );
 };
