@@ -38,13 +38,12 @@ def build_port_item(station_id: str, port: dict) -> PortInstance:
         timestamp = datetime.now().isoformat()
         port_item: PortInstance = {
             "station_id": station_id,
-            "code": port["code"],
-            "entity_key": f"PORT#{port_id}",
+            "entity_key": f"PORT#{port["code"]}",
+            "port_id": port_id,
             "state": "DISABLED",
             "last_meter_kw": Decimal(str(port["lastMeterKw"])),
             "created_at": timestamp,
             "updated_at": timestamp,
-            "last_event_id": None,
         }
         logger.info(f"Port item built successfully: {port_item}")
         return port_item
