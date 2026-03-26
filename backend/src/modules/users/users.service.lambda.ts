@@ -14,7 +14,12 @@ import {
 } from './users.types';
 import { UsersService } from './users.service.interface';
 import { applyListFiltersAndPage } from './users.listHelpers';
-import {  ResourceNotFoundError } from '../../common/serviceErrors';
+import {
+  BadRequestError,
+  ResourceNotFoundError,
+  ServiceError,
+  UnauthorizedError,
+} from '../../common/serviceErrors';
 
 const logger = createLogger('users.service', 'debug');
 const LAMBDA_INVOKER: LambdaInvoker = new AwsLambdaInvoker(env.awsRegion);
@@ -32,6 +37,21 @@ function isLambdaErrorResponse(result: unknown): result is LambdaErrorResponse {
   return !!result && typeof result === 'object' && 'error' in result;
 }
 
+function throwFromUserInfoLambdaError(result: LambdaErrorResponse): never {
+  const msg = result.error;
+  const code = result.code ?? 'UNKNOWN';
+  if (code === 'NOT_FOUND' || code === 'USER_NOT_FOUND' || msg.toLowerCase().includes('not found')) {
+    throw new ResourceNotFoundError(msg, code === 'USER_NOT_FOUND' ? 'USER_NOT_FOUND' : 'NOT_FOUND');
+  }
+  if (code === 'UNAUTHORIZED') {
+    throw new UnauthorizedError(msg, code);
+  }
+  if (code === 'INVALID_REQUEST') {
+    throw new BadRequestError(msg, code);
+  }
+  throw new ServiceError(`userInfo lambda: ${msg}`, 502, code);
+}
+
 export class UsersServiceLambda implements UsersService {
   async getMyInfo(userId: string): Promise<UserInfo> {
     logger.debug('Invoking userInfo lambda: getMyInfo', { userId });
@@ -45,7 +65,7 @@ export class UsersServiceLambda implements UsersService {
     );
 
     if (isLambdaErrorResponse(result)) {
-      throw new Error(`userInfo lambda error: ${result.error}`);
+      throwFromUserInfoLambdaError(result);
     }
 
     return mapLambdaUser(result.data);
@@ -63,10 +83,7 @@ export class UsersServiceLambda implements UsersService {
     );
 
     if (isLambdaErrorResponse(result)) {
-      if (result.code === 'USER_NOT_FOUND' || result.code === 'NOT_FOUND' || result.error.toLowerCase().includes('not found')) {
-        throw new ResourceNotFoundError(`User not found: ${userId}`);
-      }
-      throw new Error(`userInfo lambda error: ${result.error}`);
+      throwFromUserInfoLambdaError(result);
     }
 
     return mapLambdaUser(result.data);
@@ -95,7 +112,7 @@ export class UsersServiceLambda implements UsersService {
     );
 
     if (isLambdaErrorResponse(result)) {
-      throw new Error(`get-user-info lambda error: ${result.error}`);
+      throwFromUserInfoLambdaError(result);
     }
 
     let mapped: UserInfo[];

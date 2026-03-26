@@ -1,4 +1,4 @@
-import { ResourceNotFoundError } from '../../common/serviceErrors';
+import { InternalServerError, ResourceNotFoundError } from '../../common/serviceErrors';
 import { createLogger } from '../../utils/logger';
 import {
     AdminUserDetails,
@@ -103,7 +103,7 @@ export class UsersServiceLocal implements UsersService {
     // COGNITO METHODS GROUP
     async getUserRole(_adminId: string, _userId: string): Promise<UserRole> {
         logger.debug('UsersServiceLocal getUserRole', { _adminId, _userId });
-        throw new Error('Not implemented');
+        throw new InternalServerError('Not implemented', 'NOT_IMPLEMENTED');
     }
 
     async getUserDetails(
@@ -112,7 +112,7 @@ export class UsersServiceLocal implements UsersService {
         _filters: GetUserDetailsFilters
     ): Promise<AdminUserDetails> {
         logger.debug('UsersServiceLocal getUserDetails', { _adminId, _userId, _filters });
-        throw new Error('Not implemented');
+        throw new InternalServerError('Not implemented', 'NOT_IMPLEMENTED');
     }
 
     async enableUser(
@@ -121,7 +121,7 @@ export class UsersServiceLocal implements UsersService {
         _payload: UpdateUserEnabledPayload
     ): Promise<void> {
         logger.debug('UsersServiceLocal enableUser', { _adminId, _userId, _payload });
-        throw new Error('Not implemented');
+        throw new InternalServerError('Not implemented', 'NOT_IMPLEMENTED');
     }
 
     async disableUser(
@@ -129,8 +129,8 @@ export class UsersServiceLocal implements UsersService {
         _userId: string,
         _payload: UpdateUserEnabledPayload
     ): Promise<void> {
-        logger.debug('UsersServiceLocal enableUser', { _adminId, _userId, _payload });
-        throw new Error('Not implemented');
+        logger.debug('UsersServiceLocal disableUser', { _adminId, _userId, _payload });
+        throw new InternalServerError('Not implemented', 'NOT_IMPLEMENTED');
     }
 
     async updateUserRole(

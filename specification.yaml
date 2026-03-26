@@ -2,10 +2,17 @@ openapi: 3.0.1
 info:
   title: EV Charging Public API
   version: 1.0.0
-  description: Public API for electric vehicle charging stations.
+  description: |
+    Public API for electric vehicle charging stations.
+
+    **Gateway note:** the Express backend may mount routes under `API_PREFIX` (e.g. `/api/v1`).
+    Use the server URL that includes your prefix, or prepend `API_PREFIX` to every path below.
 
 servers:
   - url: https://localhost:8000
+    description: Root (no API prefix)
+  - url: http://localhost:8000/api/v1
+    description: Local dev when `API_PREFIX=/api/v1`
 
 paths:
   /health:
@@ -77,7 +84,10 @@ paths:
     get:
       operationId: listStations
       summary: Get list of charging stations
-      description: Returns a list of charging stations data
+      description: |
+        Returns a paginated list of charging stations. **Requires** a valid Cognito JWT (`Authorization: Bearer`).
+      security:
+        - bearerAuth: []
       parameters:
         - name: city
           in: query
@@ -97,7 +107,7 @@ paths:
           required: false
           schema:
             type: string
-            enum: [Inactive, Active, OutOfService]
+            enum: [INACTIVE, ACTIVE, OUT_OF_SERVICE]
         - name: orderBy
           in: query
           required: false
@@ -132,7 +142,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/StationBaseCollectionResponse'
-
+        '401':
+          $ref: '#/components/responses/UnauthenticatedResponse'
         '400':
           $ref: '#/components/responses/ErrorResponse'
 
@@ -143,7 +154,9 @@ paths:
     get:
       operationId: getStationById
       summary: Get charging station by ID
-      description: Returns a single charging station by its ID.
+      description: Returns a single charging station by its ID. **Requires** a valid Cognito JWT.
+      security:
+        - bearerAuth: []
       parameters:
         - name: stationId
           in: path
@@ -162,6 +175,8 @@ paths:
         '400':
           $ref: '#/components/responses/ErrorResponse'
 
+        '401':
+          $ref: '#/components/responses/UnauthenticatedResponse'
         '404':
           $ref: '#/components/responses/ErrorResponse'
 
@@ -173,6 +188,8 @@ paths:
       operationId: listAdminStations
       summary: Get list of charging stations as admin
       description: Returns a paginated list of charging stations. Requires admin privileges.
+      security:
+        - bearerAuth: []
       x-roles: [ADMIN]
       parameters:
         - name: city
@@ -193,7 +210,7 @@ paths:
           description: Station state filter (exact match)
           schema:
             type: string
-            enum: [Inactive, Active, OutOfService]
+            enum: [INACTIVE, ACTIVE, OUT_OF_SERVICE]
         - name: orderBy
           in: query
           required: false
@@ -240,6 +257,8 @@ paths:
       operationId: createAdminStation
       summary: Create charging station as admin
       description: Creates a new charging station. Requires admin privileges.
+      security:
+        - bearerAuth: []
       x-roles: [ADMIN]
       requestBody:
         required: true
@@ -254,6 +273,8 @@ paths:
               city: Tel Aviv
               address: 44 Ibn Gabirol St
               ratePlan:
+                currencyCode: ILS
+                currencyName: Israeli Shekel
                 peakRate: 2.14
                 offPeakRate: 1.47
               location:
@@ -262,35 +283,19 @@ paths:
               siteTechnician: null
               phone: null
               email: null
-              maxPowerKw: null
+              maxPowerKw: 150
+              ports: 4
       responses:
         '201':
           description: Charging station created successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/StationBaseSingleResponse'
+                $ref: '#/components/schemas/CreateStationGatewayResponse'
               example:
+                code: 201
                 data:
-                  id: st-001
-                  code: TLV-FAST-904
-                  name: Skyline Hub
-                  owner: ElectroNet Services Ltd.
-                  city: Tel Aviv
-                  address: 44 Ibn Gabirol St
-                  ratePlan:
-                    peakRate: 2.14
-                    offPeakRate: 1.47
-                  location:
-                    latitude: 37.419734
-                    longitude: -122.0827784
-                  siteTechnician: Station technician
-                  phone: null
-                  email: null
-                  maxPowerKw: null
-                  state: Active
-                  createdAt: "2026-03-18T14:19:07+02:00"
-                  updatedAt: "2026-03-18T14:19:07+02:00"
+                  stationId: st-550e8400-e29b-41d4-a716-446655440000
         '400':
           $ref: '#/components/responses/BadRequestResponse'
         '401':
@@ -309,6 +314,8 @@ paths:
       operationId: getAdminStationById
       summary: Get charging station by ID as admin
       description: Returns a single charging station by its ID. Requires admin privileges.
+      security:
+        - bearerAuth: []
       x-roles: [ADMIN]
       parameters:
         - name: stationId
@@ -339,8 +346,11 @@ paths:
                   location:
                     latitude: 37.419734
                     longitude: -122.0827784
-                  state: Active
+                  state: ACTIVE
+                  ports: 8
                   ratePlan:
+                    currencyCode: ILS
+                    currencyName: Israeli Shekel
                     peakRate: 2.14
                     offPeakRate: 1.47
                   createdAt: "2026-03-18T14:19:07+02:00"
@@ -359,6 +369,8 @@ paths:
       operationId: deleteAdminStation
       summary: Delete charging station as admin
       description: Deletes a charging station. Requires admin privileges. The station can only be deleted when it is in a deletable state.
+      security:
+        - bearerAuth: []
       x-roles: [ADMIN]
       parameters:
         - name: stationId
@@ -389,7 +401,12 @@ paths:
     patch:
       operationId: updateAdminStationState
       summary: Change charging station state as admin
-      description: Changes the state of a charging station. Requires admin privileges. The updatedAt field must match the server value to prevent concurrent modification conflicts.
+      description: |
+        Changes the state of a charging station. Requires admin privileges.
+        Request body includes `updatedAt` for optimistic concurrency (client sends last known `updatedAt`).
+        Response body is `{ "code": 200, "data": { "updatedAt": "<iso>" } }` (gateway wraps Lambda write response).
+      security:
+        - bearerAuth: []
       x-roles: [ADMIN]
       parameters:
         - name: stationId
@@ -410,7 +427,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/StationBaseSingleResponse'
+                $ref: '#/components/schemas/UpdateStationStateGatewayResponse'
         '400':
           $ref: '#/components/responses/BadRequestResponse'
         '401':
@@ -426,11 +443,111 @@ paths:
         '503':
           $ref: '#/components/responses/ServiceUnavailableResponse'
 
+  /admin/stations/{stationId}/ports:
+    patch:
+      operationId: updateAdminStationPorts
+      summary: Add station ports (admin)
+      description: |
+        **Implemented** on gateway. Increments total port count by `deltaPorts`.
+        Non-local: invokes write Lambda action `update_station_ports` with a single operation
+        (`station_id`, `delta`, `event_id`), then **GET** the station via read Lambda to build the response
+        (`updatedAt`, `ports`, `occupiedPorts`).
+      security:
+        - bearerAuth: []
+      x-roles: [ADMIN]
+      parameters:
+        - name: stationId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateStationPortsRequest'
+      responses:
+        '200':
+          description: Ports updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StationPortsUpdateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestResponse'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          $ref: '#/components/responses/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
+
+  /sessions/all:
+    get:
+      operationId: listAllGatewaySessions
+      summary: List all charging sessions (admin/support)
+      description: |
+        Returns all sessions with role-based projection. **Implemented** on gateway.
+        Requires Cognito groups **ADMIN** or **SUPPORT**.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: All sessions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GatewaySessionListResponse'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
+
   /sessions:
+    get:
+      operationId: listGatewaySessionsByUser
+      summary: List charging sessions for a user (gateway)
+      description: |
+        **Implemented** on gateway. Query `userId` is required.
+        End-users may only request their own `userId` (must match JWT `sub`).
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          description: User whose sessions to list (for USER role, must equal token `sub`).
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Sessions for user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GatewaySessionListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestResponse'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
     post:
       operationId: createSession
-      summary: Start a charging session
-      description: Creates a new charging session for the given station, port, and user.
+      summary: Start a charging session (gateway)
+      description: |
+        **Implemented** on gateway. User id is taken from JWT.
+        Requires an **active booking** for this station in the current time window (mock/local rule).
+        Simulated payment may fail (`PAYMENT_START_FAILED`); station may be temporarily blocked.
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -438,20 +555,56 @@ paths:
             schema:
               $ref: '#/components/schemas/StartSessionRequest'
       responses:
-        '200':
+        '201':
           description: Session started successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SessionCreatedResponse'
+                $ref: '#/components/schemas/GatewaySessionStartResponse'
         '400':
-          description: Wrong statuses of station or port
-          $ref: '#/components/responses/ErrorResponse'
+          description: Payment start failed (simulated) or validation error
+          $ref: '#/components/responses/BadRequestResponse'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedResponse'
+        '403':
+          description: No active booking for this station
+          $ref: '#/components/responses/ForbiddenResponse'
         '404':
-          description: Wrong stationId or portId
+          description: Station not found
           $ref: '#/components/responses/ErrorResponse'
         '409':
-          description: Port is occupied
+          description: No free ports, station not ACTIVE, or temporarily blocked after previous payment failure
+          $ref: '#/components/responses/ConflictResponse'
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
+
+  /sessions/{sessionId}:
+    get:
+      operationId: getGatewaySessionById
+      summary: Get charging session by id (gateway)
+      description: |
+        **Implemented** on gateway. End-users may only access their own session; staff may access any.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          description: Session identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session details (role projection)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GatewaySessionSingleResponse'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
           $ref: '#/components/responses/ErrorResponse'
         '500':
           $ref: '#/components/responses/ErrorResponse'
@@ -459,8 +612,11 @@ paths:
   /sessions/{sessionId}/stop:
     post:
       operationId: stopSession
-      summary: Stop a charging session
-      description: Stops an active charging session and returns the session summary.
+      summary: Stop a charging session (gateway)
+      description: |
+        **Implemented** on gateway. Stops an active session owned by the caller and returns updated session record.
+      security:
+        - bearerAuth: []
       parameters:
         - name: sessionId
           in: path
@@ -474,11 +630,17 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SessionStoppedResponse'
+                $ref: '#/components/schemas/GatewaySessionStopResponse'
         '400':
-          $ref: '#/components/responses/ErrorResponse'
+          $ref: '#/components/responses/BadRequestResponse'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
         '404':
           $ref: '#/components/responses/ErrorResponse'
+        '409':
+          $ref: '#/components/responses/ConflictResponse'
         '500':
           $ref: '#/components/responses/ErrorResponse'
 
@@ -486,6 +648,8 @@ paths:
     get:
       operationId: getCurrentSession
       summary: Get current session
+      description: |
+        **Not implemented** on current gateway — reserved / legacy path in this specification.
       responses:
         '200':
           description: Current charging session
@@ -507,7 +671,9 @@ paths:
     get:
       operationId: getSessionById
       summary: Get session history item by ID
-      description: Returns a single user charging session from history by its ID.
+      description: |
+        **Not implemented** on current gateway — use `GET /sessions/{sessionId}` instead.
+        Returns a single user charging session from history by its ID.
       parameters:
         - name: sessionId
           in: path
@@ -536,7 +702,9 @@ paths:
     get:
       operationId: listSessionHistory
       summary: Get user charging sessions history
-      description: Returns user charging sessions during the specified period.
+      description: |
+        **Not implemented** on current gateway — reserved / legacy path.
+        Returns user charging sessions during the specified period.
       parameters:
         - name: userId
           in: query
@@ -592,6 +760,80 @@ paths:
         '400':
           $ref: '#/components/responses/ErrorResponse'
 
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
+
+  /bookings:
+    get:
+      operationId: listMyBookings
+      summary: List current user's bookings (gateway)
+      description: |
+        **Implemented** on gateway (in-memory mock until persisted via Lambda).
+        Returns bookings for the authenticated user.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User bookings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingListResponse'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedResponse'
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
+    post:
+      operationId: createBooking
+      summary: Create a booking (gateway)
+      description: |
+        **Implemented** on gateway (in-memory mock). Creates a booking slot for a station.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBookingRequest'
+      responses:
+        '201':
+          description: Booking created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingCreateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestResponse'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedResponse'
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
+
+  /bookings/{bookingId}:
+    delete:
+      operationId: cancelBooking
+      summary: Cancel a booking (gateway)
+      description: "**Implemented** on gateway (in-memory mock)."
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Booking cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingCancelResponse'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedResponse'
+        '404':
+          $ref: '#/components/responses/ErrorResponse'
         '500':
           $ref: '#/components/responses/ErrorResponse'
 
@@ -711,7 +953,9 @@ paths:
     get:
       operationId: listSupportStations
       summary: Get list of support stations
-      description: Returns support station information filtered by city and provider.
+      description: Returns support station information filtered by city and provider. Requires Cognito JWT and **SUPPORT** group.
+      security:
+        - bearerAuth: []
       parameters:
         - name: city
           in: query
@@ -731,7 +975,7 @@ paths:
           description: Station state filter (exact match)
           schema:
             type: string
-            enum: [Inactive, Active, OutOfService]
+            enum: [INACTIVE, ACTIVE, OUT_OF_SERVICE]
         - name: orderBy
           in: query
           required: false
@@ -768,6 +1012,10 @@ paths:
                 $ref: '#/components/schemas/StationBaseCollectionResponse'
         '400':
           $ref: '#/components/responses/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
         '500':
           $ref: '#/components/responses/ErrorResponse'
 
@@ -775,7 +1023,9 @@ paths:
     get:
       operationId: getSupportStationById
       summary: Get support station by ID
-      description: Returns support station information for a charging station.
+      description: Returns support station information for a charging station. Requires Cognito JWT and **SUPPORT** group.
+      security:
+        - bearerAuth: []
       parameters:
         - name: stationId
           in: path
@@ -790,6 +1040,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/StationBaseSingleResponse'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
         '404':
           $ref: '#/components/responses/ErrorResponse'
         '500':
@@ -799,7 +1053,10 @@ paths:
     patch:
       operationId: updateSupportStationState
       summary: Change charging station state as support
-      description: Changes the state of a charging station. Requires technical support privileges. The updatedAt field must match the server value to prevent concurrent modification conflicts.
+      description: |
+        **Not implemented** on current gateway (no `PATCH /support/stations/{stationId}/state` route).
+        Use `PATCH /admin/stations/{stationId}/state` for admins, or add this route on the gateway.
+        Requires technical support privileges. The updatedAt field must match the server value to prevent concurrent modification conflicts.
       x-roles: [TECH_SUPPORT]
       parameters:
         - name: stationId
@@ -835,6 +1092,46 @@ paths:
           $ref: '#/components/responses/ErrorResponse'
         '503':
           $ref: '#/components/responses/ServiceUnavailableResponse'
+
+  /support/stations/{stationId}/ports:
+    patch:
+      operationId: updateSupportStationPorts
+      summary: Add station ports (support)
+      description: |
+        **Implemented** on gateway. Same behavior as admin port update, restricted to **SUPPORT** group.
+        Uses write Lambda `update_station_ports` then read Lambda **getStationById** for the response body.
+      security:
+        - bearerAuth: []
+      x-roles: [TECH_SUPPORT]
+      parameters:
+        - name: stationId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateStationPortsRequest'
+      responses:
+        '200':
+          description: Ports updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StationPortsUpdateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestResponse'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          $ref: '#/components/responses/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
 
   /support/sessions:
     get:
@@ -1192,6 +1489,13 @@ paths:
 
 components:
 
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: AWS Cognito access token (`token_use=access`).
+
   schemas:
     HealthResponse:
       type: object
@@ -1201,8 +1505,9 @@ components:
           type: string
           enum: [ok]
 
-    Meta:
+    PaginationMeta:
       type: object
+      description: Pagination metadata for station/user/log list endpoints.
       required: [page, pageSize, totalItems, totalPages]
       properties:
         page:
@@ -1213,6 +1518,33 @@ components:
           type: integer
         totalPages:
           type: integer
+
+    Meta:
+      description: Alias for PaginationMeta (legacy name in this spec).
+      $ref: '#/components/schemas/PaginationMeta'
+
+    SessionListMeta:
+      type: object
+      description: Metadata returned with gateway session list endpoints (`GET /sessions`, `GET /sessions/all`).
+      required: [count, role]
+      properties:
+        count:
+          type: integer
+          description: Number of sessions in `data`.
+        role:
+          $ref: '#/components/schemas/ViewerRole'
+
+    SessionDetailMeta:
+      type: object
+      description: Metadata returned with `GET /sessions/{sessionId}` (gateway).
+      required: [role]
+      properties:
+        role:
+          $ref: '#/components/schemas/ViewerRole'
+
+    ViewerRole:
+      type: string
+      enum: [USER, SUPPORT, ADMIN]
 
     Error:
       type: object
@@ -1255,8 +1587,15 @@ components:
 
     RatePlan:
       type: object
-      required: [peakRate, offPeakRate]
+      description: Matches gateway / Lambda `ratePlan` (ISO 4217 + peak/off-peak pricing).
+      required: [currencyCode, currencyName, peakRate, offPeakRate]
       properties:
+        currencyCode:
+          type: string
+          example: ILS
+        currencyName:
+          type: string
+          example: Israeli Shekel
         peakRate:
           type: number
           format: float
@@ -1266,6 +1605,7 @@ components:
 
     StationBase:
       type: object
+      description: Station projection returned by gateway list/get endpoints (camelCase).
       required:
         - id
         - code
@@ -1273,12 +1613,10 @@ components:
         - owner
         - city
         - address
-        - ratePlan
-        - location
-        - siteTechnician
         - phone
         - email
-        - maxPowerKw
+        - siteTechnician
+        - ports
         - state
         - createdAt
         - updatedAt
@@ -1305,14 +1643,28 @@ components:
           nullable: true
         siteTechnician:
           type: string
+          nullable: true
         location:
           $ref: '#/components/schemas/Location'
         maxPowerKw:
-          type: string
+          type: number
+          format: float
           nullable: true
+        ports:
+          type: integer
+          minimum: 0
+        occupiedPorts:
+          type: integer
+          minimum: 0
+        blockedUntil:
+          type: string
+          format: date-time
+          nullable: true
+        hasFreePorts:
+          type: boolean
         state:
           type: string
-          enum: [Inactive, Active, OutOfService]
+          enum: [INACTIVE, ACTIVE, OUT_OF_SERVICE]
         ratePlan:
           $ref: '#/components/schemas/RatePlan'
         createdAt:
@@ -1333,12 +1685,15 @@ components:
         phone: null
         email: null
         siteTechnician: Station technician
-        maxPowerKw: null
+        maxPowerKw: 150
+        ports: 8
         location:
           latitude: 37.419734
           longitude: -122.0827784
-        state: Active
+        state: ACTIVE
         ratePlan:
+          currencyCode: ILS
+          currencyName: Israeli Shekel
           peakRate: 1.92
           offPeakRate: 1.34
         createdAt: "2025-11-04T07:16:28+02:00"
@@ -1374,7 +1729,7 @@ components:
           items:
             $ref: '#/components/schemas/StationBase'
         meta:
-          $ref: '#/components/schemas/Meta'
+          $ref: '#/components/schemas/PaginationMeta'
 
     StationDetailedSingleResponse:
       type: object
@@ -1392,14 +1747,45 @@ components:
           items:
             $ref: '#/components/schemas/StationDetailed'
         meta:
-          $ref: '#/components/schemas/Meta'
+          $ref: '#/components/schemas/PaginationMeta'
 
-    AdminCreateStationResponse:
+    CreateStationGatewayResponse:
       type: object
-      required: [data]
+      description: Gateway JSON for `POST /admin/stations` (Express returns `code` + `data`).
+      required: [code, data]
       properties:
+        code:
+          type: integer
+          example: 201
         data:
-          $ref: '#/components/schemas/StationBase'
+          $ref: '#/components/schemas/CreateStationResponseData'
+
+    CreateStationResponseData:
+      type: object
+      required: [stationId]
+      properties:
+        stationId:
+          type: string
+          description: New station id returned by the write Lambda (`station_id` mapped to camelCase).
+
+    UpdateStationStateGatewayResponse:
+      type: object
+      description: Gateway JSON for `PATCH .../state` (wraps Lambda `updated_at` as `updatedAt`).
+      required: [code, data]
+      properties:
+        code:
+          type: integer
+          example: 200
+        data:
+          $ref: '#/components/schemas/UpdateStationStateData'
+
+    UpdateStationStateData:
+      type: object
+      required: [updatedAt]
+      properties:
+        updatedAt:
+          type: string
+          format: date-time
 
     AdminCreateStationRequest:
       type: object
@@ -1442,8 +1828,12 @@ components:
           format: email
           nullable: true
         maxPowerKw:
-          type: string
-          nullable: true
+          type: number
+          format: float
+        ports:
+          type: integer
+          minimum: 0
+          description: Optional total connector count; forwarded to write Lambda (default 0 if omitted).
 
     UpdateStationStateRequest:
       type: object
@@ -1451,10 +1841,10 @@ components:
       properties:
         oldState:
           type: string
-          enum: [Inactive, Active, OutOfService]
+          enum: [INACTIVE, ACTIVE, OUT_OF_SERVICE]
         newState:
           type: string
-          enum: [Inactive, Active, OutOfService]
+          enum: [INACTIVE, ACTIVE, OUT_OF_SERVICE]
         updatedAt:
           type: string
           format: date-time
@@ -1587,21 +1977,284 @@ components:
           items:
             $ref: '#/components/schemas/SessionDetailedItem'
         meta:
-          $ref: '#/components/schemas/Meta'
+          $ref: '#/components/schemas/PaginationMeta'
 
     StartSessionRequest:
       type: object
-      required: [stationId, portId, userId]
+      description: Gateway body for `POST /sessions`. User is taken from JWT (`sub`); do not send `userId`.
+      required: [stationId, portId]
       properties:
         stationId:
           type: string
         portId:
           type: string
+
+    ChargingSessionRecord:
+      type: object
+      description: Raw session row returned by gateway start/stop (mock/local until backed by Lambda).
+      required:
+        - sessionId
+        - userId
+        - stationId
+        - portId
+        - startedAt
+        - endedAt
+        - status
+        - energyKwh
+        - diagnostics
+        - internalNote
+        - billingCents
+      properties:
+        sessionId:
+          type: string
         userId:
           type: string
+        stationId:
+          type: string
+        portId:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        endedAt:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+          enum: [ACTIVE, COMPLETED, CANCELLED, FAILED]
+        energyKwh:
+          type: number
+          format: float
+          nullable: true
+        diagnostics:
+          type: string
+          nullable: true
+        internalNote:
+          type: string
+          nullable: true
+        billingCents:
+          type: integer
+          nullable: true
+          description: Billing in minor units (e.g. cents) when applicable.
+
+    ChargingSessionUserView:
+      type: object
+      required: [role, sessionId, stationId, portId, startedAt, endedAt, status, energyKwh]
+      properties:
+        role:
+          type: string
+          enum: [USER]
+        sessionId: { type: string }
+        stationId: { type: string }
+        portId: { type: string }
+        startedAt: { type: string, format: date-time }
+        endedAt: { type: string, format: date-time, nullable: true }
+        status: { type: string, enum: [ACTIVE, COMPLETED, CANCELLED, FAILED] }
+        energyKwh: { type: number, format: float, nullable: true }
+
+    ChargingSessionSupportView:
+      type: object
+      required: [role, sessionId, userId, stationId, portId, startedAt, endedAt, status, energyKwh, diagnostics]
+      properties:
+        role:
+          type: string
+          enum: [SUPPORT]
+        sessionId: { type: string }
+        userId: { type: string }
+        stationId: { type: string }
+        portId: { type: string }
+        startedAt: { type: string, format: date-time }
+        endedAt: { type: string, format: date-time, nullable: true }
+        status: { type: string, enum: [ACTIVE, COMPLETED, CANCELLED, FAILED] }
+        energyKwh: { type: number, format: float, nullable: true }
+        diagnostics: { type: string, nullable: true }
+
+    ChargingSessionAdminView:
+      type: object
+      required: [role, sessionId, userId, stationId, portId, startedAt, endedAt, status, energyKwh, diagnostics, internalNote, billingCents]
+      properties:
+        role:
+          type: string
+          enum: [ADMIN]
+        sessionId: { type: string }
+        userId: { type: string }
+        stationId: { type: string }
+        portId: { type: string }
+        startedAt: { type: string, format: date-time }
+        endedAt: { type: string, format: date-time, nullable: true }
+        status: { type: string, enum: [ACTIVE, COMPLETED, CANCELLED, FAILED] }
+        energyKwh: { type: number, format: float, nullable: true }
+        diagnostics: { type: string, nullable: true }
+        internalNote: { type: string, nullable: true }
+        billingCents: { type: integer, nullable: true }
+
+    ChargingSessionProjected:
+      oneOf:
+        - $ref: '#/components/schemas/ChargingSessionUserView'
+        - $ref: '#/components/schemas/ChargingSessionSupportView'
+        - $ref: '#/components/schemas/ChargingSessionAdminView'
+
+    GatewaySessionListResponse:
+      type: object
+      required: [code, data, meta]
+      properties:
+        code:
+          type: integer
+          example: 200
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChargingSessionProjected'
+        meta:
+          $ref: '#/components/schemas/SessionListMeta'
+
+    GatewaySessionSingleResponse:
+      type: object
+      required: [code, data, meta]
+      properties:
+        code:
+          type: integer
+          example: 200
+        data:
+          $ref: '#/components/schemas/ChargingSessionProjected'
+        meta:
+          $ref: '#/components/schemas/SessionDetailMeta'
+
+    GatewaySessionStartResponse:
+      type: object
+      required: [code, data]
+      properties:
+        code:
+          type: integer
+          example: 201
+        data:
+          $ref: '#/components/schemas/ChargingSessionRecord'
+
+    GatewaySessionStopResponse:
+      type: object
+      required: [code, data]
+      properties:
+        code:
+          type: integer
+          example: 200
+        data:
+          $ref: '#/components/schemas/ChargingSessionRecord'
+
+    UpdateStationPortsRequest:
+      type: object
+      required: [deltaPorts]
+      properties:
+        deltaPorts:
+          type: integer
+          minimum: 1
+          description: Number of physical ports to add (must be positive).
+
+    StationPortsUpdateData:
+      type: object
+      required: [updatedAt, ports, occupiedPorts]
+      properties:
+        updatedAt:
+          type: string
+          format: date-time
+        ports:
+          type: integer
+        occupiedPorts:
+          type: integer
+
+    StationPortsUpdateResponse:
+      type: object
+      required: [code, data]
+      properties:
+        code:
+          type: integer
+          example: 200
+        data:
+          $ref: '#/components/schemas/StationPortsUpdateData'
+
+    CreateBookingRequest:
+      type: object
+      required: [stationId, slotFrom, slotTo]
+      properties:
+        stationId:
+          type: string
+        slotFrom:
+          type: string
+          format: date-time
+          description: Booking window start (ISO-8601).
+        slotTo:
+          type: string
+          format: date-time
+          description: Booking window end (ISO-8601).
+
+    BookingDto:
+      type: object
+      required: [bookingId, userId, stationId, slotFrom, slotTo, status]
+      properties:
+        bookingId:
+          type: string
+        userId:
+          type: string
+        stationId:
+          type: string
+        slotFrom:
+          type: string
+          format: date-time
+        slotTo:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [created, cancelled, expired, paid]
+        penaltyBillingCents:
+          type: integer
+          description: Penalty in minor units when booking expired (mock/local).
+        processedAt:
+          type: string
+          format: date-time
+
+    BookingListResponse:
+      type: object
+      required: [code, data]
+      properties:
+        code:
+          type: integer
+          example: 200
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/BookingDto'
+
+    BookingCreateResponse:
+      type: object
+      required: [code, data]
+      properties:
+        code:
+          type: integer
+          example: 201
+        data:
+          $ref: '#/components/schemas/BookingDto'
+
+    BookingCancelResponse:
+      type: object
+      required: [code, data]
+      properties:
+        code:
+          type: integer
+          example: 200
+        data:
+          type: object
+          required: [bookingId, status]
+          properties:
+            bookingId:
+              type: string
+            status:
+              type: string
+              enum: [cancelled]
 
     SessionCreated:
       type: object
+      description: Legacy session shape (not used by current gateway — prefer GatewaySessionStartResponse).
       required: [id, status, startedAt, currency, pricePerKWh]
       properties:
         id:
@@ -1626,6 +2279,7 @@ components:
 
     SessionStopped:
       type: object
+      description: Legacy session shape (not used by current gateway — prefer GatewaySessionStopResponse).
       required: [id, status, endedAt, totalDurationMinutes, energyConsumedKWh, totalCost, currency]
       properties:
         id:
@@ -1701,7 +2355,7 @@ components:
           items:
             $ref: '#/components/schemas/SessionHistoryItem'
         meta:
-          $ref: '#/components/schemas/Meta'
+          $ref: '#/components/schemas/PaginationMeta'
 
     SessionHistorySingleResponse:
       type: object
@@ -1826,7 +2480,7 @@ components:
           items:
             $ref: '#/components/schemas/SupportLogItem'
         meta:
-          $ref: '#/components/schemas/Meta'
+          $ref: '#/components/schemas/PaginationMeta'
 
     User:
       type: object
@@ -1883,7 +2537,7 @@ components:
           items:
             $ref: '#/components/schemas/User'
         meta:
-          $ref: '#/components/schemas/Meta'
+          $ref: '#/components/schemas/PaginationMeta'
 
     UserRole:
       type: object

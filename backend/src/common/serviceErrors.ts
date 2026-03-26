@@ -1,3 +1,7 @@
+/**
+ * Base HTTP-shaped error for the API. Handled by `errorHandler` → JSON `{ error: { code, message } }`.
+ * Prefer subclasses so status codes stay consistent across modules.
+ */
 export class ServiceError extends Error {
     readonly statusCode: number;
     readonly errorCode: string;
@@ -6,15 +10,23 @@ export class ServiceError extends Error {
         this.name = 'ServiceError';
         this.statusCode = statusCode;
         this.errorCode = errorCode;
+        Object.setPrototypeOf(this, new.target.prototype);
     }
-};
+}
 
 export class InternalServerError extends ServiceError {
-    constructor() {
-        super("Internal server error", 500, 'INTERNAL_SERVER_ERROR');
+    constructor(message: string = 'Internal server error', errorCode: string = 'INTERNAL_SERVER_ERROR') {
+        super(message, 500, errorCode);
         this.name = 'InternalServerError';
     }
-};
+}
+
+export class UnauthorizedError extends ServiceError {
+    constructor(message: string, errorCode: string = 'UNAUTHORIZED') {
+        super(message, 401, errorCode);
+        this.name = 'UnauthorizedError';
+    }
+}
 
 export class ForbiddenError extends ServiceError {
     constructor(message: string, errorCode: string = 'FORBIDDEN') {

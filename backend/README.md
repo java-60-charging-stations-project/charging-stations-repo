@@ -131,7 +131,7 @@ Business rules implemented:
 
 Important note:
 - This flow is currently process-memory mock logic for local development.
-- Station port updates for support/admin (`PATCH /support/stations/:stationId/ports`, `PATCH /admin/stations/:stationId/ports`) are already wired to write lambda in non-local environments via `changeStationPorts`.
+- Station port updates for support/admin (`PATCH /support/stations/:stationId/ports`, `PATCH /admin/stations/:stationId/ports`) invoke the write Lambda action `update_station_ports`, then re-read the station for the HTTP response.
 
 ### Quick verification (manual)
 

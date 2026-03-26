@@ -13,6 +13,7 @@ import type {
   AdminUpdateStationPortsResponse,
   LambdaAdminCreateStationResponse,
   LambdaAdminUpdateStationStateResponse,
+  LambdaDeleteStationResponse,
   LambdaStation,
   Meta,
   StationBase,
@@ -25,11 +26,28 @@ import {
   mapLambdaStationList,
   mapLambdaAdminUpdateStationStateResponse,
   mapLambdaAdminUpdateStationPortsResponse,
+  mapLambdaDeleteStationResponse,
 } from './stations.types';
 import type { ListStationsParams, StationsService } from './stations.interface';
 
 const logger = createLogger('stations.service');
 const LAMBDA_INVOKER: LambdaInvoker = new AwsLambdaInvoker(env.awsRegion);
+
+/** `get_station_info` returns meta in snake_case (`total_items`, `page_size`, …). */
+function normalizeListMeta(meta: Meta | Record<string, unknown> | undefined, fallback: Meta): Meta {
+  if (!meta) return fallback;
+  const m = meta as Record<string, unknown>;
+  const page = Number(m.page ?? fallback.page);
+  const pageSize = Number(m.pageSize ?? m.page_size ?? fallback.pageSize);
+  const totalItems = Number(m.totalItems ?? m.total_items ?? fallback.totalItems);
+  const totalPages = Number(m.totalPages ?? m.total_pages ?? fallback.totalPages);
+  return {
+    page: Number.isFinite(page) ? page : fallback.page,
+    pageSize: Number.isFinite(pageSize) ? pageSize : fallback.pageSize,
+    totalItems: Number.isFinite(totalItems) ? totalItems : fallback.totalItems,
+    totalPages: Number.isFinite(totalPages) ? totalPages : fallback.totalPages
+  };
+}
 
 export class StationsServiceLambda implements StationsService {
   async list(params: ListStationsParams, callerId: string): Promise<StationBaseCollectionResponse> {
@@ -48,12 +66,13 @@ export class StationsServiceLambda implements StationsService {
     );
 
     const stations = mapLambdaStationList(result.data);
-    const meta: Meta = result.meta ?? {
+    const fallbackMeta: Meta = {
       page,
       pageSize,
       totalItems: stations.length,
-      totalPages: Math.max(1, Math.ceil(stations.length / pageSize)),
+      totalPages: Math.max(1, Math.ceil(stations.length / pageSize))
     };
+    const meta = normalizeListMeta(result.meta, fallbackMeta);
 
     return { data: stations, meta };
   }
@@ -141,7 +160,7 @@ export class StationsServiceLambda implements StationsService {
       stationId,
       callerId
     });
-    const result = await LAMBDA_INVOKER.invokeJson<{ data: AdminDeleteStationResponse }>(
+    const result = await LAMBDA_INVOKER.invokeJson<{ data: LambdaDeleteStationResponse }>(
       env.stationsLambdaWriteFunctionName,
       wrapLambdaRequest(
         'deleteStation',
@@ -151,6 +170,6 @@ export class StationsServiceLambda implements StationsService {
         }
       )
     );
-    return result.data;
+    return mapLambdaDeleteStationResponse(result.data);
   }
 }
