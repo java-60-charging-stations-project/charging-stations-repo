@@ -65,9 +65,9 @@ const StationsTable: FC<StationsTableProps> =({ fetchFn, detailPath, renderActio
     };
 
     return (
-        <div className="text-xs">
+        <div className="text-[10px] leading-tight">
             {/* Filter bar */}
-            <div className="flex flex-wrap items-center gap-2 mb-2">
+            <div className="flex flex-wrap items-center gap-1 mb-2">
                 <input
                     className="border border-slate-300 px-1.5 py-0.5 rounded"
                     placeholder="City"

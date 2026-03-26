@@ -40,6 +40,7 @@ export interface AdminCreateStationRequest {
     address: string;
     location: Location;
     maxPowerKw: number;
+    ports: number;
     ratePlan: RatePlan;
     siteTechnician: string | null;
     phone: string | null;
