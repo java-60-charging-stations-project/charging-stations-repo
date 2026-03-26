@@ -3,8 +3,10 @@ import type {
   AdminCreateStationResponse,
   AdminDeleteStationResponse,
   AdminUpdateStationStateResponse,
+  AdminUpdateStationPortsResponse,
   StationBase,
   StationBaseCollectionResponse,
+  StationLifecycleState,
   StationState,
 } from './stations.types';
 
@@ -26,10 +28,12 @@ export interface StationsService {
 
   updateStationState(
     stationId: string,
-    oldState: StationState,
-    newState: StationState,
+    oldState: StationLifecycleState,
+    newState: StationLifecycleState,
     callerId: string
   ): Promise<AdminUpdateStationStateResponse>;
+
+  updateStationPorts(stationId: string, deltaPorts: number, callerId: string): Promise<AdminUpdateStationPortsResponse>;
 
   deleteStation(stationId: string, callerId: string): Promise<AdminDeleteStationResponse>;
 }

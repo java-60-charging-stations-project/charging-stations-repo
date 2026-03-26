@@ -53,6 +53,7 @@ const router = createBrowserRouter([
                             { index: true, element: <SupportDashboardPage /> },
                             { path: "logs", element: <SupportLogsPage /> },
                             { path: "stations", element: <SupportStationsPage /> },
+                            { path: "stations/view/:stationId", element: <StationEditPage /> },
                             { path: "sessions", element: <SupportSessionsPage /> },
                         ]
                     },

@@ -2,6 +2,7 @@ import { env } from '../../config/env';
 import { AwsLambdaInvoker, type LambdaInvoker } from '../../utils/lambdaInvoker';
 import { createLogger } from '../../utils/logger';
 import { wrapLambdaRequest } from '../../common/wrappers';
+import { isLambdaErrorPayload } from '../../common/lambdaContracts';
 import { type LambdaErrorResponse } from '../../common/wrapperTypes';
 import {
   LambdaUserInfo,
@@ -14,7 +15,12 @@ import {
 } from './users.types';
 import { UsersService } from './users.service.interface';
 import { applyListFiltersAndPage } from './users.listHelpers';
-import {  ResourceNotFoundError } from '../../common/serviceErrors';
+import {
+  BadRequestError,
+  ResourceNotFoundError,
+  ServiceError,
+  UnauthorizedError,
+} from '../../common/serviceErrors';
 
 const logger = createLogger('users.service', 'debug');
 const LAMBDA_INVOKER: LambdaInvoker = new AwsLambdaInvoker(env.awsRegion);
@@ -28,8 +34,19 @@ interface LambdaListUsersResponse {
   totalItems?: number;
 }
 
-function isLambdaErrorResponse(result: unknown): result is LambdaErrorResponse {
-  return !!result && typeof result === 'object' && 'error' in result;
+function throwFromUserInfoLambdaError(result: LambdaErrorResponse): never {
+  const msg = result.error;
+  const code = result.code ?? 'UNKNOWN';
+  if (code === 'NOT_FOUND' || code === 'USER_NOT_FOUND' || msg.toLowerCase().includes('not found')) {
+    throw new ResourceNotFoundError(msg, code === 'USER_NOT_FOUND' ? 'USER_NOT_FOUND' : 'NOT_FOUND');
+  }
+  if (code === 'UNAUTHORIZED') {
+    throw new UnauthorizedError(msg, code);
+  }
+  if (code === 'INVALID_REQUEST') {
+    throw new BadRequestError(msg, code);
+  }
+  throw new ServiceError(`userInfo lambda: ${msg}`, 502, code);
 }
 
 export class UsersServiceLambda implements UsersService {
@@ -44,8 +61,8 @@ export class UsersServiceLambda implements UsersService {
       )
     );
 
-    if (isLambdaErrorResponse(result)) {
-      throw new Error(`userInfo lambda error: ${result.error}`);
+    if (isLambdaErrorPayload(result)) {
+      throwFromUserInfoLambdaError(result);
     }
 
     return mapLambdaUser(result.data);
@@ -62,11 +79,8 @@ export class UsersServiceLambda implements UsersService {
       )
     );
 
-    if (isLambdaErrorResponse(result)) {
-      if (result.code === 'USER_NOT_FOUND' || result.code === 'NOT_FOUND' || result.error.toLowerCase().includes('not found')) {
-        throw new ResourceNotFoundError(`User not found: ${userId}`);
-      }
-      throw new Error(`userInfo lambda error: ${result.error}`);
+    if (isLambdaErrorPayload(result)) {
+      throwFromUserInfoLambdaError(result);
     }
 
     return mapLambdaUser(result.data);
@@ -78,15 +92,12 @@ export class UsersServiceLambda implements UsersService {
      * `write-user-rds` is a Cognito trigger / different contract — it does **not** handle `getAllUsers`.
      */
     logger.debug('Invoking get-user-info lambda: listUsers (getAllUsers)', { adminId, filters });
-    const result = await LAMBDA_INVOKER.invokeJson<LambdaListUsersResponse | LambdaUserInfo[] | LambdaErrorResponse>(
+    const result = await LAMBDA_INVOKER.invokeJson<LambdaListUsersResponse | LambdaErrorResponse>(
       env.userInfoLambdaFunctionName,
       wrapLambdaRequest(
         'getAllUsers',
         adminId,
-        {
-          role: filters.role,
-          status: filters.status
-        },
+        {},
         {
           page: filters.page ?? 1,
           pageSize: filters.pageSize ?? 200
@@ -94,16 +105,18 @@ export class UsersServiceLambda implements UsersService {
       )
     );
 
-    if (isLambdaErrorResponse(result)) {
-      throw new Error(`get-user-info lambda error: ${result.error}`);
+    if (isLambdaErrorPayload(result)) {
+      if (
+        result.code === 'NOT_FOUND' &&
+        typeof result.error === 'string' &&
+        result.error.toLowerCase().includes('no users')
+      ) {
+        return { data: [], totalItems: 0 };
+      }
+      throwFromUserInfoLambdaError(result);
     }
 
-    let mapped: UserInfo[];
-    if (Array.isArray(result)) {
-      mapped = mapLambdaUsers(result);
-    } else {
-      mapped = mapLambdaUsers(result.data);
-    }
+    const mapped = mapLambdaUsers(result.data);
 
     const { data, totalItems } = applyListFiltersAndPage(mapped, filters);
     logger.debug('Returning listUsers result: ', { totalItems, pageReturned: data.length });
@@ -112,7 +125,7 @@ export class UsersServiceLambda implements UsersService {
 
   async updateOwnProfile(userId: string, payload: UpdateProfilePayload): Promise<void> {
     logger.debug('Invoking userManagement lambda: updateOwnProfile', { userId });
-    await LAMBDA_INVOKER.invokeJson(
+    const result = await LAMBDA_INVOKER.invokeJson<Record<string, unknown> | LambdaErrorResponse>(
       env.userManagementLambdaFunctionName,
       wrapLambdaRequest(
         'updateOwnProfile',
@@ -123,5 +136,8 @@ export class UsersServiceLambda implements UsersService {
         }
       )
     );
+    if (isLambdaErrorPayload(result)) {
+      throwFromUserInfoLambdaError(result);
+    }
   }
 }

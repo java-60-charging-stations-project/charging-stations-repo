@@ -1,4 +1,4 @@
-export type StationState = 'INACTIVE' | 'ACTIVE' | 'OUT_OF_SERVICE';
+export type StationState = 'INACTIVE' | 'ACTIVE' | 'OUT_OF_SERVICE' | 'DELETED';
 
 export interface RatePlan {
     currencyCode: string;
@@ -24,6 +24,8 @@ export interface StationBase {
     location?: Location;
     maxPowerKw: number | null;
     ports: number;
+    occupiedPorts?: number;
+    blockedUntil?: string | null;
     state: StationState;
     ratePlan?: RatePlan;
     createdAt: string;
@@ -38,6 +40,7 @@ export interface AdminCreateStationRequest {
     address: string;
     location: Location;
     maxPowerKw: number;
+    ports: number;
     ratePlan: RatePlan;
     siteTechnician: string | null;
     phone: string | null;

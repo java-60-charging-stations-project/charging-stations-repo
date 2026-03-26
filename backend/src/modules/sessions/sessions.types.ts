@@ -1,6 +1,7 @@
 import { ADMIN_GROUP, SUPPORT_GROUP } from '../../common/authRoles';
 
 /**
+
  * Charging session — internal record (before role-based projection).
  * Replace mock source with Lambda/Dynamo when `SessionsService` is wired to AWS.
  */
@@ -22,6 +23,7 @@ export interface ChargingSessionRecord {
   /** Admin: rough billing in minor units (e.g. cents) */
   billingCents: number | null;
 }
+
 
 /** Authenticated end-user: own sessions only — no billing / internal fields */
 export interface ChargingSessionUserView {

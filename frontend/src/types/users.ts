@@ -1,38 +1,40 @@
-export interface AdminGetUserResponse {
-    userId: string;
-    email: string;
-    role: string;
-    username: string;
-    phone: string;
-    status: string;
-    createdAt: string;
-    updatedAt: string;
-};
+import type { UserRole } from ".";
 
-export interface AdminUserDetailsResponse {
+// Types for admin's users management system
+export type UserFullType = {
     userId: string;
-    username: string;
     email: string;
     name: string;
     createDate: string | null;
     lastModifiedDate: string | null;
     enabled: boolean;
     status: string;
-    role: string;
+    role: UserRole;
 };
 
-export interface AdminUserRoleResponse {
-    role: string;
+export type UserShortType = Omit<UserFullType, "role">;
+
+export type UserShortListResponseType = {
+    users: UserShortType[];
+    paginationToken: string | undefined;
 };
 
-export interface UpdateUserRoleRequest {
-    email: string;
-    oldRole: string;
-    newRole: string;
-    updatedAt: string;
+
+// Requests
+export type ChangeUserRoleRequestType = {
+    oldRole: UserRole;
+    newRole: UserRole;
 };
 
-export interface AdminChangeLockStateUserRequest {
-    email: string;
-    updatedAt: string | null;
+export type ListUsersFilterKeyType = "email" | "name";
+
+export type ListUsersFilterType = {
+    filterKey: ListUsersFilterKeyType;
+    filterValue: string;
 };
+
+export type ListUsersRequestParamsType = {
+    limit: number;
+    filter?: ListUsersFilterType;
+    paginationToken?: string;
+}

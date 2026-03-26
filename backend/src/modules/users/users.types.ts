@@ -51,6 +51,10 @@ export interface UpdateUserRolePayload {
     updatedAt: string;
 }
 
+/**
+ * User row from `charging-stations-get-user-info` (`getUserById`, `getAllUsers`).
+ * Aligns with `lambda/.../db_instance_types.py` `UserInstance` (`user_id`, `full_name`, …).
+ */
 export interface LambdaUserInfo {
     user_id?: string;
     userId?: string;

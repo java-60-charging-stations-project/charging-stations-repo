@@ -6,18 +6,22 @@ import { useStationsQuery } from "@/hooks/useStationsQuery";
 import SimpleButton from "./SimpleButton";
 import { getLogger } from "@/services/logging";
 import Paginator from "./Paginator";
+import { StationStateBadge } from "./StatusBadge";
 
 const logger = getLogger("StationsTable");
 
-const STATE_OPTIONS: StationState[] = ["INACTIVE", "ACTIVE", "OUT_OF_SERVICE"];
+const STATE_OPTIONS: StationState[] = [
+    "INACTIVE",
+    "ACTIVE",
+    "OUT_OF_SERVICE",
+    "DELETED",
+];
 
 export interface StationsTableProps {
     // Must be a stable reference (module-level import)
     fetchFn: (params: StationsListParams) => Promise<ApiArrayResponse<StationBase>>;
     // If provided, station name becomes a clickable link navigating to this path.
     detailPath?: (stationId: string) => string;
-    // Render per-row action buttons. Receives the station and a refresh callback.
-    renderActions?: (station: StationBase, refresh: () => void) => React.ReactNode;
 }
 
 function SortButton({
@@ -43,9 +47,9 @@ function SortButton({
     );
 }
 
-const StationsTable: FC<StationsTableProps> =({ fetchFn, detailPath, renderActions }) => {
+const StationsTable: FC<StationsTableProps> =({ fetchFn, detailPath }) => {
     const navigate = useNavigate();
-    const { isLoading, error, stations, meta, parameters, setters, refresh } =
+    const { isLoading, error, stations, meta, parameters, setters } =
         useStationsQuery(fetchFn);
 
     // Local draft state for text inputs — committed to URL only on "Load"
@@ -65,9 +69,9 @@ const StationsTable: FC<StationsTableProps> =({ fetchFn, detailPath, renderActio
     };
 
     return (
-        <div className="text-xs">
+        <div className="text-[10px] leading-tight">
             {/* Filter bar */}
-            <div className="flex flex-wrap items-center gap-2 mb-2">
+            <div className="flex flex-wrap items-center gap-1 mb-2">
                 <input
                     className="border border-slate-300 px-1.5 py-0.5 rounded"
                     placeholder="City"
@@ -137,7 +141,7 @@ const StationsTable: FC<StationsTableProps> =({ fetchFn, detailPath, renderActio
                         <th className="text-left">City</th>
                         <th className="text-left">Address</th>
                         <th className="text-left">State</th>
-                        {renderActions && <th className="text-left">Actions</th>}
+                        <th className="text-left">Ports</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -158,10 +162,10 @@ const StationsTable: FC<StationsTableProps> =({ fetchFn, detailPath, renderActio
                             <td>{station.owner}</td>
                             <td>{station.city}</td>
                             <td>{station.address}</td>
-                            <td>{station.state}</td>
-                            {renderActions && (
-                                <td>{renderActions(station, refresh)}</td>
-                            )}
+                            <td>
+                                <StationStateBadge state={station.state} />
+                            </td>
+                            <td>{station.ports}</td>
                         </tr>
                     ))}
                 </tbody>

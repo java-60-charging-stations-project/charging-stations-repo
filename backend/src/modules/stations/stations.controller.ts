@@ -10,7 +10,7 @@ const idSchema = z.string().min(1);
 const listQuerySchema = z.object({
   city: z.string().optional(),
   owner: z.string().optional(),
-  state: z.enum(['INACTIVE', 'ACTIVE', 'OUT_OF_SERVICE']).optional(),
+  state: z.enum(['INACTIVE', 'ACTIVE', 'OUT_OF_SERVICE', 'DELETED']).optional(),
   orderBy: z.string().optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(200).default(200),
@@ -51,7 +51,9 @@ const updateStationStateSchema = z.object({
   newState: z.enum(['INACTIVE', 'ACTIVE', 'OUT_OF_SERVICE']),
   updatedAt: z.string().min(1),
 });
-
+const updateStationPortsSchema = z.object({
+  deltaPorts: z.number().int().min(1)
+});
 function canChangeStatus(
   current: StationState | undefined,
   next: StationState,
@@ -101,6 +103,15 @@ export class StationsController {
     const callerId = req.user?.sub ?? '';
 
     const result = await this.service.updateStationState(stationId, oldState, newState, callerId);
+    res.json({ code: 200, data: result });
+  };
+
+  updateStationPorts = async (req: Request, res: Response) => {
+    const stationId = idSchema.parse(req.params.stationId);
+    const { deltaPorts } = updateStationPortsSchema.parse(req.body);
+    const callerId = req.user?.sub ?? '';
+
+    const result = await this.service.updateStationPorts(stationId, deltaPorts, callerId);
     res.json({ code: 200, data: result });
   };
 
