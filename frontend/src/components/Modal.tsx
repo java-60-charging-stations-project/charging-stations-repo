@@ -20,7 +20,7 @@ const Modal: FC<ModalProps> = ({ isOpen, onClose, showCloseButton, title, childr
                 className="bg-white p-6 rounded-lg shadow-xl z-10 max-w-sm mx-auto"
                 onClick={(e) => e.stopPropagation()}
             >
-                {this && (
+                {title && (
                     <div className="flex justify-between items-center">
                         <h2 className="text-lg font-bold">{title}</h2>
                     </div>
