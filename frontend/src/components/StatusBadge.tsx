@@ -118,9 +118,9 @@ export function UserStatusBadgeDisabled() {
     return (
         <StatusBadge
             labelText="Disabled"
-            color="#4b5563"
-            textColor="#e5e7eb"
-            borderColor="#374151"
+            color="#fecaca"
+            textColor="#991b1b"
+            borderColor="#d97777"
             textSize="text-[10px]"
             textWeight="font-medium"
             size="px-2 py-0.5"

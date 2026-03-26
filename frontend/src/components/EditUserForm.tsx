@@ -4,6 +4,7 @@ import type { UserFullType } from '@/types/users';
 import { adminDisableUser, adminEnableUser, changeUserRole } from '@/services/api/adminApi';
 import SimpleButton from '@/components/SimpleButton';
 import type { UserRole } from '@/types';
+import { UserStatusBadge } from '@/components/StatusBadge';
 
 const ALL_ROLES = ['USER', 'ADMIN', 'SUPPORT'] as const;
 
@@ -84,7 +85,7 @@ const EditUserForm: FC<EditUserFormProps> = ({ user, onUserUpdated }) => {
                     <td className="pr-6 py-2 font-semibold align-top">Lock status</td>
                     <td className="py-2">
                         <div className="flex items-center gap-3 flex-wrap">
-                            <span>{user.enabled ? 'Enabled' : 'Disabled'}</span>
+                            <UserStatusBadge enabled={user.enabled} />
                             <SimpleButton
                                 size="xs"
                                 caption={user.enabled ? 'Disable user' : 'Enable user'}

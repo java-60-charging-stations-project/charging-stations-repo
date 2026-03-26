@@ -6,6 +6,7 @@ import type { ListUsersFilterType, UserFullType } from '@/types/users';
 import { fetchAdminUserById } from '@/services/api/adminApi';
 import EditUserForm from '@/components/EditUserForm';
 import Modal from '@/components/Modal';
+import { UserStatusBadge } from '@/components/StatusBadge';
 
 const logger = getLogger("AdminUsersPage");
 
@@ -131,8 +132,8 @@ const AdminUsersPage = () => {
             <th>Number</th>
             <th>Email</th>
             <th>Name</th>
-            <th>Blocked</th>
             <th>Status</th>
+            <th>Confirmation State</th>
           </tr>
         </thead>
         <tbody>
@@ -187,7 +188,7 @@ const AdminUsersPage = () => {
               <td>
                 {user.name}
               </td>
-              <td>{user.enabled ? 'No' : 'Yes'}</td>
+              <td><UserStatusBadge enabled={user.enabled} /></td>
               <td>{user.status}</td>
             </tr>
           ))}
