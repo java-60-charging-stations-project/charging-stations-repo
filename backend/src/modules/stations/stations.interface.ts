@@ -4,6 +4,7 @@ import type {
   AdminDeleteStationResponse,
   AdminUpdateStationStateResponse,
   AdminUpdateStationPortsResponse,
+  ApiPort,
   StationBase,
   StationBaseCollectionResponse,
   StationLifecycleState,
@@ -23,6 +24,8 @@ export interface StationsService {
   list(params: ListStationsParams, callerId: string): Promise<StationBaseCollectionResponse>;
 
   getById(stationId: string, callerId: string): Promise<StationBase>;
+
+  getPorts(stationId: string, callerId: string): Promise<ApiPort[]>;
 
   create(payload: AdminCreateStationRequest, callerId: string): Promise<AdminCreateStationResponse>;
 

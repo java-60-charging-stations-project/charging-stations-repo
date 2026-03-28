@@ -135,6 +135,7 @@ export type LambdaStationWriteRdsAction =
   | 'deleteStation'
   | 'update_station_ports';
 
+/** Payload for `writeStation` from the API — do not send `ports`; Lambda uses `data.get("ports", 0)` internally. */
 export interface LambdaWriteStationRequestData {
   code: string;
   name: string;
@@ -148,7 +149,6 @@ export interface LambdaWriteStationRequestData {
   location: { longitude: number; latitude: number };
   state?: Exclude<LambdaStationState, 'DELETED'>;
   maxPowerKw?: number;
-  ports?: number;
 }
 
 export interface LambdaWriteStationSuccessData {
@@ -199,19 +199,83 @@ export type LambdaUpdateStationPortsApiPayload = LambdaUpdateStationPortsOperati
  */
 export type LambdaUpdateStationPortsStreamPayload = LambdaStreamForwardedPortOperation[];
 
-// Dynamo
+// --- Ports: read Lambda (`getPortsByStation`) — `get_ports_sessions_dynamo.py` ---
+
+export type LambdaPortsReadAction = 'getPortsByStation';
+
+export interface LambdaGetPortsByStationInvokeData {
+  stationId: string;
+}
+
+export type LambdaPortState =
+  | 'FREE'
+  | 'OCCUPIED'
+  | 'ERROR'
+  | 'DISABLED'
+  | 'BOOKED';
+
+/**
+ * Элемент `data.ports[]` в ответе Lambda (JSON snake_case, см. `db_instance_types.PortInstance` + `port_id` при записи).
+ */
+export interface LambdaPortDynamoRow {
+  station_id: string;
+  /** Sort key, напр. `PORT#<code>` */
+  entity_key: string | null;
+  /** Код порта на станции (уникален в рамках станции в модели) */
+  code: string;
+  port_id?: string;
+  state: LambdaPortState;
+  last_meter_kw: number | null;
+  created_at: string | null;
+  updated_at: string | null;
+  last_event_id?: string | null;
+}
+
+export interface LambdaGetPortsByStationSuccessData {
+  ports: LambdaPortDynamoRow[];
+}
+
+// --- Ports: write Lambda — `write_ports_sessions_dynamo.py` ---
 
 export type LambdaWritePortsDynamoAction =
   | 'insertStationPorts'
   | 'supportUpdateStationPorts'
   | 'userUpdateStationPorts'
-  | 'deleteStationPorts';
+  | 'deleteStationPorts'
+  | 'create_session';
 
-export type LambdaPortState = string;
+/**
+ * `insertStationPorts`: для каждого порта в `build_port_item` нужны `code` и `lastMeterKw` (camelCase в `event.data`).
+ */
+export interface LambdaInsertStationPortInput {
+  code: string;
+  lastMeterKw: number;
+}
 
 export interface LambdaInsertStationPortsData {
   stationId: string;
-  ports: Array<{ code: string; power: number; lastMeterKw: number }>;
+  ports: LambdaInsertStationPortInput[];
+}
+
+/** Invoke: `service.action === 'getPortsByStation'`. */
+export interface LambdaGetPortsByStationRequest
+  extends LambdaServiceEnvelope<LambdaGetPortsByStationInvokeData, Record<string, never>, 'getPortsByStation'> {}
+
+/** Invoke: `service.action === 'insertStationPorts'`. */
+export interface LambdaInsertStationPortsRequest
+  extends LambdaServiceEnvelope<LambdaInsertStationPortsData, Record<string, never>, 'insertStationPorts'> {}
+
+/**
+ * Рекомендуемый контракт HTTP API (camelCase) после маппинга из `LambdaPortDynamoRow`:
+ * `portId` ← `entity_key` (или `port_id`, если договоритесь), `portCode` ← `code`, `status` ← `state`.
+ */
+export interface ApiPort {
+  portId: string;
+  portCode: string;
+  status: LambdaPortState;
+  lastMeterKw: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface LambdaUpdateDynamoPortsData {

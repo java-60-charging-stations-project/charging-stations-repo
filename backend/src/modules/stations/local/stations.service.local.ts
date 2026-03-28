@@ -8,6 +8,7 @@ import type {
   AdminDeleteStationResponse,
   AdminUpdateStationStateResponse,
   AdminUpdateStationPortsResponse,
+  ApiPort,
   StationBase,
   StationBaseCollectionResponse,
   StationLifecycleState,
@@ -106,6 +107,22 @@ export class StationsServiceLocal implements StationsService {
       ...station,
       hasFreePorts: (station.ports - (station.occupiedPorts ?? 0)) > 0,
     };
+  }
+
+  async getPorts(stationId: string, _callerId: string): Promise<ApiPort[]> {
+    const station = STATIONS.find((s) => s.id === stationId);
+    if (!station) {
+      throw new ResourceNotFoundError('Station not found');
+    }
+    const n = Math.max(0, station.ports ?? 0);
+    return Array.from({ length: n }, (_, i) => ({
+      portId: `PORT#${String(i + 1).padStart(3, '0')}`,
+      portCode: `P${i + 1}`,
+      status: 'FREE',
+      lastMeterKw: 0,
+      createdAt: station.createdAt,
+      updatedAt: station.updatedAt,
+    }));
   }
 
   async create(

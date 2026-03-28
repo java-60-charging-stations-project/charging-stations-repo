@@ -1,3 +1,7 @@
+import type { ApiPort, LambdaPortDynamoRow } from '../../common/lambdaContracts';
+
+export type { ApiPort };
+
 /**
  * States allowed for `changeStationState` / RDS transitions
  * (`lambda/db/write/write_station_rds.py` — not DELETED).
@@ -147,7 +151,10 @@ export interface StationBaseSingleResponse {
   data: StationBase;
 }
 
-/** Request body for POST /admin/stations */
+/**
+ * Request body for POST /admin/stations.
+ * Does not include a port count — new stations start with RDS `ports` as defined by Lambda (default 0); physical ports are managed elsewhere.
+ */
 export interface AdminCreateStationRequest {
   code: string;
   name: string;
@@ -269,4 +276,16 @@ export interface AdminUpdateStationStateRequest {
   stationId: string;
   oldState: StationLifecycleState;
   newState: StationLifecycleState;
+}
+
+export function mapLambdaPortRow(row: LambdaPortDynamoRow): ApiPort {
+  const portId = row.port_id ?? row.entity_key ?? row.code;
+  return {
+    portId: String(portId),
+    portCode: row.code,
+    status: row.state,
+    lastMeterKw: row.last_meter_kw == null ? 0 : Number(row.last_meter_kw),
+    createdAt: row.created_at ?? '',
+    updatedAt: row.updated_at ?? '',
+  };
 }

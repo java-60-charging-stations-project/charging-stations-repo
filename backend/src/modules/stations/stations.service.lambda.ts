@@ -23,6 +23,7 @@ import type {
   LambdaAdminCreateStationResponse,
   LambdaAdminDeleteStationResponse,
   LambdaAdminUpdateStationStateResponse,
+  ApiPort,
   LambdaStation,
   Meta,
   StationBase,
@@ -32,11 +33,13 @@ import type {
 import {
   mapLambdaAdminCreateStationResponse,
   mapLambdaDeleteStationResponse,
+  mapLambdaPortRow,
   mapLambdaStation,
   mapLambdaStationList,
   mapLambdaAdminUpdateStationStateResponse,
   mapLambdaStationsListMeta,
 } from './stations.types';
+import type { LambdaGetPortsByStationSuccessData } from '../../common/lambdaContracts';
 import type { ListStationsParams, StationsService } from './stations.interface';
 
 const logger = createLogger('stations.service');
@@ -111,6 +114,24 @@ export class StationsServiceLambda implements StationsService {
       throw new ResourceNotFoundError('Station not found');
     }
     return mapLambdaStation(result.data);
+  }
+
+  async getPorts(stationId: string, callerId: string): Promise<ApiPort[]> {
+    logger.debug('Invoking ports read lambda: getPortsByStation', { stationId, callerId });
+    const result = await LAMBDA_INVOKER.invokeJson<
+      { data: LambdaGetPortsByStationSuccessData } | LambdaErrorResponse
+    >(
+      env.stationsPortsReadLambdaFunctionName,
+      wrapLambdaRequest('getPortsByStation', callerId, { stationId })
+    );
+    if (isLambdaErrorPayload(result)) {
+      throwFromStationsLambdaError(result);
+    }
+    const ports = result.data?.ports;
+    if (!Array.isArray(ports)) {
+      throw new ServiceError('stations ports lambda: invalid response', 502, 'INVALID_RESPONSE');
+    }
+    return ports.map(mapLambdaPortRow);
   }
 
   async create(payload: AdminCreateStationRequest, callerId: string): Promise<AdminCreateStationResponse> {

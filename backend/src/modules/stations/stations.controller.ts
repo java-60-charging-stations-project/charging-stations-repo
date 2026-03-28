@@ -28,19 +28,22 @@ const locationSchema = z.object({
   longitude: z.number()
 });
 
-const createStationSchema = z.object({
-  code: z.string().min(1),
-  name: z.string().min(1),
-  owner: z.string().min(1),
-  city: z.string().min(1),
-  address: z.string().min(1),
-  ratePlan: ratePlanSchema,
-  siteTechnician: z.string().nullable(),
-  phone: z.string().nullable(),
-  email: z.string().nullable(),
-  location: locationSchema,
-  maxPowerKw: z.number()
-});
+/** POST /admin/stations — no port count; ports are added via separate APIs / Lambda. Unknown keys (e.g. `ports`) are rejected. */
+const createStationSchema = z
+  .object({
+    code: z.string().min(1),
+    name: z.string().min(1),
+    owner: z.string().min(1),
+    city: z.string().min(1),
+    address: z.string().min(1),
+    ratePlan: ratePlanSchema,
+    siteTechnician: z.string().nullable(),
+    phone: z.string().nullable(),
+    email: z.string().nullable(),
+    location: locationSchema,
+    maxPowerKw: z.number()
+  })
+  .strict();
 
 const updateStatusSchema = z.object({
   status: z.enum(['INACTIVE', 'ACTIVE', 'OUT_OF_SERVICE'])
@@ -87,6 +90,13 @@ export class StationsController {
         .json({ error: { code: 'NOT_FOUND', message: 'Station not found' } });
     }
     res.status(200).json(wrapResponse(data));
+  };
+
+  getPorts = async (req: Request, res: Response) => {
+    const stationId = idSchema.parse(req.params.stationId);
+    const callerId = req.user?.sub ?? '';
+    const ports = await this.service.getPorts(stationId, callerId);
+    res.status(200).json(wrapResponse({ ports }));
   };
 
   create = async (req: Request, res: Response) => {
