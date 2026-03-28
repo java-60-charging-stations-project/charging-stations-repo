@@ -4,6 +4,7 @@ import json
 from typing import Any
 from boto3.dynamodb.types import TypeDeserializer
 from utils.logger import logger, log_audit
+from utils.error_handlers import LambdaResponseError
 
 REGION = os.environ["AWS_REGION"]
 AWS_LAMBDA_HOST_ACCOUNT = os.environ["AWS_LAMBDA_HOST_ACCOUNT"]
@@ -19,10 +20,10 @@ def _deserialize_image(image: dict[str, Any] | None) -> dict[str, Any] | None:
 
 
 def _is_port_entity(image: dict[str, Any] | None) -> bool:
-    if not image:
-        return False
-    entity_key = image.get("entity_key")
-    return isinstance(entity_key, str) and entity_key.startswith("PORT#")
+    res: bool = False
+    if image and (entity_key := image.get("entity_key")):
+        res = len(entity_key.split("#")) == 2
+    return res
 
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     logger.info(f"Received event: {event}")
@@ -43,13 +44,13 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             old_state = old_image.get("state") if old_image else None
             new_state = new_image.get("state")
             if old_state != new_state:
-                if new_state in {"BOOKED", "OCCUPIED"}:
+                if new_state in {"BOOKED", "OCCUPIED"} and new_image.get("user_id"):
                     op = {
                         "event_id": record["eventID"],
                         "station_id": new_image["station_id"],
                         "entity_key": new_image["entity_key"],
                         "operation": "PORT_BOOKED_OR_OCCUPIED",
-                        "user_id": new_image.get("user_id"),
+                        "user_id": new_image["user_id"],
                         "port_booked": True if new_state == "BOOKED" else False,
                     }
                     start_session_ops.append(op)
@@ -90,9 +91,12 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             )
             raw = response["Payload"].read().decode("utf-8") or "{}"
             response_json = json.loads(raw)
+            if response.get("FunctionError"):
+                log_audit("ERROR", message=f"Operations to start sessions failed", status="ERROR", errorMessage=response.get('FunctionError'), **audit_base)
+                raise LambdaResponseError({"error": f"Operations to start sessions failed: {response.get('FunctionError')}", "code": "UNHANDLED_ERROR"})
             if response_json.get("error"):
-                logger.error(f"Forwarded {len(start_session_ops)} operations to start sessions failed: {response_json.get('error')}")
-                raise RuntimeError(f"Forwarded {len(start_session_ops)} operations to start sessions failed: {response_json.get('error')}")
+                log_audit("ERROR", message=f"Operations to start sessions failed", status="ERROR", errorMessage=response_json.get('error'), **audit_base)
+                raise LambdaResponseError({"error": f"Operations to start sessions failed: {response_json.get('error')}", "code": "UNHANDLED_ERROR"})
             logger.info(f"Forwarded {len(start_session_ops)} operations to start sessions successfully")
             log_audit("INFO", message=f"Forwarded {len(start_session_ops)} operations to start sessions successfully", status="SUCCESS", **audit_base)
         if insert_delete_port_ops:
@@ -108,13 +112,20 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 FunctionName=f"arn:aws:lambda:{REGION}:{AWS_LAMBDA_HOST_ACCOUNT}:function:{WRITE_STATION_FUNCTION_NAME}",
                 Payload=json.dumps(payload).encode("utf-8"),
             )
+            if response.get("FunctionError"):
+                logger.error(f"Forwarded {len(insert_delete_port_ops)} operations to update station ports failed: {response.get('FunctionError')}")
+                log_audit("ERROR", message=f"Operations to update station ports failed", status="ERROR", errorMessage=response.get('FunctionError'), **audit_base)
+                raise LambdaResponseError({"error": f"Operations to update station ports failed: {response.get('FunctionError')}", "code": "UNHANDLED_ERROR"})
             raw = response["Payload"].read().decode("utf-8") or "{}"
             response_json = json.loads(raw)
             if response_json.get("error"):
                 logger.error(f"Forwarded {len(insert_delete_port_ops)} operations to update station ports failed: {response_json.get('error')}")
-                raise RuntimeError(f"Forwarded {len(insert_delete_port_ops)} operations to update station ports failed: {response_json.get('error')}")
+                log_audit("ERROR", message=f"Operations to update station ports failed", status="ERROR", errorMessage=response_json.get('error'), **audit_base)
+                raise LambdaResponseError({"error": f"Operations to update station ports failed: {response_json.get('error')}", "code": "UNHANDLED_ERROR"})
             logger.info(f"Forwarded {len(insert_delete_port_ops)} operations to update station ports successfully")
             log_audit("INFO", message=f"Forwarded {len(insert_delete_port_ops)} operations to update station ports successfully", status="SUCCESS", **audit_base)
+    except LambdaResponseError:
+        raise
     except Exception as e:
         logger.error(f"Forwarded {operations} operations failed: {str(e)}")
         log_audit("ERROR", message=f"Forwarded {operations} operations failed", status="ERROR", errorMessage=str(e), **audit_base)

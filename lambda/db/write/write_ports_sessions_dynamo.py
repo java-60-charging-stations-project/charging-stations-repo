@@ -64,12 +64,20 @@ def insert_station_ports(station_id: str, ports: list[dict]) -> list[str]:
         raise LambdaResponseError({"error": f"error getting dynamo stations table: {e}", "code": "DATABASE_ERROR"})
     created_port_keys: list[str] = []
     try:
-        with table.batch_writer() as batch:
-            for p in ports:
-                port_item = build_port_item(station_id, p)
-                created_port_keys.append(port_item["entity_key"] if port_item["entity_key"] else "")
-                batch.put_item(Item=port_item)
+        for p in ports:
+            port_item = build_port_item(station_id, p)
+            entity_key = port_item["entity_key"]
+            if entity_key in created_port_keys:
+                continue
+            table.put_item(
+                Item=port_item,
+                ConditionExpression="attribute_not_exists(station_id) AND attribute_not_exists(entity_key)",
+            )
+            created_port_keys.append(entity_key)
         return created_port_keys
+    except ClientError as e:
+        if e.response.get("Error", {}).get("Code") == "ConditionalCheckFailedException":
+            raise LambdaResponseError({"error": f"port already exists: {port_item['entity_key']}", "code": "ALREADY_EXISTS"})
     except Exception as e:
         logger.error(f"error inserting station ports: {e}")
         raise LambdaResponseError({"error": f"error inserting station ports: {e}", "code": "DATABASE_ERROR"})
@@ -101,6 +109,9 @@ def get_update_data_from_event(event: dict) -> dict:
         raise LambdaResponseError({"error": f"error getting update data from event: {e}", "code": "UNHANDLED_ERROR"})
 
 def update_station_ports(action: str, station_id: str, port_keys: list[str], old_state: str, new_state: str, user: str| None = None) -> list[dict]:
+    if not port_keys:
+        logger.error(f"port keys are required for {action}")
+        raise LambdaResponseError({"error": f"port keys are required for {action}", "code": "INVALID_REQUEST"})
     try:
         table = get_dynamo_stations_table()
     except Exception as e:
@@ -173,6 +184,8 @@ def update_station_ports(action: str, station_id: str, port_keys: list[str], old
             raise LambdaResponseError({"error": f"transaction canceled: {e}", "code": "TRANSACTION_CANCELED"})
         else:
             raise LambdaResponseError({"error": f"error updating station ports: {e}", "code": "UNHANDLED_ERROR"})
+    except LambdaResponseError:
+        raise
     except Exception as e:
         logger.error(f"error updating station ports: {e}")
         raise LambdaResponseError({"error": f"error updating station ports: {e}", "code": "UNHANDLED_ERROR"})
@@ -202,15 +215,15 @@ def delete_station_ports(station_id: str, port_keys: list[str]) -> list[dict]:
     except ClientError as e:
         if e.response.get("Error", {}).get("Code") == "ConditionalCheckFailedException":
             raise LambdaResponseError({"error": f"port not found or state is not DISABLED: {e}", "code": "INVALID_REQUEST"})
+        elif e.response["Error"]["Code"] == "TransactionCanceledException":
+            raise LambdaResponseError({"error": f"transaction canceled: {e}", "code": "TRANSACTION_CANCELED"})
         else:
             raise LambdaResponseError({"error": f"error deleting station port: {e}", "code": "DATABASE_ERROR"})
+    except LambdaResponseError:
+        raise
     except Exception as e:
         logger.error(f"error deleting station ports from dynamo: {e}")
-        raise LambdaResponseError(
-            {"error": f"error deleting station ports: {e}", "code": "DATABASE_ERROR"}
-        )
-
-
+        raise LambdaResponseError({"error": f"error deleting station ports: {e}", "code": "UNHANDLED_ERROR"})
 
 def get_tariff(station_id: str) -> float:
     client = boto3.client("lambda", region_name=AWS_REGION)
@@ -262,7 +275,7 @@ def build_session_object(session_data: dict) -> PortSessionInstance:
             "event_id": session_data["event_id"],
         }
         logger.info(f"Session object built successfully: {session_object}")
-        return session_object, session_data["port_id"]
+        return session_object, session_data["entity_key"]
     except KeyError as e:
         logger.error(f"missing key: {e}")
         raise LambdaResponseError({"error": f"missing key: {e}", "code": "INVALID_REQUEST"})
@@ -279,10 +292,11 @@ def create_session(session_data: list[dict]) -> list[str]:
         logger.error(f"error getting dynamo sessions table: {e}")
         raise LambdaResponseError({"error": f"error getting dynamo sessions table: {e}", "code": "DATABASE_ERROR"})
     session_ids: list[str] = []
-    for session_data in session_data:
-        session_object, port_key = build_session_object(session_data)
+    for session in session_data:
+        session_object, port_key = build_session_object(session)
         station_id = session_object["station_id"]
         event_id = session_object["event_id"]
+        new_state = "BOOKED" if session["port_booked"] else "OCCUPIED"
         now = datetime.now().isoformat()
         logger.info(f"Session object built successfully: {session_object}")
         try:
@@ -293,18 +307,16 @@ def create_session(session_data: list[dict]) -> list[str]:
                     {"station_id": {"S": station_id}, "entity_key": {"S": port_key}},
                             "ConditionExpression": (
                                 "attribute_exists(entity_key) "
-                                "AND #s = :free "
+                                "AND #s = :expected_state "
                                 "AND (attribute_not_exists(last_event_id) OR last_event_id <> :event_id)"
                             ),
                             "ExpressionAttributeNames": {"#s": "state"},
-                            "ExpressionAttributeValues": {":free": {"S": "FREE"}, ":event_id": {"S": event_id}},
+                            "ExpressionAttributeValues": {":expected_state": {"S": new_state}, ":event_id": {"S": event_id}},
                         }
                     },
                     {"Update": {"TableName": STATIONS_DYNAMO_TABLE, "Key": {"station_id": {"S": station_id}, "entity_key": {"S": port_key}},
-                            "UpdateExpression": "SET #s = :new_state, updated_at = :updated_at, last_event_id = :event_id",
-                            "ExpressionAttributeNames": {"#s": "state"},
+                            "UpdateExpression": "SET updated_at = :updated_at, last_event_id = :event_id",
                             "ExpressionAttributeValues": {
-                                ":new_state": {"S": "OCCUPIED"},
                                 ":updated_at": {"S": now},
                                 ":event_id": {"S": event_id},
                             },
@@ -324,10 +336,8 @@ def create_session(session_data: list[dict]) -> list[str]:
         except ClientError as e:
             code = e.response.get("Error", {}).get("Code")
             if code == "TransactionCanceledException":
-                raise LambdaResponseError(
-                    {"error": f"session not created (duplicate event or port not FREE): {e}", "code": "INVALID_REQUEST"}
-                )
-            raise LambdaResponseError({"error": f"error putting session object: {e}", "code": "DATABASE_ERROR"})
+                raise LambdaResponseError({"error": f"session not created (duplicate event or port not {new_state}): {e}", "code": "INVALID_REQUEST"})
+            raise LambdaResponseError({"error": f"error putting session object: {e}", "code": "UNHANDLED_ERROR"})
         except Exception as e:
             logger.error(f"error putting session object: {e}")
             raise LambdaResponseError({"error": f"error putting session object: {e}", "code": "UNHANDLED_ERROR"})
