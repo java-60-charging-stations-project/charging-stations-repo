@@ -183,6 +183,128 @@ paths:
         '500':
           $ref: '#/components/responses/ErrorResponse'
 
+  /user/stations:
+    get:
+      operationId: listUserStationsCatalog
+      summary: List stations (end-user path)
+      description: |
+        Same query parameters, sorting, and response body as `GET /stations`.
+        Requires a valid Cognito JWT; **does not** require ADMIN or SUPPORT groups (intended for end-user apps).
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: city
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: owner
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [INACTIVE, ACTIVE, OUT_OF_SERVICE]
+        - name: orderBy
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 200
+            minimum: 1
+            maximum: 200
+      responses:
+        '200':
+          description: List of charging stations
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StationBaseCollectionResponse'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedResponse'
+        '400':
+          $ref: '#/components/responses/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
+
+  /user/stations/{stationId}:
+    get:
+      operationId: getUserStationById
+      summary: Get station by ID (end-user path)
+      description: Same response as `GET /stations/{stationId}`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: stationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Charging station data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StationBaseSingleResponse'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedResponse'
+        '404':
+          $ref: '#/components/responses/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
+
+  /user/stations/{stationId}/ports:
+    get:
+      operationId: getUserStationPorts
+      summary: List physical ports for a station (end-user path)
+      description: Same response as `GET /stations/{stationId}/ports`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: stationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Ports list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      ports:
+                        type: array
+                        items:
+                          type: object
+        '401':
+          $ref: '#/components/responses/UnauthenticatedResponse'
+        '404':
+          $ref: '#/components/responses/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
+
   /admin/stations:
     get:
       operationId: listAdminStations

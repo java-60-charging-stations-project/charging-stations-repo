@@ -13,6 +13,11 @@ export function stationsRouter(): Router {
   router.get('/stations/:stationId/ports', verifyCognitoJwt, controller.getPorts);
   router.get('/stations/:stationId', verifyCognitoJwt, controller.getById);
 
+  /** Каталог для конечного пользователя (JWT; группы ADMIN/SUPPORT не требуются). Дублирует `/stations`. */
+  router.get('/user/stations', verifyCognitoJwt, controller.list);
+  router.get('/user/stations/:stationId/ports', verifyCognitoJwt, controller.getPorts);
+  router.get('/user/stations/:stationId', verifyCognitoJwt, controller.getById);
+
   // Support endpoints
   router.get('/support/stations', verifyCognitoJwt, requireGroups([SUPPORT_GROUP]), controller.list);
   router.get('/support/stations/:stationId/ports', verifyCognitoJwt, requireGroups([SUPPORT_GROUP]), controller.getPorts);
