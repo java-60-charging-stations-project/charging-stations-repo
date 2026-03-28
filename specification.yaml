@@ -811,6 +811,33 @@ paths:
           $ref: '#/components/responses/ErrorResponse'
 
   /bookings/{bookingId}:
+    get:
+      operationId: getBookingById
+      summary: Get one booking (current user)
+      description: |
+        Returns a single booking if it belongs to the JWT subject. Otherwise **404** (no enumeration of foreign ids).
+        **Implemented** on gateway (in-memory mock).
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Booking found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingGetResponse'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedResponse'
+        '404':
+          $ref: '#/components/responses/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
     delete:
       operationId: cancelBooking
       summary: Cancel a booking (gateway)
@@ -2232,6 +2259,16 @@ components:
         code:
           type: integer
           example: 201
+        data:
+          $ref: '#/components/schemas/BookingDto'
+
+    BookingGetResponse:
+      type: object
+      required: [code, data]
+      properties:
+        code:
+          type: integer
+          example: 200
         data:
           $ref: '#/components/schemas/BookingDto'
 

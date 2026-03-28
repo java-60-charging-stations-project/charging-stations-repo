@@ -9,6 +9,7 @@ export function bookingsRouter(): Router {
 
   router.get('/bookings', verifyCognitoJwt, controller.listMyBookings);
   router.post('/bookings', verifyCognitoJwt, controller.createBooking);
+  router.get('/bookings/:bookingId', verifyCognitoJwt, controller.getBooking);
   router.delete('/bookings/:bookingId', verifyCognitoJwt, controller.cancelBooking);
 
   return router;
