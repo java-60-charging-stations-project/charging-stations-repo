@@ -22,7 +22,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 const logger = getLogger('StationEditPage');
 
-type StationFormData = Omit<AdminCreateStationRequest, 'code'>;
+type StationFormData = Omit<AdminCreateStationRequest, 'code'> & { ports: number };
 
 const LABEL = "w-1/3 shrink-0 pr-2 text-right";
 
@@ -227,10 +227,10 @@ const StationEditPage = () => {
         logger.debug('Form submitted', data);
         setSubmitError(null);
         try {
-            //const code = await buildHash([data.owner, data.city, data.address]);
             const code = `${data.owner}=+=${data.city}=+=${data.address}`;
-            const fullData: AdminCreateStationRequest = {
-                ...data,
+            const { ports: initialPorts, ...fields } = data;
+            const createPayload: AdminCreateStationRequest = {
+                ...fields,
                 code,
                 ratePlan: {
                     ...data.ratePlan,
@@ -238,8 +238,12 @@ const StationEditPage = () => {
                     currencyName: CURRENCY_NAME,
                 },
             };
-            logger.debug('Full data', fullData);
-            await createStation(fullData);
+            logger.debug('Create station payload (no ports)', createPayload);
+            const { stationId } = await createStation(createPayload);
+            const n = Number(initialPorts);
+            if (Number.isInteger(n) && n > 0) {
+                await adminAddStationPorts(stationId, n);
+            }
             setSubmitSuccess(true);
         } catch (err) {
             const message = err instanceof Error ? err.message : "An unexpected error occurred";
