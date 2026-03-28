@@ -2,6 +2,11 @@ import type {
     ChangeStationStateRequest,
     ChangeStationStateResponse,
     StationBase,
+    StationPort,
+    StationPortCreate,
+    StationPortsCreateRequest,
+    StationPortsCreateResponse,
+    StationPortsListResponse,
     StationsListParams
 } from '@/types/stations';
 import { apiClient } from './api';
@@ -37,4 +42,26 @@ export async function addStationPorts(stationId: string, deltaPorts: number): Pr
         { deltaPorts },
     );
     return response.data;
+};
+
+export async function createStationPorts(stationId: string, ports: StationPortCreate[]): Promise<StationPort[]> {
+    const body: StationPortsCreateRequest = { ports };
+    const response = await apiClient.post<ApiResponse<StationPortsCreateResponse>>(
+        `/support/stations/${stationId}/ports`,
+        body,
+    );
+    return response.data.ports;
+};
+
+export async function fetchStationPorts(stationId: string): Promise<StationPort[]> {
+    const response = await apiClient.get<ApiResponse<StationPortsListResponse>>(
+        `/support/stations/${stationId}/ports`,
+    );
+    return response.data.ports;
+};
+
+export async function deleteStationPort(stationId: string, portId: string): Promise<void> {
+    await apiClient.delete<void>(
+        `/support/stations/${stationId}/ports/${portId}`,
+    );
 };

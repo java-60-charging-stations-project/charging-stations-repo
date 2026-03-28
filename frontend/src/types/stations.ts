@@ -67,4 +67,32 @@ export interface StationsListParams {
     orderBy?: string;
     page?: number;
     pageSize?: number;
-  }
+}
+
+// PORTS
+export type PortState = 'DISABLED' | 'FREE' | 'BOOKED' | 'OCCUPIED' | 'ERROR';
+  
+export type StationPort = {
+    portId: string,
+    portCode: string,
+    status: PortState,
+    lastMeterKw: number,
+    createdAt: string,
+    updatedAt: string,
+};
+
+export type StationPortCreate = {
+    portCode: string,
+};
+
+export type StationPortsCreateRequest = {
+    ports: StationPortCreate[],
+};
+
+export type StationPortsCreateResponse = {
+    ports: StationPort[],
+};
+
+export type StationPortsListResponse = {
+    ports: StationPort[],
+};
