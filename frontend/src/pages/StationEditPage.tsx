@@ -12,6 +12,7 @@ import NavButton from "@/components/NavButton";
 import StationStateActions from "@/components/stations/StationStateActions";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import SimpleButton from "@/components/SimpleButton";
 
 const logger = getLogger('StationEditPage');
 
@@ -42,6 +43,8 @@ const StationEditPage = () => {
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [submitSuccess, setSubmitSuccess] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
+
+    const [initialPortsCount, setInitialPortsCount] = useState<number | null>(null);
 
     const isLocked = isViewMode || isSubmitting || submitSuccess;
     const watchedMaxPowerKw = watch("maxPowerKw");
@@ -74,6 +77,9 @@ const StationEditPage = () => {
                 phone: station.phone,
                 email: station.email,
             });
+            if (initialPortsCount === null) {
+                setInitialPortsCount(station.portsCount);
+            }
         } catch (err) {
             setLoadError(err instanceof Error ? err.message : "Failed to load station");
         }
@@ -235,6 +241,29 @@ const StationEditPage = () => {
                     <input className="w-full" disabled={isLocked} {...register("email")} />
                 </FieldRow>
 
+                {isViewMode && initialPortsCount !== null && (
+                    <div className="mb-1 flex items-center flex-wrap">
+                        <label className={LABEL}>Ports count</label>
+                        <div className="flex-1 flex items-center justify-between gap-2 min-w-0">
+                            <span className="text-neutral-800 tabular-nums">
+                                {initialPortsCount}
+                            </span>
+                            {useSupportStationApi && stationId && (
+                                <SimpleButton
+                                    caption="View ports"
+                                    handleClick={() => {
+                                        navigate(
+                                            `/support/stations/view/${stationId}/ports`,
+                                        );
+                                    }}
+                                    size="xs"
+                                    color="tertiary"
+                                />
+                            )}
+                        </div>
+                    </div>
+                )}
+
                 {!isViewMode && (
                     <>
                         <input
@@ -249,17 +278,19 @@ const StationEditPage = () => {
                 )}
             </form>
             {isViewMode && currentStationState && (
-                <StationStateActions
-                    stationId={stationId!}
-                    stationState={currentStationState}
-                    updatedAt={stationUpdatedAt}
-                    userRole={userRole}
-                    maxPowerKw={watchedMaxPowerKw}
-                    peakRate={watchedPeakRate}
-                    offPeakRate={watchedOffPeakRate}
-                    onStateChanged={loadStation}
-                    onDeleted={() => navigate(backPath)}
+                <>
+                    <StationStateActions
+                        stationId={stationId!}
+                        stationState={currentStationState}
+                        updatedAt={stationUpdatedAt}
+                        userRole={userRole}
+                        maxPowerKw={watchedMaxPowerKw}
+                        peakRate={watchedPeakRate}
+                        offPeakRate={watchedOffPeakRate}
+                        onStateChanged={loadStation}
+                        onDeleted={() => navigate(backPath)}
                 />
+                </>
             )}
         </div>
     );
