@@ -296,10 +296,11 @@ export interface AddPortsRequest {
 }
 
 export function mapLambdaPortRow(row: LambdaPortDynamoRow): ApiPort {
-  const portId = row.entity_key ?? row.port_id ?? row.code;
+  const portId = String(row.port_id ?? row.code);
+  const portCode = String(row.entity_key ?? row.code);
   return {
-    portId: String(portId),
-    portCode: row.code,
+    portId: portId,
+    portCode:portCode,
     status: row.state,
     lastMeterKw: row.last_meter_kw == null ? 0 : Number(row.last_meter_kw),
     createdAt: row.created_at ?? '',
