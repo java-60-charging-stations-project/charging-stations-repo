@@ -49,7 +49,7 @@ export const env = {
 
   stationsPortsWriteLambdaFunctionName: String(
     process.env.STATIONS_PORTS_WRITE_LAMBDA_FUNCTION_NAME ??
-      'arn:aws:lambda:il-central-1:852215679994:function:charging-stations-write-ports-dynamo'
+      'arn:aws:lambda:il-central-1:852215679994:function:charging-stations-write-station-ports-dynamo'
   ),
 
   // misc
