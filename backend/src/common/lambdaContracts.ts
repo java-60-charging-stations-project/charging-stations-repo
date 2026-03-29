@@ -290,8 +290,9 @@ export interface LambdaDeleteStationPortsData {
   portKeys: string[];
 }
 
-export interface LambdaInsertStationPortsSuccess {
-  created_port_keys: string[];
+export interface LambdaInsertStationPortsSuccessData {
+  created_ports?: LambdaPortDynamoRow[];
+  created_port_keys?: string[];
 }
 
 export interface LambdaUpdateDynamoPortsSuccessItem {
@@ -305,6 +306,10 @@ export interface LambdaDeleteDynamoPortSuccessItem {
   station_id: string;
   port_key: string;
   deleted_at: string;
+}
+
+export interface LambdaDeleteStationPortsSuccessData {
+  deleted_ports: LambdaDeleteDynamoPortSuccessItem[];
 }
 
 // Special cases

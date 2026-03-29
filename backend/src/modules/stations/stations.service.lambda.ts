@@ -6,7 +6,15 @@ import {
   ServiceError,
   UnauthorizedError,
 } from '../../common/serviceErrors';
-import { isLambdaErrorPayload } from '../../common/lambdaContracts';
+import {
+  isLambdaErrorPayload,
+  type LambdaDeleteStationPortsData,
+  type LambdaDeleteStationPortsSuccessData,
+  type LambdaGetPortsByStationSuccessData,
+  type LambdaInsertStationPortsData,
+  type LambdaInsertStationPortsSuccessData,
+  type LambdaPortDynamoRow,
+} from '../../common/lambdaContracts';
 import { type LambdaErrorResponse } from '../../common/wrapperTypes';
 import { env } from '../../config/env';
 import { AwsLambdaInvoker, type LambdaInvoker } from '../../utils/lambdaInvoker';
@@ -34,13 +42,15 @@ import type {
 import {
   mapLambdaAdminCreateStationResponse,
   mapLambdaDeleteStationResponse,
+  mapLambdaCreatedPortKeys,
+  mapLambdaDeleteStationPortsResponse,
+  mapLambdaInsertStationPortsResponse,
   mapLambdaPortRow,
   mapLambdaStation,
   mapLambdaStationList,
   mapLambdaAdminUpdateStationStateResponse,
   mapLambdaStationsListMeta,
 } from './stations.types';
-import type { LambdaGetPortsByStationSuccessData } from '../../common/lambdaContracts';
 import type { ListStationsParams, StationsService } from './stations.interface';
 
 const logger = createLogger('stations.service');
@@ -71,6 +81,42 @@ function throwFromStationsLambdaError(result: LambdaErrorResponse): never {
 }
 
 export class StationsServiceLambda implements StationsService {
+  private async getPortRows(stationId: string, callerId: string): Promise<LambdaPortDynamoRow[]> {
+    logger.debug('Invoking ports read lambda: getPortsByStation', { stationId, callerId });
+    const result = await LAMBDA_INVOKER.invokeJson<
+      { data: LambdaGetPortsByStationSuccessData } | LambdaErrorResponse
+    >(
+      env.stationsPortsReadLambdaFunctionName,
+      wrapLambdaRequest('getPortsByStation', callerId, { stationId })
+    );
+    if (isLambdaErrorPayload(result)) {
+      throwFromStationsLambdaError(result);
+    }
+    const ports = result.data?.ports;
+    if (!Array.isArray(ports)) {
+      throw new ServiceError('stations ports lambda: invalid response', 502, 'INVALID_RESPONSE');
+    }
+    return ports;
+  }
+
+  private async resolvePortKey(stationId: string, portId: string, callerId: string): Promise<string> {
+    if (portId.startsWith('PORT#')) {
+      return portId;
+    }
+
+    const ports = await this.getPortRows(stationId, callerId);
+    const port = ports.find((item) => item.port_id === portId || item.entity_key === portId || item.code === portId);
+
+    if (!port) {
+      throw new ResourceNotFoundError('Port not found');
+    }
+    if (!port.entity_key) {
+      throw new ServiceError('stations ports lambda: missing port key', 502, 'INVALID_RESPONSE');
+    }
+
+    return port.entity_key;
+  }
+
   async list(params: ListStationsParams, callerId: string): Promise<StationBaseCollectionResponse> {
     const { city, owner, state, orderBy, page = 1, pageSize = DEFAULT_PAGE_SIZE } = params;
     logger.debug('Invoking stations lambda: list', { params, callerId });
@@ -122,20 +168,7 @@ export class StationsServiceLambda implements StationsService {
   }
 
   async getPorts(stationId: string, callerId: string): Promise<ApiPort[]> {
-    logger.debug('Invoking ports read lambda: getPortsByStation', { stationId, callerId });
-    const result = await LAMBDA_INVOKER.invokeJson<
-      { data: LambdaGetPortsByStationSuccessData } | LambdaErrorResponse
-    >(
-      env.stationsPortsReadLambdaFunctionName,
-      wrapLambdaRequest('getPortsByStation', callerId, { stationId })
-    );
-    if (isLambdaErrorPayload(result)) {
-      throwFromStationsLambdaError(result);
-    }
-    const ports = result.data?.ports;
-    if (!Array.isArray(ports)) {
-      throw new ServiceError('stations ports lambda: invalid response', 502, 'INVALID_RESPONSE');
-    }
+    const ports = await this.getPortRows(stationId, callerId);
     return ports.map(mapLambdaPortRow);
   }
 
@@ -211,12 +244,80 @@ export class StationsServiceLambda implements StationsService {
     };
   }
 
-  async addPorts(_stationId: string, _payload: AddPortsRequest, _callerId: string): Promise<ApiPort[]> {
-    throw new ServiceError('addPorts is not implemented for Lambda service', 501, 'NOT_IMPLEMENTED');
+  async addPorts(stationId: string, payload: AddPortsRequest, callerId: string): Promise<ApiPort[]> {
+    logger.debug('Invoking ports write lambda: insertStationPorts', {
+      stationId,
+      portsCount: payload.ports.length,
+      callerId,
+    });
+    const result = await LAMBDA_INVOKER.invokeJson<
+      { data: LambdaInsertStationPortsSuccessData } | LambdaErrorResponse
+    >(
+      env.stationsPortsWriteLambdaFunctionName,
+      wrapLambdaRequest<LambdaInsertStationPortsData, Record<string, never>>('insertStationPorts', callerId, {
+        stationId,
+        ports: payload.ports.map(({ portCode }) => ({
+          code: portCode,
+          lastMeterKw: 0,
+        })),
+      })
+    );
+    if (isLambdaErrorPayload(result)) {
+      throwFromStationsLambdaError(result);
+    }
+
+    const createdPorts = mapLambdaInsertStationPortsResponse(result.data);
+    if (createdPorts) {
+      return createdPorts;
+    }
+
+    const createdPortKeys = mapLambdaCreatedPortKeys(result.data);
+    if (createdPortKeys.length === 0) {
+      return [];
+    }
+
+    const ports = await this.getPortRows(stationId, callerId);
+    const portsByKey = new Map(
+      ports
+        .filter((port): port is LambdaPortDynamoRow & { entity_key: string } => typeof port.entity_key === 'string')
+        .map((port) => [port.entity_key, port])
+    );
+
+    return createdPortKeys.map((portKey) => {
+      const port = portsByKey.get(portKey);
+      if (!port) {
+        throw new ServiceError('stations ports lambda: created port not found after insert', 502, 'INVALID_RESPONSE');
+      }
+      return mapLambdaPortRow(port);
+    });
   }
 
-  async deletePort(_stationId: string, _portId: string, _callerId: string): Promise<void> {
-    throw new ServiceError('deletePort is not implemented for Lambda service', 501, 'NOT_IMPLEMENTED');
+  async deletePort(stationId: string, portId: string, callerId: string): Promise<void> {
+    const portKey = await this.resolvePortKey(stationId, portId, callerId);
+
+    logger.debug('Invoking ports write lambda: deleteStationPorts', {
+      stationId,
+      portId,
+      portKey,
+      callerId,
+    });
+    const result = await LAMBDA_INVOKER.invokeJson<
+      { data: LambdaDeleteStationPortsSuccessData } | LambdaErrorResponse
+    >(
+      env.stationsPortsWriteLambdaFunctionName,
+      wrapLambdaRequest<LambdaDeleteStationPortsData, Record<string, never>>('deleteStationPorts', callerId, {
+        stationId,
+        portKeys: [portKey],
+      })
+    );
+    if (isLambdaErrorPayload(result)) {
+      throwFromStationsLambdaError(result);
+    }
+
+    const deletedPorts = mapLambdaDeleteStationPortsResponse(result.data);
+    if (!deletedPorts.some((port) => port.port_key === portKey)) {
+      throw new ServiceError('stations ports lambda: invalid delete response', 502, 'INVALID_RESPONSE');
+    }
   }
 
   async deleteStation(stationId: string, callerId: string): Promise<AdminDeleteStationResponse> {
