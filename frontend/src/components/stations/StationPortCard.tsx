@@ -7,6 +7,7 @@ import EasySpinner from "../EasySpinner";
 export interface StationPortCardProps {
     port: StationPort;
     isUpdating: boolean;
+    isLocked: boolean;
     canDelete?: boolean;
     onDelete?: () => void;
 }
@@ -23,7 +24,7 @@ const DetailLine = ({ label, value }: { label: string; value: string | number })
     </div>
 );
 
-const StationPortCard: FC<StationPortCardProps> = ({ port, isUpdating, canDelete, onDelete }) => {
+const StationPortCard: FC<StationPortCardProps> = ({ port, isUpdating, isLocked, canDelete, onDelete }) => {
     const [detailsOpen, setDetailsOpen] = useState(false);
     const panelId = useId();
     const toggleDetails = useCallback(() => setDetailsOpen((v) => !v), []);
@@ -48,6 +49,7 @@ const StationPortCard: FC<StationPortCardProps> = ({ port, isUpdating, canDelete
                         aria-expanded={detailsOpen}
                         aria-controls={panelId}
                         onClick={toggleDetails}
+                        disabled={isLocked}
                     >
                         <span className="sr-only">{detailsOpen ? "Hide port details" : "Show port details"}</span>
                         <span aria-hidden>{detailsOpen ? "−" : "+"}</span>
@@ -66,6 +68,7 @@ const StationPortCard: FC<StationPortCardProps> = ({ port, isUpdating, canDelete
                                     handleClick={onDelete}
                                     size="xs"
                                     color="tertiary"
+                                    isDisabled={isLocked}
                                 />
                             )}
                         </div>
