@@ -21,9 +21,10 @@ export async function fetchStations(params: StationsListParams): Promise<ApiArra
     return response;
 };
 
-export async function fetchStationById(stationId: string): Promise<StationBase> {
+export async function fetchStationById(stationId: string, includePorts: boolean = false): Promise<StationBase> {
     const response = await apiClient.get<ApiResponse<StationBase>>(
         `/support/stations/${stationId}`,
+        { params: { includePorts } },
     );
     return response.data;
 };
@@ -36,7 +37,7 @@ export async function changeStationState(stationId: string, request: ChangeStati
     return response.data;
 };
 
-export async function createStationPorts(stationId: string, ports: StationPortCreate[]): Promise<StationPort[]> {
+export async function addStationPorts(stationId: string, ports: StationPortCreate[]): Promise<StationPort[]> {
     const body: StationPortsCreateRequest = { ports };
     const response = await apiClient.post<ApiResponse<StationPortsCreateResponse>>(
         `/support/stations/${stationId}/ports`,
