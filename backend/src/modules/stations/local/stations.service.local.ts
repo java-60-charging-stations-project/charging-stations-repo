@@ -14,7 +14,6 @@ import type {
   StationBase,
   StationBaseCollectionResponse,
   StationLifecycleState,
-  StationState,
 } from '../stations.types';
 import type { ListStationsParams, StationsService } from '../stations.interface';
 
@@ -224,7 +223,7 @@ export class StationsServiceLocal implements StationsService {
     const created: ApiPort[] = payload.ports.map((item) => ({
       portId: randomUUID(),
       portCode: item.portCode,
-      status: 'FREE',
+      status: 'DISABLED',
       lastMeterKw: 0,
       createdAt: now,
       updatedAt: now,
