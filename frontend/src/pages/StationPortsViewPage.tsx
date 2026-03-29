@@ -63,8 +63,6 @@ const StationPortsViewPage = () => {
                     stationState={stationState}
                     enabled={userRole === "SUPPORT"}
                     fetchPortsFn={fetchStationPorts}
-                    fetchOnMount
-                    showFetchButton={false}
                 />
             )}
         </div>

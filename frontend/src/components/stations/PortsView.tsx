@@ -2,23 +2,22 @@ import { useCallback, useEffect, useState, type FC } from "react";
 import type { StationPort, StationState } from "@/types/stations";
 import StationPortCard from "./StationPortCard";
 import { getLogger } from "@/services/logging/logger";
-import SimpleButton from "../SimpleButton";
 import { config } from "@/config/env";
 
 const logger = getLogger("PortsView");
 
-const LABEL = "w-1/3 shrink-0 pr-2 text-right";
+interface PortEditState {
+    portId: string;
+    isUpdating: boolean;
+    error?: string | null;
+}
 
 export interface PortsViewProps {
     stationId: string;
     stationState: StationState;
     enabled: boolean;
-    fetchPortsFn?: (stationId: string) => Promise<StationPort[]>;
+    fetchPortsFn: (stationId: string) => Promise<StationPort[]>;
     deletePortFn?: (stationId: string, portId: string) => Promise<void>;
-    /** When true, loads ports once when the component mounts. */
-    fetchOnMount?: boolean;
-    /** When true, shows the manual fetch control on the right side of the header row. */
-    showFetchButton?: boolean;
 }
 
 const PortsView: FC<PortsViewProps> = ({
@@ -26,94 +25,77 @@ const PortsView: FC<PortsViewProps> = ({
     stationState,
     enabled,
     fetchPortsFn,
-    fetchOnMount = false,
-    showFetchButton = true,
+    deletePortFn,
 }) => {
     const [ports, setPorts] = useState<StationPort[]>([]);
-    const [isLoading, setIsLoading] = useState(fetchOnMount);
     const [error, setError] = useState<string | null>(null);
+    const [editState, setEditState] = useState<PortEditState | null>(null);
 
-    const fetchPorts = useCallback(async (): Promise<void> => {
-        if (!fetchPortsFn) return;
-        setIsLoading(true);
-        setError(null);
+    const deletePort = useCallback(async (portId: string) => {
+        if (!deletePortFn) return;
+        logger.debug(`Deleting port ${portId}`);
+        setEditState({ portId, isUpdating: true, error: null });
         try {
-            const nextPorts = await fetchPortsFn(stationId);
-            setPorts(nextPorts);
+            await deletePortFn(stationId, portId);
+            logger.debug(`Port ${portId} deleted`);
+            setEditState(null);
         } catch (err) {
-            setError(err instanceof Error ? err.message : String(err));
-        } finally {
-            setIsLoading(false);
+            setEditState({ portId, isUpdating: false, error: err instanceof Error ? err.message : String(err) });
+        }finally {
+            setEditState((prev) => prev ? { ...prev, isUpdating: false } : null);
         }
-    }, [fetchPortsFn, stationId]);
+    }, [stationId, deletePortFn]);
 
     useEffect(() => {
-        if (!fetchOnMount || !fetchPortsFn) return;
         let cancelled = false;
-        (async () => {
-            setIsLoading(true);
+        async function loadPorts() {
             setError(null);
             try {
                 const nextPorts = await fetchPortsFn(stationId);
                 if (!cancelled) setPorts(nextPorts);
             } catch (err) {
-                if (!cancelled) {
-                    setError(
-                        err instanceof Error ? err.message : String(err),
-                    );
-                }
-            } finally {
-                if (!cancelled) setIsLoading(false);
+                if (!cancelled)
+                    setError(err instanceof Error ? err.message : String(err));
             }
-        })();
+        }
+        void loadPorts();
         return () => {
             cancelled = true;
         };
-    }, [fetchOnMount, fetchPortsFn, stationId]);
+    }, [fetchPortsFn, stationId]);
 
     const canDeletePort: boolean = enabled && stationState === "OUT_OF_SERVICE";
     const maxPorts = config.maxPortsPerStation;
-    const receivedCount = ports.length;
-    const countDisplay =
-        isLoading && receivedCount === 0 ? "…" : String(receivedCount);
-
+    
+    if (error) {
+        return (
+            <div className="flex flex-col gap-2 text-xs w-full">
+                <p className="w-full text-right text-red-500 text-xs mt-0.5 pr-0">
+                    {error}
+                </p>
+            </div>
+        );
+    }
     return (
         <div className="flex flex-col gap-2 text-xs w-full">
             <div className="mb-1 flex items-center flex-wrap">
-                <label className={LABEL}>Ports count</label>
-                <div className="flex-1 flex items-center justify-between gap-2 min-w-0">
-                    <span className="text-neutral-800 tabular-nums">
-                        {countDisplay} of {maxPorts}
-                    </span>
-                    {showFetchButton && (
-                        <SimpleButton
-                            caption="Fetch ports"
-                            handleClick={() => {
-                                void fetchPorts();
-                            }}
-                            isLoading={isLoading}
-                            isDisabled={!enabled || !fetchPortsFn}
-                            size="xs"
-                            color="tertiary"
-                        />
-                    )}
-                </div>
-                {error && (
-                    <p className="w-full text-right text-red-500 text-xs mt-0.5 pr-0">
-                        {error}
-                    </p>
-                )}
+                <h2>{`Ports: ${ports.length} of ${maxPorts}`}</h2>         
             </div>
             <div className="flex flex-col gap-2">
                 {ports.map((port) => (
+                    <div key={port.portId} className="flex flex-col gap-2">
                     <StationPortCard
-                        key={port.portId}
                         port={port}
+                        isUpdating={editState?.portId === port.portId && editState.isUpdating}
                         canDelete={canDeletePort}
-                        onDelete={() => {
-                            logger.debug(`Deleting port ${port.portId}`);
-                        }}
+                        onDelete={() => deletePort(port.portId)}
                     />
+                    {editState?.portId === port.portId && editState.error && (
+                        <p className="w-full text-right text-red-500 text-xs mt-0.5 pr-0">
+                            {editState.error}
+                        </p>
+                    )}
+                </div>
                 ))}
             </div>
         </div>

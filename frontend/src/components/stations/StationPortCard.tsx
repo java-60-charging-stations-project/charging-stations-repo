@@ -2,9 +2,11 @@ import { useCallback, useId, useState, type FC } from "react";
 import type { StationPort } from "@/types/stations";
 import { PortStateBadge } from "../StatusBadge";
 import SimpleButton from "../SimpleButton";
+import EasySpinner from "../EasySpinner";
 
 export interface StationPortCardProps {
     port: StationPort;
+    isUpdating: boolean;
     canDelete?: boolean;
     onDelete?: () => void;
 }
@@ -21,10 +23,14 @@ const DetailLine = ({ label, value }: { label: string; value: string | number })
     </div>
 );
 
-const StationPortCard: FC<StationPortCardProps> = ({ port, canDelete, onDelete }) => {
+const StationPortCard: FC<StationPortCardProps> = ({ port, isUpdating, canDelete, onDelete }) => {
     const [detailsOpen, setDetailsOpen] = useState(false);
     const panelId = useId();
     const toggleDetails = useCallback(() => setDetailsOpen((v) => !v), []);
+
+    if (isUpdating) {
+        return <EasySpinner size="sm" />;
+    }
 
     return (
         <div className="flex flex-col gap-2 rounded-md border border-neutral-200 bg-white p-2 text-xs">
