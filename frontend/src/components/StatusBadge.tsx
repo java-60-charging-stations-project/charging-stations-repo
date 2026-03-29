@@ -1,5 +1,5 @@
 import type { FC, ReactNode } from "react";
-import type { StationState } from "@/types/stations";
+import type { PortState, StationState } from "@/types/stations";
 import type { UserRole } from "@/types";
 
 export type StatusBadgeProps ={
@@ -113,6 +113,94 @@ export function StationStateBadge({ state }: { state: StationState }) {
             return <StationStatusBadgeDeleted />;
         }
     }
+}
+
+const portBadgeShared = {
+    textSize: "text-[10px]" as const,
+    textWeight: "font-medium" as const,
+    size: "px-2 py-0.5" as const,
+};
+
+export function PortStatusBadgeDisabled() {
+    return (
+        <StatusBadge
+            labelText="DISABLED"
+            color="#d1d5db"
+            textColor="#1f2937"
+            borderColor="#6b7280"
+            {...portBadgeShared}
+        />
+    );
+}
+
+export function PortStatusBadgeFree() {
+    return (
+        <StatusBadge
+            labelText="FREE"
+            color="#bbf7d0"
+            textColor="#14532d"
+            borderColor="#15803d"
+            {...portBadgeShared}
+        />
+    );
+}
+
+export function PortStatusBadgeBooked() {
+    return (
+        <StatusBadge
+            labelText="BOOKED"
+            color="#bfdbfe"
+            textColor="#1e3a8a"
+            borderColor="#1d4ed8"
+            {...portBadgeShared}
+        />
+    );
+}
+
+export function PortStatusBadgeOccupied() {
+    return (
+        <StatusBadge
+            labelText="OCCUPIED"
+            color="#ffedd5"
+            textColor="#9a3412"
+            borderColor="#c2410c"
+            {...portBadgeShared}
+        />
+    );
+}
+
+export function PortStatusBadgeError() {
+    return (
+        <StatusBadge
+            labelText="ERROR"
+            color="#fecaca"
+            textColor="#991b1b"
+            borderColor="#dc2626"
+            {...portBadgeShared}
+        />
+    );
+}
+
+/** Maps a port state to the corresponding status badge element. */
+// Helper export (not a component) — allowed alongside badge components in this module.
+// eslint-disable-next-line react-refresh/only-export-components
+export function mapPortStateToBadge(state: PortState) {
+    switch (state) {
+        case "DISABLED":
+            return <PortStatusBadgeDisabled />;
+        case "FREE":
+            return <PortStatusBadgeFree />;
+        case "BOOKED":
+            return <PortStatusBadgeBooked />;
+        case "OCCUPIED":
+            return <PortStatusBadgeOccupied />;
+        case "ERROR":
+            return <PortStatusBadgeError />;
+    }
+}
+
+export function PortStateBadge({ state }: { state: PortState }) {
+    return mapPortStateToBadge(state);
 }
 
 export function UserStatusBadgeDisabled() {
