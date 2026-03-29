@@ -45,7 +45,6 @@ def station_payload(i: int) -> dict:
                 "offPeakRate": round(random.uniform(1.0, 2.5), 2),
             },
             "location": random_location(),
-            "ports": random.randint(1, 20),
             "hasFreePorts": random.choice([True, False]),
         },
     }

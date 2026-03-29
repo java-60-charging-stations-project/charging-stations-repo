@@ -1,6 +1,5 @@
 import json
 import os
-import random
 import sys
 import boto3
 import dotenv
@@ -11,25 +10,15 @@ AWS_REGION = os.getenv("AWS_REGION", "il-central-1")
 AWS_LAMBDA_HOST_ACCOUNT = os.getenv("AWS_LAMBDA_HOST_ACCOUNT", "852215679994")
 WRITE_PORTS_FUNCTION_NAME = os.getenv("WRITE_PORTS_FUNCTION_NAME", "charging-stations-write-station-ports-dynamo")
 
-
-def build_ports(count: int) -> list[dict]:
-    return [
-        {
-            "code": f"{random.randint(1000, 9999)}",
-            "lastMeterKw": random.randint(0, 5000),
-        }
-        for _ in range(count)
-    ]
-
-
-def invoke_write_ports(station_id: str, ports_count: int) -> None:
+def invoke_delete_port(station_id: str, port_key: str) -> None:
     client = boto3.client("lambda", region_name=AWS_REGION)
+    entity_key = port_key
 
     payload = {
-        "service": {"action": "insertStationPorts", "callerId": "script"},
+        "service": {"action": "deleteStationPorts", "callerId": "script"},
         "data": {
             "stationId": station_id,
-            "ports": build_ports(ports_count),
+            "portKeys": [entity_key],
         },
     }
 
@@ -50,21 +39,19 @@ def invoke_write_ports(station_id: str, ports_count: int) -> None:
         raise SystemExit(
             f"Business error: code={response_json.get('code')} error={response_json.get('error')}"
         )
-    created_port_keys = response_json["data"]["created_ports"]
-    assert isinstance(created_port_keys, list), "created_port_keys must be a list"
-    assert len(created_port_keys) == ports_count, (
-        f"expected {ports_count} ports, got {len(created_port_keys)}"
-    )
+    deleted = response_json["data"]["deleted_ports"]
+    assert isinstance(deleted, list) and len(deleted) == 1, "expected one deleted_ports entry"
     print(json.dumps(response_json))
-    print(f"Created {len(created_port_keys)} ports successfully.")
+    print("Deleted port successfully (port must exist and be in DISABLED state).")
+
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
         print(
-            "Usage: python -m tests.integration.write.write_ports_dynamo_invoker <stationId> <portsCount>"
+            "Usage: python -m tests.integration.write.delete_port_lambda_invoker <stationId> <portKey>\n"
+            "  portKey: full entity_key (e.g. PORT#1234) or port code only (e.g. 1234)\n"
+            "  Note: API only deletes one port per call; item must be DISABLED."
         )
         sys.exit(1)
 
-    station_id = sys.argv[1]
-    ports_count = int(sys.argv[2])
-    invoke_write_ports(station_id, ports_count)
+    invoke_delete_port(sys.argv[1], sys.argv[2])

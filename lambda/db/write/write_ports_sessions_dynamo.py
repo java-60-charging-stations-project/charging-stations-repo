@@ -19,19 +19,17 @@ GET_STATION_FUNCTION_NAME = os.environ["GET_STATION_FUNCTION_NAME"]
 PORT_STATES = ["FREE", "OCCUPIED", "ERROR", "DISABLED", "BOOKED"]
 
 _dynamo = None
-_stations_table = None
+_dynamo_client = None
 _serializer = TypeSerializer()
 
 def to_av_map(py_obj: dict) -> dict:
     return {k: _serializer.serialize(v) for k, v in py_obj.items()}
 
-def get_dynamo_stations_table():
-    global _dynamo, _stations_table
-    if _stations_table is None:
-        _dynamo = boto3.resource("dynamodb", region_name=AWS_REGION)
-        _stations_table = _dynamo.Table(STATIONS_DYNAMO_TABLE)
-    return _stations_table
-
+def get_dynamo_client():
+    global _dynamo_client
+    if _dynamo_client is None:
+        _dynamo_client = boto3.client("dynamodb", region_name=AWS_REGION)
+    return _dynamo_client
 def build_port_item(station_id: str, port: dict) -> PortInstance:
     try:
         port_id = str(uuid.uuid4())
@@ -58,10 +56,10 @@ def build_port_item(station_id: str, port: dict) -> PortInstance:
 
 def insert_station_ports(station_id: str, ports: list[dict]) -> list[dict]:
     try:
-        table = get_dynamo_stations_table()
+        client = get_dynamo_client()
     except Exception as e:
-        logger.error(f"error getting dynamo stations table: {e}")
-        raise LambdaResponseError({"error": f"error getting dynamo stations table: {e}", "code": "DATABASE_ERROR"})
+        logger.error(f"error getting dynamo client: {e}")
+        raise LambdaResponseError({"error": f"error getting dynamo client: {e}", "code": "DATABASE_ERROR"})
     seen_codes: set[str] = set()
     port_items: list[PortInstance] = []
     for p in ports:
@@ -79,15 +77,15 @@ def insert_station_ports(station_id: str, ports: list[dict]) -> list[dict]:
     if not port_items:
         return []
     condition = "attribute_not_exists(station_id) AND attribute_not_exists(entity_key)"
-    client = table.meta.client
     try:
         transact_items = [
             {"Put": {"TableName": STATIONS_DYNAMO_TABLE, "Item": to_av_map(item), "ConditionExpression": condition}}
             for item in port_items
         ]
         client.transact_write_items(TransactItems=transact_items)
-        ports_converted_decimals = [{"last_meter_kw": float(item["last_meter_kw"])} for item in port_items]
-        return ports_converted_decimals
+        for item in port_items:
+            item["last_meter_kw"] = float(item["last_meter_kw"])
+        return port_items
     except ClientError as e:
         err_code = e.response.get("Error", {}).get("Code", "")
         if err_code == "TransactionCanceledException":
@@ -132,10 +130,10 @@ def update_station_ports(action: str, station_id: str, port_keys: list[str], old
         logger.error(f"port keys are required for {action}")
         raise LambdaResponseError({"error": f"port keys are required for {action}", "code": "INVALID_REQUEST"})
     try:
-        table = get_dynamo_stations_table()
+        client = get_dynamo_client()
     except Exception as e:
-        logger.error(f"error getting dynamo stations table: {e}")
-        raise LambdaResponseError({"error": f"error getting dynamo stations table: {e}", "code": "DATABASE_ERROR"})
+        logger.error(f"error getting dynamo client: {e}")
+        raise LambdaResponseError({"error": f"error getting dynamo client: {e}", "code": "DATABASE_ERROR"})
     if action == "supportUpdateStationPorts":
         old_support_states = ["FREE", "ERROR", "DISABLED", "BOOKED"]
         new_support_states = ["FREE", "DISABLED"]
@@ -192,7 +190,7 @@ def update_station_ports(action: str, station_id: str, port_keys: list[str], old
                 }
             })
             updated_ports.append({"station_id": station_id, "port_key": port_key, "new_state": new_state, "updated_at": updated_at})
-        response = table.meta.client.transact_write_items(TransactItems=transact_items)
+        response = client.transact_write_items(TransactItems=transact_items)
         logger.info(f"transaction response: {response}")
         return updated_ports
     except ClientError as e:
@@ -210,11 +208,11 @@ def update_station_ports(action: str, station_id: str, port_keys: list[str], old
 
 def delete_station_ports(station_id: str, port_keys: list[str]) -> list[dict]:
     try:
-        table = get_dynamo_stations_table()
+        client = get_dynamo_client()
     except Exception as e:
-        logger.error(f"error getting dynamo stations table for delete: {e}")
+        logger.error(f"error getting dynamo client for delete: {e}")
         raise LambdaResponseError(
-            {"error": f"error getting dynamo stations table: {e}", "code": "DATABASE_ERROR"}
+            {"error": f"error getting dynamo client: {e}", "code": "DATABASE_ERROR"}
         )
     if len(port_keys) != 1:
         logger.error(f"Only one port can be deleted at a time: {len(port_keys)}")
@@ -223,10 +221,16 @@ def delete_station_ports(station_id: str, port_keys: list[str]) -> list[dict]:
     deleted_ports: list[dict] = []
     try:
         for port_key in port_keys:
-            table.delete_item(
-                Key={"station_id": station_id, "entity_key": port_key},
-                ConditionExpression="attribute_exists(entity_key) AND state = :disabled",
-                ExpressionAttributeValues={":disabled": "DISABLED"},
+            entity_key = f"PORT#{port_key}"
+            client.delete_item(
+                TableName=STATIONS_DYNAMO_TABLE,
+                Key={
+                    "station_id": {"S": station_id},
+                    "entity_key": {"S": entity_key},
+                },
+                ConditionExpression="attribute_exists(entity_key) AND #s = :disabled",
+                ExpressionAttributeNames={"#s": "state"},
+                ExpressionAttributeValues={":disabled": {"S": "DISABLED"}},
             )
             deleted_ports.append({"station_id": station_id, "port_key": port_key, "deleted_at": deleted_at})
         return deleted_ports
@@ -303,10 +307,10 @@ def build_session_object(session_data: dict) -> PortSessionInstance:
 
 def create_session(session_data: list[dict]) -> list[str]:
     try:
-        table = get_dynamo_stations_table()
+        client = get_dynamo_client()
     except Exception as e:
-        logger.error(f"error getting dynamo sessions table: {e}")
-        raise LambdaResponseError({"error": f"error getting dynamo sessions table: {e}", "code": "DATABASE_ERROR"})
+        logger.error(f"error getting dynamo client: {e}")
+        raise LambdaResponseError({"error": f"error getting dynamo client: {e}", "code": "DATABASE_ERROR"})
     session_ids: list[str] = []
     for session in session_data:
         session_object, port_key = build_session_object(session)
@@ -316,7 +320,6 @@ def create_session(session_data: list[dict]) -> list[str]:
         now = datetime.now().isoformat()
         logger.info(f"Session object built successfully: {session_object}")
         try:
-            client = table.meta.client
             client.transact_write_items(
                 TransactItems=[
                     {"ConditionCheck": {"TableName": STATIONS_DYNAMO_TABLE, "Key": 
