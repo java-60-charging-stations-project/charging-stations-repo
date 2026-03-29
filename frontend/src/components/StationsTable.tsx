@@ -165,7 +165,7 @@ const StationsTable: FC<StationsTableProps> =({ fetchFn, detailPath }) => {
                             <td>
                                 <StationStateBadge state={station.state} />
                             </td>
-                            <td>{station.ports}</td>
+                            <td>{station.portsCount}</td>
                         </tr>
                     ))}
                 </tbody>

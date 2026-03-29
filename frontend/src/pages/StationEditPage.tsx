@@ -1,20 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
 import { getLogger } from "@/services/logging";
 import {
-    addStationPorts as adminAddStationPorts,
     createStation,
     fetchStationById as adminFetchStationById,
     changeStationState as adminChangeStationState,
     deleteStation,
 } from "@/services/api/adminApi";
 import {
-    addStationPorts as supportAddStationPorts,
     fetchStationById as supportFetchStationById,
     changeStationState as supportChangeStationState,
 } from "@/services/api/supportApi";
 import type { AdminCreateStationRequest, StationState } from "@/types/stations";
 import { useForm, type SubmitHandler } from "react-hook-form";
-import { CURRENCY_CODE, CURRENCY_NAME, MAX_PORTS_PER_STATION } from "@/types/constants";
+import { CURRENCY_CODE, CURRENCY_NAME } from "@/types/constants";
 import NavButton from "@/components/NavButton";
 import { StationStateBadge } from "@/components/StatusBadge";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -22,7 +20,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 const logger = getLogger('StationEditPage');
 
-type StationFormData = Omit<AdminCreateStationRequest, 'code'> & { ports: number };
+type StationFormData = Omit<AdminCreateStationRequest, 'code'>;
 
 const LABEL = "w-1/3 shrink-0 pr-2 text-right";
 
@@ -39,7 +37,6 @@ interface StationStateActionsProps {
     stationState: StationState;
     updatedAt: string;
     userRole: string | null;
-    ports: number;
     maxPowerKw: number;
     peakRate: number;
     offPeakRate: number;
@@ -49,7 +46,7 @@ interface StationStateActionsProps {
 
 const StationStateActions: React.FC<StationStateActionsProps> = ({
     stationId, stationState, updatedAt, userRole,
-    ports, maxPowerKw, peakRate, offPeakRate,
+    maxPowerKw, peakRate, offPeakRate,
     onStateChanged, onDeleted,
 }) => {
     const [error, setError] = useState<string | null>(null);
@@ -85,7 +82,6 @@ const StationStateActions: React.FC<StationStateActionsProps> = ({
 
     const handleActivate = () => {
         const issues: string[] = [];
-        if (!ports || ports <= 0) issues.push("Ports count must be greater than 0");
         if (!maxPowerKw || maxPowerKw <= 0) issues.push("Max power (kW) must be greater than 0");
         if (!peakRate || peakRate <= 0) issues.push("High rate must be greater than 0");
         if (!offPeakRate || offPeakRate <= 0) issues.push("Low rate must be greater than 0");
@@ -161,32 +157,16 @@ const StationEditPage = () => {
     const [stationUpdatedAt, setStationUpdatedAt] = useState<string>("");
     const navigate = useNavigate();
 
-    const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<StationFormData>({
-        defaultValues: { ports: 0 },
-    });
+    const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<StationFormData>();
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [submitSuccess, setSubmitSuccess] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
-    const [isAddPortsModalOpen, setIsAddPortsModalOpen] = useState(false);
-    const [portsToAdd, setPortsToAdd] = useState(1);
-    const [addPortsError, setAddPortsError] = useState<string | null>(null);
-    const [isAddingPorts, setIsAddingPorts] = useState(false);
 
     const isLocked = isViewMode || isSubmitting || submitSuccess;
-    const currentPorts = watch("ports");
     const watchedMaxPowerKw = watch("maxPowerKw");
+
     const watchedPeakRate = watch("ratePlan.peakRate");
     const watchedOffPeakRate = watch("ratePlan.offPeakRate");
-    const normalizedCurrentPorts = Number.isFinite(currentPorts) ? currentPorts : 0;
-    const maxAddablePorts = Math.max(0, MAX_PORTS_PER_STATION - normalizedCurrentPorts);
-    const hasRolePermissionForAddPorts =
-        (userRole === "SUPPORT" && currentStationState === "OUT_OF_SERVICE") ||
-        (userRole === "ADMIN" && currentStationState === "INACTIVE");
-    const isAddPortsButtonDisabled =
-        !isViewMode ||
-        !hasRolePermissionForAddPorts ||
-        normalizedCurrentPorts > MAX_PORTS_PER_STATION ||
-        isAddingPorts;
 
     useEffect(() => {
         setIsSupportUser(userRole === "SUPPORT");
@@ -208,7 +188,6 @@ const StationEditPage = () => {
                 address: station.address,
                 location: station.location as AdminCreateStationRequest['location'],
                 maxPowerKw: station.maxPowerKw as number,
-                ports: station.ports,
                 ratePlan: station.ratePlan as AdminCreateStationRequest['ratePlan'],
                 siteTechnician: station.siteTechnician,
                 phone: station.phone,
@@ -228,9 +207,8 @@ const StationEditPage = () => {
         setSubmitError(null);
         try {
             const code = `${data.owner}=+=${data.city}=+=${data.address}`;
-            const { ports: initialPorts, ...fields } = data;
             const createPayload: AdminCreateStationRequest = {
-                ...fields,
+                ...data,
                 code,
                 ratePlan: {
                     ...data.ratePlan,
@@ -238,12 +216,8 @@ const StationEditPage = () => {
                     currencyName: CURRENCY_NAME,
                 },
             };
-            logger.debug('Create station payload (no ports)', createPayload);
-            const { stationId } = await createStation(createPayload);
-            const n = Number(initialPorts);
-            if (Number.isInteger(n) && n > 0) {
-                await adminAddStationPorts(stationId, n);
-            }
+            logger.debug('Create station payload', createPayload);
+            await createStation(createPayload);
             setSubmitSuccess(true);
         } catch (err) {
             const message = err instanceof Error ? err.message : "An unexpected error occurred";
@@ -253,36 +227,6 @@ const StationEditPage = () => {
 
     const ratesTitle = `Rates in ${CURRENCY_CODE}`;
     const backPath = isSupportUser ? "/support/stations" : "/admin/stations";
-
-    const openAddPortsModal = () => {
-        setAddPortsError(null);
-        setPortsToAdd(maxAddablePorts > 0 ? 1 : 0);
-        setIsAddPortsModalOpen(true);
-    };
-
-    const handleAddPortsConfirm = async () => {
-        if (!stationId) return;
-
-        if (!Number.isInteger(portsToAdd) || portsToAdd < 1 || portsToAdd > maxAddablePorts) {
-            setAddPortsError(`Add ports from 1 to ${maxAddablePorts}`);
-            return;
-        }
-
-        setAddPortsError(null);
-        setIsAddingPorts(true);
-        const addPorts = useSupportStationApi
-            ? supportAddStationPorts
-            : adminAddStationPorts;
-        try {
-            await addPorts(stationId, portsToAdd);
-            await loadStation();
-            setIsAddPortsModalOpen(false);
-        } catch (err) {
-            setAddPortsError(err instanceof Error ? err.message : "Failed to add ports");
-        } finally {
-            setIsAddingPorts(false);
-        }
-    };
 
     return (
         <div className="max-w-md mx-auto mt-5 p-4 text-[9px] leading-tight rounded-lg shadow-md flex flex-col space-y-3">
@@ -388,35 +332,6 @@ const StationEditPage = () => {
                         })}
                     />
                 </FieldRow>
-                <FieldRow label="Ports" error={errors.ports?.message}>
-                    <div className="flex items-center gap-2">
-                        <input
-                            type="number"
-                            step={1}
-                            min={0}
-                            max={MAX_PORTS_PER_STATION}
-                            className="w-full"
-                            disabled={isLocked}
-                            {...register("ports", {
-                                valueAsNumber: true,
-                                required: "Ports count is required",
-                                min: { value: 0, message: `Minimum is 0` },
-                                max: { value: MAX_PORTS_PER_STATION, message: `Maximum is ${MAX_PORTS_PER_STATION}` },
-                            })}
-                        />
-                        {isViewMode && (
-                            <button
-                                type="button"
-                                className="shrink-0 bg-blue-500 text-white px-2 py-1 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
-                                disabled={isAddPortsButtonDisabled}
-                                onClick={openAddPortsModal}
-                            >
-                                Add ports
-                            </button>
-                        )}
-                    </div>
-                </FieldRow>
-                {addPortsError && <p className="text-red-500 text-xs mt-0.5">{addPortsError}</p>}
                 <FieldRow label="Technician Name">
                     <input className="w-full" disabled={isLocked} {...register("siteTechnician")} />
                 </FieldRow>
@@ -458,55 +373,12 @@ const StationEditPage = () => {
                     stationState={currentStationState}
                     updatedAt={stationUpdatedAt}
                     userRole={userRole}
-                    ports={normalizedCurrentPorts}
                     maxPowerKw={watchedMaxPowerKw}
                     peakRate={watchedPeakRate}
                     offPeakRate={watchedOffPeakRate}
                     onStateChanged={loadStation}
                     onDeleted={() => navigate(backPath)}
                 />
-            )}
-            {isAddPortsModalOpen && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-md shadow-lg w-full max-w-sm p-4 text-xs">
-                        <h2 className="text-sm font-semibold mb-3">Add ports</h2>
-                        <label className="block mb-1">
-                            Add ports from 1 to {maxAddablePorts}
-                        </label>
-                        <input
-                            type="number"
-                            min={1}
-                            max={maxAddablePorts}
-                            step={1}
-                            className="w-full mb-2"
-                            value={portsToAdd}
-                            onChange={(e) => setPortsToAdd(Number(e.target.value))}
-                            disabled={isAddingPorts}
-                        />
-                        {addPortsError && <p className="text-red-500 text-xs mb-2">{addPortsError}</p>}
-                        <div className="flex justify-end gap-2">
-                            <button
-                                type="button"
-                                className="px-3 py-1 rounded-md border border-neutral-300"
-                                onClick={() => {
-                                    setIsAddPortsModalOpen(false);
-                                    setAddPortsError(null);
-                                }}
-                                disabled={isAddingPorts}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="button"
-                                className="px-3 py-1 rounded-md bg-blue-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                                onClick={handleAddPortsConfirm}
-                                disabled={isAddingPorts}
-                            >
-                                OK
-                            </button>
-                        </div>
-                    </div>
-                </div>
             )}
         </div>
     );

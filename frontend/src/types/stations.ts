@@ -23,9 +23,7 @@ export interface StationBase {
     siteTechnician: string | null;
     location?: Location;
     maxPowerKw: number | null;
-    ports: number;
-    occupiedPorts?: number;
-    blockedUntil?: string | null;
+    portsCount: number;
     state: StationState;
     ratePlan?: RatePlan;
     createdAt: string;
@@ -71,7 +69,7 @@ export interface StationsListParams {
 
 // PORTS
 export type PortState = 'DISABLED' | 'FREE' | 'BOOKED' | 'OCCUPIED' | 'ERROR';
-  
+
 export type StationPort = {
     portId: string,
     portCode: string,

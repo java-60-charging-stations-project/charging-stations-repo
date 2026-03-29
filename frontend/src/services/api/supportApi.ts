@@ -36,14 +36,6 @@ export async function changeStationState(stationId: string, request: ChangeStati
     return response.data;
 };
 
-export async function addStationPorts(stationId: string, deltaPorts: number): Promise<{ updatedAt: string; ports: number; occupiedPorts: number; }> {
-    const response = await apiClient.patch<ApiResponse<{ updatedAt: string; ports: number; occupiedPorts: number; }>>(
-        `/support/stations/${stationId}/ports`,
-        { deltaPorts },
-    );
-    return response.data;
-};
-
 export async function createStationPorts(stationId: string, ports: StationPortCreate[]): Promise<StationPort[]> {
     const body: StationPortsCreateRequest = { ports };
     const response = await apiClient.post<ApiResponse<StationPortsCreateResponse>>(
