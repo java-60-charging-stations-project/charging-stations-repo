@@ -58,10 +58,7 @@ export type StationBase = {
     ratePlan?: RatePlan;
     createdAt: string;
     updatedAt: string;
-};
-
-export type StationWithPorts = StationBase & {
-    ports: StationPort[];
+    ports?: StationPort[];
 };
 
 export type AdminCreateStationRequest = {
