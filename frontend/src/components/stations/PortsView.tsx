@@ -3,6 +3,7 @@ import type { StationPort, StationState } from "@/types/stations";
 import StationPortCard from "./StationPortCard";
 import { getLogger } from "@/services/logging/logger";
 import { config } from "@/config/env";
+import EasySpinner from "../EasySpinner";
 
 const logger = getLogger("PortsView");
 
@@ -30,6 +31,25 @@ const PortsView: FC<PortsViewProps> = ({
     const [ports, setPorts] = useState<StationPort[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [editState, setEditState] = useState<PortEditState | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
+    
+    const loadPorts = useCallback(async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const nextPorts = await fetchPortsFn(stationId);
+            setPorts(nextPorts);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : String(err));
+        }
+        finally {
+            setIsLoading(false);
+        }
+    }, [fetchPortsFn, stationId]);
+    
+    useEffect(() => {
+        void loadPorts();
+    }, [loadPorts]);
 
     const deletePort = useCallback(async (portId: string) => {
         if (!deletePortFn) return;
@@ -38,34 +58,18 @@ const PortsView: FC<PortsViewProps> = ({
         try {
             await deletePortFn(stationId, portId);
             logger.debug(`Port ${portId} deleted`);
+            //await loadPorts();
+            setPorts((prev) => prev.filter((port) => port.portId !== portId));
+            logger.debug(`Port ${portId} manually removed from list`);
             setEditState(null);
         } catch (err) {
             setEditState({ portId, isUpdating: false, error: err instanceof Error ? err.message : String(err) });
-        }finally {
-            setEditState((prev) => prev ? { ...prev, isUpdating: false } : null);
         }
     }, [stationId, deletePortFn]);
 
-    useEffect(() => {
-        let cancelled = false;
-        async function loadPorts() {
-            setError(null);
-            try {
-                const nextPorts = await fetchPortsFn(stationId);
-                if (!cancelled) setPorts(nextPorts);
-            } catch (err) {
-                if (!cancelled)
-                    setError(err instanceof Error ? err.message : String(err));
-            }
-        }
-        void loadPorts();
-        return () => {
-            cancelled = true;
-        };
-    }, [fetchPortsFn, stationId]);
-
     const canDeletePort: boolean = enabled && stationState === "OUT_OF_SERVICE";
     const maxPorts = config.maxPortsPerStation;
+    const isLocked = isLoading || (editState?.isUpdating ?? false);
     
     if (error) {
         return (
@@ -75,6 +79,10 @@ const PortsView: FC<PortsViewProps> = ({
                 </p>
             </div>
         );
+    }
+
+    if (isLoading) {
+        return <EasySpinner size="lg" />;
     }
     return (
         <div className="flex flex-col gap-2 text-xs w-full">
@@ -87,6 +95,7 @@ const PortsView: FC<PortsViewProps> = ({
                     <StationPortCard
                         port={port}
                         isUpdating={editState?.portId === port.portId && editState.isUpdating}
+                        isLocked={isLocked}
                         canDelete={canDeletePort}
                         onDelete={() => deletePort(port.portId)}
                     />
