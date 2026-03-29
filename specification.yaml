@@ -406,7 +406,6 @@ paths:
               phone: null
               email: null
               maxPowerKw: 150
-              ports: 4
       responses:
         '201':
           description: Charging station created successfully
@@ -469,7 +468,7 @@ paths:
                     latitude: 37.419734
                     longitude: -122.0827784
                   state: ACTIVE
-                  ports: 8
+                  portsCount: 8
                   ratePlan:
                     currencyCode: ILS
                     currencyName: Israeli Shekel
@@ -564,48 +563,6 @@ paths:
           $ref: '#/components/responses/ErrorResponse'
         '503':
           $ref: '#/components/responses/ServiceUnavailableResponse'
-
-  /admin/stations/{stationId}/ports:
-    patch:
-      operationId: updateAdminStationPorts
-      summary: Add station ports (admin)
-      description: |
-        **Implemented** on gateway. Increments total port count by `deltaPorts`.
-        Non-local: invokes write Lambda action `update_station_ports` with a single operation
-        (`station_id`, `delta`, `event_id`), then **GET** the station via read Lambda to build the response
-        (`updatedAt`, `ports`, `occupiedPorts`).
-      security:
-        - bearerAuth: []
-      x-roles: [ADMIN]
-      parameters:
-        - name: stationId
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateStationPortsRequest'
-      responses:
-        '200':
-          description: Ports updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/StationPortsUpdateResponse'
-        '400':
-          $ref: '#/components/responses/BadRequestResponse'
-        '401':
-          $ref: '#/components/responses/UnauthenticatedResponse'
-        '403':
-          $ref: '#/components/responses/ForbiddenResponse'
-        '404':
-          $ref: '#/components/responses/ErrorResponse'
-        '500':
-          $ref: '#/components/responses/ErrorResponse'
 
   /sessions/all:
     get:
@@ -1172,7 +1129,7 @@ paths:
     get:
       operationId: getSupportStationById
       summary: Get support station by ID
-      description: Returns support station information for a charging station. Requires Cognito JWT and **SUPPORT** group.
+      description: Returns support station information for a charging station, including the full list of ports. Requires Cognito JWT and **SUPPORT** group.
       security:
         - bearerAuth: []
       parameters:
@@ -1184,11 +1141,11 @@ paths:
             type: string
       responses:
         '200':
-          description: Support station details
+          description: Support station details with ports array
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/StationBaseSingleResponse'
+                $ref: '#/components/schemas/StationSupportSingleResponse'
         '401':
           $ref: '#/components/responses/UnauthenticatedResponse'
         '403':
@@ -1243,19 +1200,47 @@ paths:
           $ref: '#/components/responses/ServiceUnavailableResponse'
 
   /support/stations/{stationId}/ports:
-    patch:
-      operationId: updateSupportStationPorts
-      summary: Add station ports (support)
-      description: |
-        **Implemented** on gateway. Same behavior as admin port update, restricted to **SUPPORT** group.
-        Uses write Lambda `update_station_ports` then read Lambda **getStationById** for the response body.
+    get:
+      operationId: listSupportStationPorts
+      summary: Get ports for a station (support)
+      description: Returns all ports belonging to the given station. Requires Cognito JWT and **SUPPORT** group.
       security:
         - bearerAuth: []
-      x-roles: [TECH_SUPPORT]
+      x-roles: [SUPPORT]
       parameters:
         - name: stationId
           in: path
           required: true
+          description: Station identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of station ports
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StationPortsListApiResponse'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          $ref: '#/components/responses/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
+    post:
+      operationId: createSupportStationPorts
+      summary: Create ports for a station (support)
+      description: Creates one or more ports for the given station. Requires Cognito JWT and **SUPPORT** group.
+      security:
+        - bearerAuth: []
+      x-roles: [SUPPORT]
+      parameters:
+        - name: stationId
+          in: path
+          required: true
+          description: Station identifier
           schema:
             type: string
       requestBody:
@@ -1263,14 +1248,18 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateStationPortsRequest'
+              $ref: '#/components/schemas/StationPortsCreateRequest'
+            example:
+              ports:
+                - portCode: PORT-A1
+                - portCode: PORT-A2
       responses:
-        '200':
-          description: Ports updated
+        '201':
+          description: Ports created successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/StationPortsUpdateResponse'
+                $ref: '#/components/schemas/StationPortsCreateApiResponse'
         '400':
           $ref: '#/components/responses/BadRequestResponse'
         '401':
@@ -1279,6 +1268,43 @@ paths:
           $ref: '#/components/responses/ForbiddenResponse'
         '404':
           $ref: '#/components/responses/ErrorResponse'
+        '409':
+          $ref: '#/components/responses/ConflictResponse'
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
+
+  /support/stations/{stationId}/ports/{portId}:
+    delete:
+      operationId: deleteSupportStationPort
+      summary: Delete a port from a station (support)
+      description: Permanently removes a port from the station. Requires Cognito JWT and **SUPPORT** group.
+      security:
+        - bearerAuth: []
+      x-roles: [SUPPORT]
+      parameters:
+        - name: stationId
+          in: path
+          required: true
+          description: Station identifier
+          schema:
+            type: string
+        - name: portId
+          in: path
+          required: true
+          description: Port identifier
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Port deleted successfully
+        '401':
+          $ref: '#/components/responses/UnauthenticatedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          $ref: '#/components/responses/ErrorResponse'
+        '409':
+          $ref: '#/components/responses/ConflictResponse'
         '500':
           $ref: '#/components/responses/ErrorResponse'
 
@@ -1765,7 +1791,7 @@ components:
         - phone
         - email
         - siteTechnician
-        - ports
+        - portsCount
         - state
         - createdAt
         - updatedAt
@@ -1799,9 +1825,10 @@ components:
           type: number
           format: float
           nullable: true
-        ports:
+        portsCount:
           type: integer
           minimum: 0
+          description: Total number of ports registered at this station.
         occupiedPorts:
           type: integer
           minimum: 0
@@ -1835,7 +1862,7 @@ components:
         email: null
         siteTechnician: Station technician
         maxPowerKw: 150
-        ports: 8
+        portsCount: 8
         location:
           latitude: 37.419734
           longitude: -122.0827784
@@ -1879,6 +1906,98 @@ components:
             $ref: '#/components/schemas/StationBase'
         meta:
           $ref: '#/components/schemas/PaginationMeta'
+
+    StationPort:
+      type: object
+      description: A physical charging port belonging to a station.
+      required: [portId, portCode, status, lastMeterKw, createdAt, updatedAt]
+      properties:
+        portId:
+          type: string
+          description: Unique port identifier.
+        portCode:
+          type: string
+          description: Human-readable port code (e.g. PORT-A1).
+        status:
+          type: string
+          enum: [DISABLED, FREE, BOOKED, OCCUPIED, ERROR]
+        lastMeterKw:
+          type: number
+          format: float
+          description: Last recorded meter value in kW.
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    StationPortCreate:
+      type: object
+      required: [portCode]
+      properties:
+        portCode:
+          type: string
+          description: Human-readable port code to assign to the new port.
+
+    StationPortsCreateRequest:
+      type: object
+      required: [ports]
+      properties:
+        ports:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/StationPortCreate'
+
+    StationSupportProjection:
+      description: >
+        Station record returned to the SUPPORT role. Extends StationBase with a required
+        `ports` array containing the full port details for the station.
+      allOf:
+        - $ref: '#/components/schemas/StationBase'
+        - type: object
+          required: [ports]
+          properties:
+            ports:
+              type: array
+              items:
+                $ref: '#/components/schemas/StationPort'
+
+    StationSupportSingleResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/StationSupportProjection'
+
+    StationPortsListApiResponse:
+      type: object
+      description: Response envelope for GET /support/stations/{stationId}/ports.
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [ports]
+          properties:
+            ports:
+              type: array
+              items:
+                $ref: '#/components/schemas/StationPort'
+
+    StationPortsCreateApiResponse:
+      type: object
+      description: Response envelope for POST /support/stations/{stationId}/ports.
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [ports]
+          properties:
+            ports:
+              type: array
+              items:
+                $ref: '#/components/schemas/StationPort'
 
     StationDetailedSingleResponse:
       type: object
@@ -2289,37 +2408,6 @@ components:
           example: 200
         data:
           $ref: '#/components/schemas/ChargingSessionRecord'
-
-    UpdateStationPortsRequest:
-      type: object
-      required: [deltaPorts]
-      properties:
-        deltaPorts:
-          type: integer
-          minimum: 1
-          description: Number of physical ports to add (must be positive).
-
-    StationPortsUpdateData:
-      type: object
-      required: [updatedAt, ports, occupiedPorts]
-      properties:
-        updatedAt:
-          type: string
-          format: date-time
-        ports:
-          type: integer
-        occupiedPorts:
-          type: integer
-
-    StationPortsUpdateResponse:
-      type: object
-      required: [code, data]
-      properties:
-        code:
-          type: integer
-          example: 200
-        data:
-          $ref: '#/components/schemas/StationPortsUpdateData'
 
     CreateBookingRequest:
       type: object
