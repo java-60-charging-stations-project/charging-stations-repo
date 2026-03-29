@@ -4,6 +4,7 @@ import StationPortCard from "./StationPortCard";
 import { getLogger } from "@/services/logging/logger";
 import { config } from "@/config/env";
 import EasySpinner from "../EasySpinner";
+import SimpleButton from "../SimpleButton";
 
 const logger = getLogger("PortsView");
 
@@ -86,8 +87,15 @@ const PortsView: FC<PortsViewProps> = ({
     }
     return (
         <div className="flex flex-col gap-2 text-xs w-full">
-            <div className="mb-1 flex items-center flex-wrap">
-                <h2>{`Ports: ${ports.length} of ${maxPorts}`}</h2>         
+            <div className="mb-1 flex justify-between items-center flex-wrap">
+                <h2 className="text-sm font-bold">{`Ports: ${ports.length} of ${maxPorts}`}</h2>  
+                <SimpleButton
+                    caption="Reload"
+                    handleClick={() => void loadPorts()}
+                    size="xs"
+                    color="secondary"
+                    isDisabled={isLocked}
+                />
             </div>
             <div className="flex flex-col gap-2">
                 {ports.map((port) => (
