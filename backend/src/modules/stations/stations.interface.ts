@@ -23,7 +23,7 @@ export interface ListStationsParams {
 export interface StationsService {
   list(params: ListStationsParams, callerId: string): Promise<StationBaseCollectionResponse>;
 
-  getById(stationId: string, callerId: string): Promise<StationBase>;
+  getById(stationId: string, callerId: string, includePorts?: boolean): Promise<StationBase>;
 
   getPorts(stationId: string, callerId: string): Promise<ApiPort[]>;
 

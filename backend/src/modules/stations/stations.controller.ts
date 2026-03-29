@@ -82,8 +82,9 @@ export class StationsController {
 
   getById = async (req: Request, res: Response) => {
     const stationId = idSchema.parse(req.params.stationId);
+    const includePorts = req.query.includePorts === 'true';
     const callerId = req.user?.sub ?? '';
-    const data = await this.service.getById(stationId, callerId);
+    const data = await this.service.getById(stationId, callerId, includePorts);
     if (!data) {
       return res
         .status(404)

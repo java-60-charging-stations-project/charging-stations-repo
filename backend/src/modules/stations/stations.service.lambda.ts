@@ -101,7 +101,7 @@ export class StationsServiceLambda implements StationsService {
     return { data: stations, meta };
   }
 
-  async getById(stationId: string, callerId: string): Promise<StationBase> {
+  async getById(stationId: string, callerId: string, includePorts?: boolean): Promise<StationBase> {
     logger.debug('Invoking stations lambda: getById', { stationId, callerId });
     const result = await LAMBDA_INVOKER.invokeJson<{ data: LambdaStation | null } | LambdaErrorResponse>(
       env.stationsLambdaFunctionName,
@@ -113,7 +113,11 @@ export class StationsServiceLambda implements StationsService {
     if (!result.data) {
       throw new ResourceNotFoundError('Station not found');
     }
-    return mapLambdaStation(result.data);
+    const station = mapLambdaStation(result.data);
+    if (includePorts) {
+      station.ports = await this.getPorts(stationId, callerId);
+    }
+    return station;
   }
 
   async getPorts(stationId: string, callerId: string): Promise<ApiPort[]> {
@@ -201,7 +205,7 @@ export class StationsServiceLambda implements StationsService {
     const station = await this.getById(stationId, callerId);
     return {
       updatedAt: station.updatedAt,
-      ports: station.ports,
+      portsCount: station.portsCount,
       occupiedPorts: station.occupiedPorts ?? 0,
     };
   }

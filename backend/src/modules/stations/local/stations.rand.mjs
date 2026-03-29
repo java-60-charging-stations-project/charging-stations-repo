@@ -33,9 +33,6 @@ const MIN_RATE = 1.1;
 const MAX_RATE = 3.9;
 const RATE_STEP = 0.1;
 
-const MIN_PORTS = 0;
-const MAX_PORTS = 25;
-
 const MIN_POWER_KW = 55;
 const MAX_POWER_KW = 355;
 
@@ -46,7 +43,7 @@ const STATE_WEIGHTS = [
   { weight: 2, value: 'OUT_OF_SERVICE' },
 ];
 
-const FREE_PORTS_PROBABILITY = 0.8;
+const PORT_STATUSES = ['DISABLED', 'FREE', 'BOOKED', 'OCCUPIED', 'ERROR'];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -75,16 +72,42 @@ function randomPhone() {
   return '0' + faker.string.numeric(9);
 }
 
+/** Returns the portsCount for a station based on its state. */
+function portsCountForState(state) {
+  if (state === 'ACTIVE') {
+    return faker.helpers.arrayElement([3, 4, 5]);
+  }
+  if (state === 'INACTIVE') {
+    return 0;
+  }
+  // OUT_OF_SERVICE: 0-5
+  return faker.number.int({ min: 0, max: 5 });
+}
+
+/** Generates an array of port objects for a station. */
+function generatePorts(count, createdAt, updatedAt) {
+  return Array.from({ length: count }, (_, i) => ({
+    portId: faker.string.uuid(),
+    portCode: `PORT-${String.fromCharCode(65 + Math.floor(i / 9))}${(i % 9) + 1}`,
+    status: faker.helpers.arrayElement(PORT_STATUSES),
+    lastMeterKw: parseFloat(faker.number.float({ min: 0, max: 100, fractionDigits: 1 }).toFixed(1)),
+    createdAt,
+    updatedAt,
+  }));
+}
+
 // ── Generator ─────────────────────────────────────────────────────────────────
 
 function createRandomStation() {
   const city = faker.helpers.arrayElement(CITIES);
   const owner = faker.helpers.arrayElement(OWNERS);
-  const ports = faker.number.int({ min: MIN_PORTS, max: MAX_PORTS });
   const state = faker.helpers.weightedArrayElement(STATE_WEIGHTS);
-  const hasFreePorts =
-    ports === 0 ? false : faker.datatype.boolean({ probability: FREE_PORTS_PROBABILITY });
+  const portsCount = portsCountForState(state);
   const { peakRate, offPeakRate } = randomRates();
+  const createdAt = faker.date.past({ years: 3 }).toISOString();
+  const updatedAt = faker.date.recent({ days: 90 }).toISOString();
+  const ports = generatePorts(portsCount, createdAt, updatedAt);
+  const hasFreePorts = ports.some((p) => p.status === 'FREE');
 
   return {
     id: faker.string.uuid(),
@@ -101,7 +124,7 @@ function createRandomStation() {
       longitude: faker.number.float({ min: 34.2, max: 35.9, fractionDigits: 6 }),
     },
     maxPowerKw: faker.number.int({ min: MIN_POWER_KW, max: MAX_POWER_KW, multipleOf: 5 }),
-    ports,
+    portsCount,
     state,
     ratePlan: {
       currencyCode: CURRENCY_CODE,
@@ -109,9 +132,10 @@ function createRandomStation() {
       peakRate,
       offPeakRate,
     },
-    createdAt: faker.date.past({ years: 3 }).toISOString(),
-    updatedAt: faker.date.recent({ days: 90 }).toISOString(),
+    createdAt,
+    updatedAt,
     hasFreePorts,
+    ports,
   };
 }
 

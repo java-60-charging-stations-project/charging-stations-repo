@@ -47,7 +47,7 @@ export function updateStationPortsLocal(stationId: string, deltaPorts: number): 
   if (deltaPorts <= 0) {
     throw new BadRequestError('deltaPorts must be positive');
   }
-  station.ports += deltaPorts;
+  station.portsCount += deltaPorts;
   station.occupiedPorts = station.occupiedPorts ?? 0;
   station.updatedAt = new Date().toISOString();
   return station;
@@ -90,23 +90,28 @@ export class StationsServiceLocal implements StationsService {
     const totalItems = stations.length;
     const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
     const start = (page - 1) * pageSize;
-    const paged = stations.slice(start, start + pageSize).map((s) => ({
+    const paged = stations.slice(start, start + pageSize).map(({ ports: _ports, ...s }) => ({
       ...s,
-      hasFreePorts: (s.ports - (s.occupiedPorts ?? 0)) > 0,
+      hasFreePorts: (s.portsCount - (s.occupiedPorts ?? 0)) > 0,
     }));
 
     return { data: paged, meta: { page, pageSize, totalItems, totalPages } };
   }
 
-  async getById(stationId: string, _callerId: string): Promise<StationBase> {
+  async getById(stationId: string, _callerId: string, includePorts?: boolean): Promise<StationBase> {
     const station = STATIONS.find((s) => s.id === stationId);
     if (!station) {
       throw new ResourceNotFoundError('Station not found');
     }
-    return {
-      ...station,
-      hasFreePorts: (station.ports - (station.occupiedPorts ?? 0)) > 0,
+    const { ports: storedPorts, ...rest } = station;
+    const result: StationBase = {
+      ...rest,
+      hasFreePorts: (rest.portsCount - (rest.occupiedPorts ?? 0)) > 0,
     };
+    if (includePorts) {
+      result.ports = storedPorts ?? [];
+    }
+    return result;
   }
 
   async getPorts(stationId: string, _callerId: string): Promise<ApiPort[]> {
@@ -114,15 +119,7 @@ export class StationsServiceLocal implements StationsService {
     if (!station) {
       throw new ResourceNotFoundError('Station not found');
     }
-    const n = Math.max(0, station.ports ?? 0);
-    return Array.from({ length: n }, (_, i) => ({
-      portId: `PORT#${String(i + 1).padStart(3, '0')}`,
-      portCode: `P${i + 1}`,
-      status: 'FREE',
-      lastMeterKw: 0,
-      createdAt: station.createdAt,
-      updatedAt: station.updatedAt,
-    }));
+    return station.ports ?? [];
   }
 
   async create(
@@ -143,7 +140,7 @@ export class StationsServiceLocal implements StationsService {
       email: payload.email,
       siteTechnician: payload.siteTechnician,
       maxPowerKw: 0,
-      ports: 0,
+      portsCount: 0,
       occupiedPorts: 0,
       blockedUntil: null,
       state: 'INACTIVE',
@@ -151,6 +148,7 @@ export class StationsServiceLocal implements StationsService {
       createdAt: now,
       updatedAt: now,
       location: payload.location,
+      ports: [],
     };
 
     STATIONS.push(newStation);
@@ -192,13 +190,13 @@ export class StationsServiceLocal implements StationsService {
       throw new ResourceNotFoundError('Station not found');
     }
 
-    station.ports = (station.ports ?? 0) + deltaPorts;
+    station.portsCount = (station.portsCount ?? 0) + deltaPorts;
     station.occupiedPorts = station.occupiedPorts ?? 0;
     station.updatedAt = new Date().toISOString();
 
     return {
       updatedAt: station.updatedAt,
-      ports: station.ports,
+      portsCount: station.portsCount,
       occupiedPorts: station.occupiedPorts,
     };
   }
