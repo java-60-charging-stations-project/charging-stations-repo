@@ -20,7 +20,6 @@ import { config } from '@/config/env';
 import { parseJwt } from "./jwtService";
 import type { AuthDataType, AuthPayload, UserRole } from "@/types";
 import { NotConfirmedError } from "@/types/errors";
-import { ADMIN_GROUP_NAME, SUPPORT_GROUP_NAME } from "@/types/constants";
 
 const logger = getLogger("authService");
 
@@ -114,10 +113,10 @@ export const resendConfirmationCode = async (username: string) => {
 }
 
 function getUserRole(userGroups: string[]): UserRole {
-  if (userGroups.includes(ADMIN_GROUP_NAME)) {
+  if (userGroups.includes(config.adminGroupName)) {
     return "ADMIN";
   }
-  if (userGroups.includes(SUPPORT_GROUP_NAME)) {
+  if (userGroups.includes(config.supportGroupName)) {
     return "SUPPORT";
   }
   return "USER";

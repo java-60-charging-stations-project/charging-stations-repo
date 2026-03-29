@@ -1,6 +1,6 @@
 import type { ApiArrayResponse, ApiMetadata } from "@/types/apiTypes";
 import type { StationBase, StationsListParams, StationState } from "@/types/stations";
-import { DEFAULT_PAGE_SIZE } from "@/types/constants";
+import { config } from "@/config/env";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
 
@@ -20,7 +20,7 @@ export function useStationsQuery(
     const state = (searchParams.get('state') ?? undefined) as StationState | undefined;
     const orderBy = searchParams.get('orderBy') ?? undefined;
     const page = Number(searchParams.get('page') ?? "1") || 1;
-    const pageSize = Number(searchParams.get('pageSize') ?? String(DEFAULT_PAGE_SIZE)) || DEFAULT_PAGE_SIZE;
+    const pageSize = Number(searchParams.get('pageSize') ?? String(config.defaultPageSize)) || config.defaultPageSize;
 
     const refresh = () => setRefreshToken(c => c + 1);
     

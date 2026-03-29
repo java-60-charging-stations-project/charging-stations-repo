@@ -12,7 +12,7 @@ import {
 } from "@/services/api/supportApi";
 import type { AdminCreateStationRequest, StationState } from "@/types/stations";
 import { useForm, type SubmitHandler } from "react-hook-form";
-import { CURRENCY_CODE, CURRENCY_NAME } from "@/types/constants";
+import { config } from "@/config/env";
 import NavButton from "@/components/NavButton";
 import { StationStateBadge } from "@/components/StatusBadge";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -212,8 +212,8 @@ const StationEditPage = () => {
                 code,
                 ratePlan: {
                     ...data.ratePlan,
-                    currencyCode: CURRENCY_CODE,
-                    currencyName: CURRENCY_NAME,
+                    currencyCode: config.currency.code,
+                    currencyName: config.currency.name,
                 },
             };
             logger.debug('Create station payload', createPayload);
@@ -225,7 +225,7 @@ const StationEditPage = () => {
         }
     };
 
-    const ratesTitle = `Rates in ${CURRENCY_CODE}`;
+    const ratesTitle = `Rates in ${config.currency.code}`;
     const backPath = isSupportUser ? "/support/stations" : "/admin/stations";
 
     return (
