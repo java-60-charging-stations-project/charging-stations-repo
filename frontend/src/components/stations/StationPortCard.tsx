@@ -1,6 +1,7 @@
 import { useCallback, useId, useState, type FC } from "react";
 import type { StationPort } from "@/types/stations";
 import { PortStateBadge } from "../StatusBadge";
+import SimpleButton from "../SimpleButton";
 
 export interface StationPortCardProps {
     port: StationPort;
@@ -52,15 +53,16 @@ const StationPortCard: FC<StationPortCardProps> = ({ port, canDelete, onDelete }
                         <DetailLine label="Last meter (kW)" value={port.lastMeterKw} />
                         <DetailLine label="Created" value={formatDateTime(port.createdAt)} />
                         <DetailLine label="Updated" value={formatDateTime(port.updatedAt)} />
-                        {canDelete && onDelete && (
-                            <button
-                                type="button"
-                                className="flex h-7 w-7 items-center justify-center rounded border border-neutral-300 bg-neutral-50 text-base leading-none text-neutral-700 hover:bg-neutral-100"
-                                onClick={onDelete}
-                            >
-                                <span className="sr-only">Delete port</span>
-                            </button>
-                        )}
+                        <div className="flex items-center justify-between">
+                            {canDelete && onDelete && (
+                                <SimpleButton
+                                    caption="Delete port"
+                                    handleClick={onDelete}
+                                    size="xs"
+                                    color="tertiary"
+                                />
+                            )}
+                        </div>
                     </div>
                 )}
             </div>
