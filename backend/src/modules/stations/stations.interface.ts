@@ -1,4 +1,5 @@
 import type {
+  AddPortsRequest,
   AdminCreateStationRequest,
   AdminCreateStationResponse,
   AdminDeleteStationResponse,
@@ -37,6 +38,10 @@ export interface StationsService {
   ): Promise<AdminUpdateStationStateResponse>;
 
   updateStationPorts(stationId: string, deltaPorts: number, callerId: string): Promise<AdminUpdateStationPortsResponse>;
+
+  addPorts(stationId: string, payload: AddPortsRequest, callerId: string): Promise<ApiPort[]>;
+
+  deletePort(stationId: string, portId: string, callerId: string): Promise<void>;
 
   deleteStation(stationId: string, callerId: string): Promise<AdminDeleteStationResponse>;
 }

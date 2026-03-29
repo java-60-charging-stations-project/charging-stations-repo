@@ -279,6 +279,16 @@ export interface AdminUpdateStationStateRequest {
   newState: StationLifecycleState;
 }
 
+/** Single item inside StationPortsCreateRequest.ports */
+export interface AddPortInput {
+  portCode: string;
+}
+
+/** Request body for POST /support/stations/{stationId}/ports */
+export interface AddPortsRequest {
+  ports: AddPortInput[];
+}
+
 export function mapLambdaPortRow(row: LambdaPortDynamoRow): ApiPort {
   const portId = row.port_id ?? row.entity_key ?? row.code;
   return {

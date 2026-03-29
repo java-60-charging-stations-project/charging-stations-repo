@@ -2,7 +2,9 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { BadRequestError, ConflictError, ResourceNotFoundError } from '../../../common/serviceErrors';
 import { DEFAULT_PAGE_SIZE } from '../../../common/constants';
+import { randomUUID } from 'node:crypto';
 import type {
+  AddPortsRequest,
   AdminCreateStationRequest,
   AdminCreateStationResponse,
   AdminDeleteStationResponse,
@@ -199,6 +201,62 @@ export class StationsServiceLocal implements StationsService {
       portsCount: station.portsCount,
       occupiedPorts: station.occupiedPorts,
     };
+  }
+
+  async addPorts(stationId: string, payload: AddPortsRequest, _callerId: string): Promise<ApiPort[]> {
+    const station = STATIONS.find((s) => s.id === stationId);
+    if (!station) {
+      throw new ResourceNotFoundError('Station not found');
+    }
+
+    if (station.state !== 'INACTIVE' && station.state !== 'OUT_OF_SERVICE') {
+      throw new ConflictError(`Cannot add ports while station is in ${station.state} state`);
+    }
+
+    const existingCodes = new Set((station.ports ?? []).map((p) => p.portCode));
+    for (const item of payload.ports) {
+      if (existingCodes.has(item.portCode)) {
+        throw new ConflictError(`Port code ${item.portCode} already exists on this station`);
+      }
+    }
+
+    const now = new Date().toISOString();
+    const created: ApiPort[] = payload.ports.map((item) => ({
+      portId: randomUUID(),
+      portCode: item.portCode,
+      status: 'FREE',
+      lastMeterKw: 0,
+      createdAt: now,
+      updatedAt: now,
+    }));
+
+    station.ports = [...(station.ports ?? []), ...created];
+    station.portsCount = station.ports.length;
+    station.updatedAt = now;
+
+    return created;
+  }
+
+  async deletePort(stationId: string, portId: string, _callerId: string): Promise<void> {
+    const station = STATIONS.find((s) => s.id === stationId);
+    if (!station) {
+      throw new ResourceNotFoundError('Station not found');
+    }
+
+    if (station.state !== 'INACTIVE' && station.state !== 'OUT_OF_SERVICE') {
+      throw new ConflictError(`Cannot delete port while station is in ${station.state} state`);
+    }
+
+    const ports = station.ports ?? [];
+    const idx = ports.findIndex((p) => p.portId === portId);
+    if (idx === -1) {
+      throw new ResourceNotFoundError('Port not found');
+    }
+
+    ports.splice(idx, 1);
+    station.ports = ports;
+    station.portsCount = ports.length;
+    station.updatedAt = new Date().toISOString();
   }
 
   async deleteStation(

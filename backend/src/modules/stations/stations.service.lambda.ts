@@ -14,6 +14,7 @@ import { createLogger } from '../../utils/logger';
 import { wrapLambdaRequest } from '../../common/wrappers';
 import { DEFAULT_PAGE_SIZE } from '../../common/constants';
 import type {
+  AddPortsRequest,
   AdminCreateStationRequest,
   AdminCreateStationResponse,
   AdminDeleteStationResponse,
@@ -208,6 +209,14 @@ export class StationsServiceLambda implements StationsService {
       portsCount: station.portsCount,
       occupiedPorts: station.occupiedPorts ?? 0,
     };
+  }
+
+  async addPorts(_stationId: string, _payload: AddPortsRequest, _callerId: string): Promise<ApiPort[]> {
+    throw new ServiceError('addPorts is not implemented for Lambda service', 501, 'NOT_IMPLEMENTED');
+  }
+
+  async deletePort(_stationId: string, _portId: string, _callerId: string): Promise<void> {
+    throw new ServiceError('deletePort is not implemented for Lambda service', 501, 'NOT_IMPLEMENTED');
   }
 
   async deleteStation(stationId: string, callerId: string): Promise<AdminDeleteStationResponse> {
