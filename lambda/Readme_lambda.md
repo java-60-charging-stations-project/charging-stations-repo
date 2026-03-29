@@ -129,7 +129,7 @@ The template provisions **RDS** (PostgreSQL, IAM auth), **VPC endpoints** (RDS A
 | **charging-stations-write-station-rds** | Write station to RDS; change state; delete (soft); update station `ports` count from stream-forwarded ops. | Admin, cross-account, or Dynamo stream consumer invoke. |
 | **charging-stations-get-station-info** | Read station(s) from RDS. | Backend or cross-account. |
 | **charging-stations-write-station-ports-dynamo** | Insert ports in DynamoDB single-table. | Support / backend. |
-| **charging-stations-station-entities-stream-consumer** | Consume DynamoDB stream (`INSERT`/`REMOVE` for `PORT#...`) and invoke WriteStationRDS to apply `delta` updates. | DynamoDB stream trigger. |
+| **charging-stations-station-entities-stream-consumer** | DynamoDB stream: forward port insert/remove to WriteStationRDS (`update_station_ports`); port BOOKED/OCCUPIED + `user_id` to WriteStationPortsDynamo (`create_session`). | DynamoDB stream trigger. |
 
 **WriteUserRDS** – Cognito triggers (e.g. PostConfirmation) **or** direct invoke with `service` + `data` (e.g. `changeUserStatus`). For Cognito: inserts the user into RDS from `request.userAttributes` and returns the **same event** back. For API invokes: `callerId` in `service`. **full_name**: if missing or Cognito sends `cognito:default_val`, stored as **"Console User"**.
 
@@ -145,7 +145,7 @@ The template provisions **RDS** (PostgreSQL, IAM auth), **VPC endpoints** (RDS A
 - `get_station_by_id`: `data.stationId`.
 - `get_all_stations`: optional `meta` — `city`, `owner`, `state`, `page`, `pageSize`. Response `data` is a list of station objects (**snake_case**); optional **`meta`** with totals/pages when implemented.
 
-**WriteStationPortsDynamo** – `insertStationPorts`: `data.stationId`, `data.ports` (array of `code`, `power`, `lastMeterKw`). Response `data.created_port_keys` (**snake_case**), values are Dynamo `entity_key` strings (`PORT#...`).
+**WriteStationPortsDynamo** – `insertStationPorts`: `data.stationId`, `data.ports` (array of `code`, `lastMeterKw`). Atomic batch via DynamoDB `TransactWriteItems`; response `data.created_ports` (list of `{ last_meter_kw }` per inserted port). See **`lambda_request_responces.md`** for stream consumer, `create_session`, `getPortsByStation`, and other actions.
 
 
 ### Request/response (plain JSON)
@@ -158,8 +158,8 @@ See **`lambda_request_responces.md`** for full shapes. Summary:
 - **ConfirmConsoleCreatedAdmin** – Payload: `username`, `password`, `new_password`, `name` (optional). Response tokens / message or error.
 - **WriteStationRDS** – Success `data` uses **snake_case**: `station_id`, `updated_at`, `deleted_at` (ISO strings where applicable).
 - **GetStationInfo** – Station objects in **snake_case**; `location` as GeoJSON when selected.
-- **WriteStationPortsDynamo** – `insertStationPorts`: success `data.created_port_keys` (list of `PORT#...` strings).
-- **StationEntitiesStreamConsumer** – triggered by Dynamo stream; forwards normalized operations (`event_id`, `station_id`, `delta`) to WriteStationRDS action `update_station_ports`.
+- **WriteStationPortsDynamo** – `insertStationPorts`, port updates, `deleteStationPorts`, `create_session` (see **`lambda_request_responces.md`**).
+- **StationEntitiesStreamConsumer** – Dynamo stream: RDS `update_station_ports` on port insert/remove; `create_session` on port BOOKED/OCCUPIED with `user_id` (details in **`lambda_request_responces.md`**).
 
 ### Run scripts
 

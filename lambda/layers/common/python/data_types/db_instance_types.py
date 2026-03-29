@@ -39,8 +39,7 @@ class StationInstance(TypedDict):
 
 class PortInstance(TypedDict):
     station_id: str
-    code: str
-    entity_key: str | None
+    entity_key: str
     state: Literal["FREE", "OCCUPIED", "ERROR", "DISABLED", "BOOKED"]
     last_meter_kw: float | Decimal | None
     created_at: str | None
