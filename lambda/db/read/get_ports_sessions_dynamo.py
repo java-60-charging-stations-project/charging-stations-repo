@@ -30,20 +30,22 @@ def get_ports_by_station(station_id: str) -> list[PortInstance]:
         raise LambdaResponseError({"error": f"error getting dynamo stations table: {e}", "code": "DATABASE_ERROR"})
     try:
         resp = table.query(
-            KeyConditionExpression=Key("station_id").eq(station_id)
+            KeyConditionExpression=Key("station_id").eq(station_id),
+            FilterExpression="NOT contains(#ek, :sess)",
+            ExpressionAttributeNames={"#ek": "entity_key"},
+            ExpressionAttributeValues={":sess": "#SESSION#"},
         )
         items = resp.get("Items", [])
         ports: list[PortInstance] = []
         for item in items:
-            ports.append(PortInstance(
-                station_id=item["station_id"],
-                entity_key=item["entity_key"],
-                code=item["code"],
-                state=item["state"],
-                last_meter_kw=float(item["last_meter_kw"]),
-                created_at=item["created_at"],
-                updated_at=item["updated_at"],
-            ))
+            ports.append({
+                "station_id": item["station_id"],
+                "entity_key": item["entity_key"],
+                "state": item["state"],
+                "last_meter_kw": float(item["last_meter_kw"]),
+                "created_at": item["created_at"],
+                "updated_at": item["updated_at"],
+            })
         return ports
     except Exception as e:
         logger.error(f"error getting station ports: {e}")

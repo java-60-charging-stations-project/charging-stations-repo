@@ -56,28 +56,47 @@ def build_port_item(station_id: str, port: dict) -> PortInstance:
         logger.error(f"error building port item: {e}")
         raise LambdaResponseError({"error": f"error building port item: {e}", "code": "UNHANDLED_ERROR"})
 
-def insert_station_ports(station_id: str, ports: list[dict]) -> list[str]:
+def insert_station_ports(station_id: str, ports: list[dict]) -> list[dict]:
     try:
         table = get_dynamo_stations_table()
     except Exception as e:
         logger.error(f"error getting dynamo stations table: {e}")
         raise LambdaResponseError({"error": f"error getting dynamo stations table: {e}", "code": "DATABASE_ERROR"})
-    created_port_keys: list[str] = []
-    try:
-        for p in ports:
-            port_item = build_port_item(station_id, p)
-            entity_key = port_item["entity_key"]
-            if entity_key in created_port_keys:
-                continue
-            table.put_item(
-                Item=port_item,
-                ConditionExpression="attribute_not_exists(station_id) AND attribute_not_exists(entity_key)",
+    seen_codes: set[str] = set()
+    port_items: list[PortInstance] = []
+    for p in ports:
+        try:
+            code = str(p["code"])
+        except KeyError as e:
+            logger.error(f"missing key: {e}")
+            raise LambdaResponseError({"error": f"missing key: {e}", "code": "INVALID_REQUEST"})
+        if code in seen_codes:
+            raise LambdaResponseError(
+                {"error": f"duplicate port code in request: {code}", "code": "INVALID_REQUEST"}
             )
-            created_port_keys.append(entity_key)
-        return created_port_keys
+        seen_codes.add(code)
+        port_items.append(build_port_item(station_id, p))
+    if not port_items:
+        return []
+    condition = "attribute_not_exists(station_id) AND attribute_not_exists(entity_key)"
+    client = table.meta.client
+    try:
+        transact_items = [
+            {"Put": {"TableName": STATIONS_DYNAMO_TABLE, "Item": to_av_map(item), "ConditionExpression": condition}}
+            for item in port_items
+        ]
+        client.transact_write_items(TransactItems=transact_items)
+        ports_converted_decimals = [{"last_meter_kw": float(item["last_meter_kw"])} for item in port_items]
+        return ports_converted_decimals
     except ClientError as e:
-        if e.response.get("Error", {}).get("Code") == "ConditionalCheckFailedException":
-            raise LambdaResponseError({"error": f"port already exists: {port_item['entity_key']}", "code": "ALREADY_EXISTS"})
+        err_code = e.response.get("Error", {}).get("Code", "")
+        if err_code == "TransactionCanceledException":
+            logger.error(f"port already exists or conflict: {e}")
+            raise LambdaResponseError({"error": f"port already exists or conflict: {e}", "code": "ALREADY_EXISTS"})
+        logger.error(f"error inserting station ports: {e}")
+        raise LambdaResponseError({"error": f"error inserting station ports: {e}", "code": "DATABASE_ERROR"})
+    except LambdaResponseError:
+        raise
     except Exception as e:
         logger.error(f"error inserting station ports: {e}")
         raise LambdaResponseError({"error": f"error inserting station ports: {e}", "code": "DATABASE_ERROR"})
@@ -177,13 +196,12 @@ def update_station_ports(action: str, station_id: str, port_keys: list[str], old
         logger.info(f"transaction response: {response}")
         return updated_ports
     except ClientError as e:
-        logger.error(f"error updating station ports: {e}")
-        if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
+        err_code = e.response.get("Error", {}).get("Code", "")
+        if err_code == "ConditionalCheckFailedException":
+            logger.error(f"port not found or old state does not match: {e}")
             raise LambdaResponseError({"error": f"port not found or old state does not match: {e}", "code": "INVALID_REQUEST"})
-        elif e.response["Error"]["Code"] == "TransactionCanceledException":
-            raise LambdaResponseError({"error": f"transaction canceled: {e}", "code": "TRANSACTION_CANCELED"})
-        else:
-            raise LambdaResponseError({"error": f"error updating station ports: {e}", "code": "UNHANDLED_ERROR"})
+        logger.error(f"error updating station ports: {e}")
+        raise LambdaResponseError({"error": f"error updating station ports: {e}", "code": "DATABASE_ERROR"})
     except LambdaResponseError:
         raise
     except Exception as e:
@@ -207,7 +225,7 @@ def delete_station_ports(station_id: str, port_keys: list[str]) -> list[dict]:
         for port_key in port_keys:
             table.delete_item(
                 Key={"station_id": station_id, "entity_key": port_key},
-                ConditionExpression="attribute_not_exists(entity_key) OR state = :disabled",
+                ConditionExpression="attribute_exists(entity_key) AND state = :disabled",
                 ExpressionAttributeValues={":disabled": "DISABLED"},
             )
             deleted_ports.append({"station_id": station_id, "port_key": port_key, "deleted_at": deleted_at})
@@ -215,8 +233,6 @@ def delete_station_ports(station_id: str, port_keys: list[str]) -> list[dict]:
     except ClientError as e:
         if e.response.get("Error", {}).get("Code") == "ConditionalCheckFailedException":
             raise LambdaResponseError({"error": f"port not found or state is not DISABLED: {e}", "code": "INVALID_REQUEST"})
-        elif e.response["Error"]["Code"] == "TransactionCanceledException":
-            raise LambdaResponseError({"error": f"transaction canceled: {e}", "code": "TRANSACTION_CANCELED"})
         else:
             raise LambdaResponseError({"error": f"error deleting station port: {e}", "code": "DATABASE_ERROR"})
     except LambdaResponseError:
@@ -366,9 +382,9 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
             case "insertStationPorts":
                 station_id = event["data"]["stationId"]
                 ports = event["data"]["ports"]
-                created_port_keys = insert_station_ports(station_id, ports)
+                created_ports = insert_station_ports(station_id, ports)
                 log_audit("INFO", message="station ports inserted successfully", status="SUCCESS", **audit_base)
-                return SuccessResponsePayload(data={"created_port_keys": created_port_keys}, meta={})
+                return SuccessResponsePayload(data={"created_ports": created_ports}, meta={})
             case "supportUpdateStationPorts":
                 update_data = get_update_data_from_event(event)
                 updated_port_keys = update_station_ports(action, update_data["station_id"], update_data["port_keys"], 
