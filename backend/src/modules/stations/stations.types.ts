@@ -1,4 +1,10 @@
-import type { ApiPort, LambdaPortDynamoRow } from '../../common/lambdaContracts';
+import type {
+  ApiPort,
+  LambdaDeleteDynamoPortSuccessItem,
+  LambdaDeleteStationPortsSuccessData,
+  LambdaInsertStationPortsSuccessData,
+  LambdaPortDynamoRow,
+} from '../../common/lambdaContracts';
 
 export type { ApiPort };
 
@@ -290,7 +296,7 @@ export interface AddPortsRequest {
 }
 
 export function mapLambdaPortRow(row: LambdaPortDynamoRow): ApiPort {
-  const portId = row.port_id ?? row.entity_key ?? row.code;
+  const portId = row.entity_key ?? row.port_id ?? row.code;
   return {
     portId: String(portId),
     portCode: row.code,
@@ -299,4 +305,32 @@ export function mapLambdaPortRow(row: LambdaPortDynamoRow): ApiPort {
     createdAt: row.created_at ?? '',
     updatedAt: row.updated_at ?? '',
   };
+}
+
+export function mapLambdaInsertStationPortsResponse(raw: LambdaInsertStationPortsSuccessData): ApiPort[] | null {
+  if (!Array.isArray(raw.created_ports)) {
+    return null;
+  }
+  return raw.created_ports.map(mapLambdaPortRow);
+}
+
+export function mapLambdaCreatedPortKeys(raw: LambdaInsertStationPortsSuccessData): string[] {
+  if (!Array.isArray(raw.created_port_keys)) {
+    return [];
+  }
+  return raw.created_port_keys
+    .filter((value): value is string => typeof value === 'string' && value.length > 0);
+}
+
+export function mapLambdaDeleteStationPortsResponse(raw: LambdaDeleteStationPortsSuccessData): LambdaDeleteDynamoPortSuccessItem[] {
+  if (!Array.isArray(raw.deleted_ports)) {
+    return [];
+  }
+  return raw.deleted_ports.filter(
+    (item): item is LambdaDeleteDynamoPortSuccessItem =>
+      Boolean(item) &&
+      typeof item.station_id === 'string' &&
+      typeof item.port_key === 'string' &&
+      typeof item.deleted_at === 'string'
+  );
 }

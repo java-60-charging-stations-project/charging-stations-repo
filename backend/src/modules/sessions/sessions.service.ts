@@ -76,7 +76,7 @@ export class MockSessionsService implements SessionsService {
     }
     station.occupiedPorts = station.occupiedPorts ?? 0;
 
-    if (station.occupiedPorts >= station.ports) {
+    if (station.occupiedPorts >= station.portsCount) {
       throw new Error('No free ports available');
     }
 
