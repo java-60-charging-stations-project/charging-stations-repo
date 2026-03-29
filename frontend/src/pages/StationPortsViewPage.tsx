@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { fetchStationById, fetchStationPorts, deleteStationPort } from "@/services/api/supportApi";
+import { fetchStationById, fetchStationPorts, deleteStationPort, addStationPorts } from "@/services/api/supportApi";
 import type { StationState } from "@/types/stations";
 import NavButton from "@/components/NavButton";
 import PortsView from "@/components/stations/PortsView";
@@ -53,7 +53,7 @@ const StationPortsViewPage = () => {
             <div>
                 <NavButton to={backToStationPath} caption="← Back to station" />
             </div>
-            <h1 className="text-center text-sm">Station ports</h1>
+            <h2 className="text-center text-lg font-bold">Station ports</h2>
             {loadError && (
                 <p className="text-red-500 text-xs">{loadError}</p>
             )}
@@ -64,6 +64,7 @@ const StationPortsViewPage = () => {
                     enabled={userRole === "SUPPORT"}
                     fetchPortsFn={fetchStationPorts}
                     deletePortFn={deleteStationPort}
+                    addPortsFn={addStationPorts}
                 />
             )}
         </div>
