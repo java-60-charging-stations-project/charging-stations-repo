@@ -57,6 +57,10 @@ const updateStationStateSchema = z.object({
 const updateStationPortsSchema = z.object({
   deltaPorts: z.number().int().min(1)
 });
+
+const addPortsSchema = z.object({
+  ports: z.array(z.object({ portCode: z.string().min(1) })).min(1),
+});
 function canChangeStatus(
   current: StationState | undefined,
   next: StationState,
@@ -82,8 +86,9 @@ export class StationsController {
 
   getById = async (req: Request, res: Response) => {
     const stationId = idSchema.parse(req.params.stationId);
+    const includePorts = req.query.includePorts === 'true';
     const callerId = req.user?.sub ?? '';
-    const data = await this.service.getById(stationId, callerId);
+    const data = await this.service.getById(stationId, callerId, includePorts);
     if (!data) {
       return res
         .status(404)
@@ -123,6 +128,24 @@ export class StationsController {
 
     const result = await this.service.updateStationPorts(stationId, deltaPorts, callerId);
     res.json({ code: 200, data: result });
+  };
+
+  addPorts = async (req: Request, res: Response) => {
+    const stationId = idSchema.parse(req.params.stationId);
+    const payload = addPortsSchema.parse(req.body);
+    const callerId = req.user?.sub ?? '';
+
+    const ports = await this.service.addPorts(stationId, payload, callerId);
+    res.status(201).json(wrapResponse({ ports }));
+  };
+
+  deletePort = async (req: Request, res: Response) => {
+    const stationId = idSchema.parse(req.params.stationId);
+    const portId = idSchema.parse(req.params.portId);
+    const callerId = req.user?.sub ?? '';
+
+    await this.service.deletePort(stationId, portId, callerId);
+    res.status(204).send();
   };
 
   deleteStation = async (req: Request, res: Response) => {

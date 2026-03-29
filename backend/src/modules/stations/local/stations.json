@@ -1,1262 +1,1701 @@
 [
   {
-    "id": "58db1d4e-ee4a-4855-8b44-bd1899a0e8f5",
-    "code": "RT329WQLWV",
-    "name": "Nahariya deliverables Charging Station",
-    "owner": "ElectroCharge Israel Ltd",
+    "id": "2b3a6cde-9050-46c3-beb7-041f0d2b53e5",
+    "code": "PVGM0L9FDW",
+    "name": "Nahariya initiatives Charging Station",
+    "owner": "SunCharge Energy",
     "city": "Nahariya",
-    "address": "242 Grange Road",
-    "phone": "0486018294",
-    "email": "Lenny.Christiansen62@hotmail.com",
-    "siteTechnician": "Lorenza Botsford",
+    "address": "49490 Brookside",
+    "phone": "0525632336",
+    "email": "Felix_Auer@yahoo.com",
+    "siteTechnician": "Liliana Deckow",
     "location": {
-      "latitude": 32.108233,
-      "longitude": 35.024295
+      "latitude": 33.180414,
+      "longitude": 34.678537
     },
-    "maxPowerKw": 325,
-    "ports": 4,
+    "maxPowerKw": 230,
+    "portsCount": 1,
+    "state": "OUT_OF_SERVICE",
+    "ratePlan": {
+      "currencyCode": "ILS",
+      "currencyName": "Israeli New Shekel",
+      "peakRate": 2.5,
+      "offPeakRate": 1.2
+    },
+    "createdAt": "2024-10-19T23:31:59.427Z",
+    "updatedAt": "2026-01-29T03:35:33.950Z",
+    "hasFreePorts": false,
+    "ports": [
+      {
+        "portId": "c209c289-260f-4e1c-8653-9fd03c9d5901",
+        "portCode": "PORT-A1",
+        "status": "ERROR",
+        "lastMeterKw": 39.9,
+        "createdAt": "2024-10-19T23:31:59.427Z",
+        "updatedAt": "2026-01-29T03:35:33.950Z"
+      }
+    ]
+  },
+  {
+    "id": "139c59db-0663-465e-a3a3-6839c5782167",
+    "code": "GZ2BMR2HVS",
+    "name": "Jerusalem niches Charging Station",
+    "owner": "SunCharge Energy",
+    "city": "Jerusalem",
+    "address": "88706 Walnut Close",
+    "phone": "0870752658",
+    "email": "Anastasia86@yahoo.com",
+    "siteTechnician": "Clyde Thompson",
+    "location": {
+      "latitude": 31.304239,
+      "longitude": 35.224846
+    },
+    "maxPowerKw": 295,
+    "portsCount": 5,
+    "state": "ACTIVE",
+    "ratePlan": {
+      "currencyCode": "ILS",
+      "currencyName": "Israeli New Shekel",
+      "peakRate": 3.7,
+      "offPeakRate": 1.4
+    },
+    "createdAt": "2025-09-28T09:51:57.122Z",
+    "updatedAt": "2026-02-06T11:56:17.112Z",
+    "hasFreePorts": false,
+    "ports": [
+      {
+        "portId": "721eb85b-5124-49cf-b22e-32a639ff83da",
+        "portCode": "PORT-A1",
+        "status": "OCCUPIED",
+        "lastMeterKw": 29.6,
+        "createdAt": "2025-09-28T09:51:57.122Z",
+        "updatedAt": "2026-02-06T11:56:17.112Z"
+      },
+      {
+        "portId": "fe962242-6afc-433e-b600-9ba7ebd72cd4",
+        "portCode": "PORT-A2",
+        "status": "ERROR",
+        "lastMeterKw": 16,
+        "createdAt": "2025-09-28T09:51:57.122Z",
+        "updatedAt": "2026-02-06T11:56:17.112Z"
+      },
+      {
+        "portId": "873e3b33-4899-45c8-b721-f55fa3e49974",
+        "portCode": "PORT-A3",
+        "status": "ERROR",
+        "lastMeterKw": 26.1,
+        "createdAt": "2025-09-28T09:51:57.122Z",
+        "updatedAt": "2026-02-06T11:56:17.112Z"
+      },
+      {
+        "portId": "205fd9d6-2675-4bbc-bc68-987077faad95",
+        "portCode": "PORT-A4",
+        "status": "BOOKED",
+        "lastMeterKw": 33.3,
+        "createdAt": "2025-09-28T09:51:57.122Z",
+        "updatedAt": "2026-02-06T11:56:17.112Z"
+      },
+      {
+        "portId": "7f60a98e-50e2-4c25-8c01-f723b1c2969d",
+        "portCode": "PORT-A5",
+        "status": "DISABLED",
+        "lastMeterKw": 81.4,
+        "createdAt": "2025-09-28T09:51:57.122Z",
+        "updatedAt": "2026-02-06T11:56:17.112Z"
+      }
+    ]
+  },
+  {
+    "id": "d525e071-7d22-4406-85bd-dfd855af32b3",
+    "code": "5LPHTR3LK3",
+    "name": "Netanya relationships Charging Station",
+    "owner": "EverGo Charging Co",
+    "city": "Netanya",
+    "address": "6219 Padberg Pines",
+    "phone": "0015921037",
+    "email": "Kayli_Medhurst75@yahoo.com",
+    "siteTechnician": "Ottilie Rohan",
+    "location": {
+      "latitude": 32.94134,
+      "longitude": 34.726831
+    },
+    "maxPowerKw": 185,
+    "portsCount": 3,
+    "state": "OUT_OF_SERVICE",
+    "ratePlan": {
+      "currencyCode": "ILS",
+      "currencyName": "Israeli New Shekel",
+      "peakRate": 3,
+      "offPeakRate": 1.3
+    },
+    "createdAt": "2023-07-17T14:13:30.158Z",
+    "updatedAt": "2026-01-20T14:04:45.447Z",
+    "hasFreePorts": true,
+    "ports": [
+      {
+        "portId": "cd94dfb9-8cbb-49e4-8fa0-93b525f970a9",
+        "portCode": "PORT-A1",
+        "status": "OCCUPIED",
+        "lastMeterKw": 23.4,
+        "createdAt": "2023-07-17T14:13:30.158Z",
+        "updatedAt": "2026-01-20T14:04:45.447Z"
+      },
+      {
+        "portId": "33ab929f-2d35-4b3d-ab06-bb6e82b40394",
+        "portCode": "PORT-A2",
+        "status": "FREE",
+        "lastMeterKw": 71.4,
+        "createdAt": "2023-07-17T14:13:30.158Z",
+        "updatedAt": "2026-01-20T14:04:45.447Z"
+      },
+      {
+        "portId": "45741d1b-1d9c-4188-81aa-6c8575569b78",
+        "portCode": "PORT-A3",
+        "status": "ERROR",
+        "lastMeterKw": 86,
+        "createdAt": "2023-07-17T14:13:30.158Z",
+        "updatedAt": "2026-01-20T14:04:45.447Z"
+      }
+    ]
+  },
+  {
+    "id": "a91a41c7-b387-46c5-a7c1-ab1da0006fb0",
+    "code": "2C92STJ2CF",
+    "name": "Tel Aviv markets Charging Station",
+    "owner": "ElectroCharge Israel Ltd",
+    "city": "Tel Aviv",
+    "address": "506 E Elm Street",
+    "phone": "0199852114",
+    "email": "Jettie_Volkman7@hotmail.com",
+    "siteTechnician": "Marielle Wiza",
+    "location": {
+      "latitude": 32.807267,
+      "longitude": 34.380647
+    },
+    "maxPowerKw": 205,
+    "portsCount": 3,
     "state": "ACTIVE",
     "ratePlan": {
       "currencyCode": "ILS",
       "currencyName": "Israeli New Shekel",
       "peakRate": 2.8,
-      "offPeakRate": 1.2
+      "offPeakRate": 1.9
     },
-    "createdAt": "2026-03-16T11:45:10.026Z",
-    "updatedAt": "2026-01-01T15:28:27.358Z",
-    "hasFreePorts": true
+    "createdAt": "2025-06-12T11:51:21.943Z",
+    "updatedAt": "2026-01-02T03:33:24.017Z",
+    "hasFreePorts": false,
+    "ports": [
+      {
+        "portId": "701e8098-fbe0-431d-babd-8c5733795db3",
+        "portCode": "PORT-A1",
+        "status": "ERROR",
+        "lastMeterKw": 64.4,
+        "createdAt": "2025-06-12T11:51:21.943Z",
+        "updatedAt": "2026-01-02T03:33:24.017Z"
+      },
+      {
+        "portId": "9b95307f-e56d-4200-a0d9-582ccbaf749e",
+        "portCode": "PORT-A2",
+        "status": "OCCUPIED",
+        "lastMeterKw": 60.4,
+        "createdAt": "2025-06-12T11:51:21.943Z",
+        "updatedAt": "2026-01-02T03:33:24.017Z"
+      },
+      {
+        "portId": "4bc5f1d1-b0cc-471a-b228-fb9b2b89c76b",
+        "portCode": "PORT-A3",
+        "status": "OCCUPIED",
+        "lastMeterKw": 70.3,
+        "createdAt": "2025-06-12T11:51:21.943Z",
+        "updatedAt": "2026-01-02T03:33:24.017Z"
+      }
+    ]
   },
   {
-    "id": "19c0bb82-914c-48a9-b3dd-64a03f7f1f2d",
-    "code": "A2EMOMXTNH",
-    "name": "Holon convergence Charging Station",
-    "owner": "ElectroCharge Israel Ltd",
-    "city": "Holon",
-    "address": "895 N State Street",
-    "phone": "0056244165",
-    "email": "Terrill_Hessel10@yahoo.com",
-    "siteTechnician": "Debbie Botsford",
-    "location": {
-      "latitude": 30.493768,
-      "longitude": 35.211745
-    },
-    "maxPowerKw": 185,
-    "ports": 16,
-    "state": "ACTIVE",
-    "ratePlan": {
-      "currencyCode": "ILS",
-      "currencyName": "Israeli New Shekel",
-      "peakRate": 1.8,
-      "offPeakRate": 1.3
-    },
-    "createdAt": "2023-12-15T16:04:24.554Z",
-    "updatedAt": "2026-03-12T00:59:52.282Z",
-    "hasFreePorts": false
-  },
-  {
-    "id": "6be1816a-5dac-4d60-a669-d3ba9a35a532",
-    "code": "DM5X7HIZV8",
-    "name": "Beer Sheva solutions Charging Station",
-    "owner": "VoltPoint Networks",
-    "city": "Beer Sheva",
-    "address": "463 Marvin Via",
-    "phone": "0968404135",
-    "email": "Archie96@gmail.com",
-    "siteTechnician": "Luther Pfannerstill DDS",
-    "location": {
-      "latitude": 31.088216,
-      "longitude": 34.433464
-    },
-    "maxPowerKw": 85,
-    "ports": 25,
-    "state": "OUT_OF_SERVICE",
-    "ratePlan": {
-      "currencyCode": "ILS",
-      "currencyName": "Israeli New Shekel",
-      "peakRate": 1.8,
-      "offPeakRate": 1.7
-    },
-    "createdAt": "2023-11-20T12:41:50.267Z",
-    "updatedAt": "2026-02-10T00:39:08.691Z",
-    "hasFreePorts": true
-  },
-  {
-    "id": "6058d6b6-9651-4808-a17b-83ed33afae62",
-    "code": "GVMCIY9ZZS",
-    "name": "Beer Sheva e-commerce Charging Station",
-    "owner": "EverGo Charging Co",
-    "city": "Beer Sheva",
-    "address": "70461 Olen Alley",
-    "phone": "0911970715",
-    "email": "Eloise83@gmail.com",
-    "siteTechnician": "Grant Padberg",
-    "location": {
-      "latitude": 29.880153,
-      "longitude": 35.349452
-    },
-    "maxPowerKw": 350,
-    "ports": 4,
-    "state": "OUT_OF_SERVICE",
-    "ratePlan": {
-      "currencyCode": "ILS",
-      "currencyName": "Israeli New Shekel",
-      "peakRate": 3.4,
-      "offPeakRate": 1.5
-    },
-    "createdAt": "2025-03-09T01:16:13.276Z",
-    "updatedAt": "2026-02-05T20:07:53.345Z",
-    "hasFreePorts": true
-  },
-  {
-    "id": "be1bf8fe-48bc-4806-891a-2fc50674dda8",
-    "code": "68VHZ08562",
-    "name": "Hadera paradigms Charging Station",
-    "owner": "VoltPoint Networks",
-    "city": "Hadera",
-    "address": "892 Garett Estate",
-    "phone": "0956315543",
-    "email": "Joel53@hotmail.com",
-    "siteTechnician": "Josephine Tillman",
-    "location": {
-      "latitude": 30.487797,
-      "longitude": 35.017776
-    },
-    "maxPowerKw": 110,
-    "ports": 5,
-    "state": "ACTIVE",
-    "ratePlan": {
-      "currencyCode": "ILS",
-      "currencyName": "Israeli New Shekel",
-      "peakRate": 3.6,
-      "offPeakRate": 2.4
-    },
-    "createdAt": "2025-02-08T01:06:30.267Z",
-    "updatedAt": "2026-01-21T18:05:09.616Z",
-    "hasFreePorts": true
-  },
-  {
-    "id": "9653ba11-0ee1-4881-aeed-8e12a5568c2c",
-    "code": "GO7GKSE4CW",
-    "name": "Netanya infrastructures Charging Station",
-    "owner": "SunCharge Energy",
-    "city": "Netanya",
-    "address": "43777 Willow Close",
-    "phone": "0572888686",
-    "email": "Emelia30@hotmail.com",
-    "siteTechnician": "Helena Stark",
-    "location": {
-      "latitude": 29.752637,
-      "longitude": 35.43866
-    },
-    "maxPowerKw": 210,
-    "ports": 14,
-    "state": "ACTIVE",
-    "ratePlan": {
-      "currencyCode": "ILS",
-      "currencyName": "Israeli New Shekel",
-      "peakRate": 2.6,
-      "offPeakRate": 1.1
-    },
-    "createdAt": "2025-04-23T00:49:50.522Z",
-    "updatedAt": "2026-03-08T17:51:40.334Z",
-    "hasFreePorts": true
-  },
-  {
-    "id": "277fed0b-5cd7-465f-aebf-b14721e27002",
-    "code": "UGGMKA9JFD",
-    "name": "Tel Aviv partnerships Charging Station",
-    "owner": "SunCharge Energy",
-    "city": "Tel Aviv",
-    "address": "8124 Glover Street",
-    "phone": "0069566947",
-    "email": "Olin_Hauck65@gmail.com",
-    "siteTechnician": "Darla Hilpert",
-    "location": {
-      "latitude": 32.936929,
-      "longitude": 35.818215
-    },
-    "maxPowerKw": 280,
-    "ports": 7,
-    "state": "ACTIVE",
-    "ratePlan": {
-      "currencyCode": "ILS",
-      "currencyName": "Israeli New Shekel",
-      "peakRate": 3.2,
-      "offPeakRate": 2.9
-    },
-    "createdAt": "2023-05-13T03:21:06.590Z",
-    "updatedAt": "2026-01-29T21:34:25.529Z",
-    "hasFreePorts": true
-  },
-  {
-    "id": "8c6c4b39-6381-4d50-8002-aac94aacb8d7",
-    "code": "5C9FT8Y4L1",
-    "name": "Ashkelon interfaces Charging Station",
-    "owner": "ElectroCharge Israel Ltd",
-    "city": "Ashkelon",
-    "address": "410 Moen Manor",
-    "phone": "0157101939",
-    "email": "Asha_Armstrong74@yahoo.com",
-    "siteTechnician": "Nadine Kreiger",
-    "location": {
-      "latitude": 32.533066,
-      "longitude": 34.322929
-    },
-    "maxPowerKw": 240,
-    "ports": 10,
-    "state": "OUT_OF_SERVICE",
-    "ratePlan": {
-      "currencyCode": "ILS",
-      "currencyName": "Israeli New Shekel",
-      "peakRate": 2.6,
-      "offPeakRate": 1.4
-    },
-    "createdAt": "2024-02-07T19:08:57.035Z",
-    "updatedAt": "2026-02-10T11:07:23.493Z",
-    "hasFreePorts": true
-  },
-  {
-    "id": "409c58c6-8aab-490e-86c4-80fc4b918bbe",
-    "code": "08W79MR4BJ",
-    "name": "Ashdod large language models Charging Station",
-    "owner": "SunCharge Energy",
-    "city": "Ashdod",
-    "address": "4760 Watsica Station",
-    "phone": "0270701275",
-    "email": "Donald.Mills@hotmail.com",
-    "siteTechnician": "Evie Kunde",
-    "location": {
-      "latitude": 33.098485,
-      "longitude": 35.3412
-    },
-    "maxPowerKw": 230,
-    "ports": 1,
-    "state": "ACTIVE",
-    "ratePlan": {
-      "currencyCode": "ILS",
-      "currencyName": "Israeli New Shekel",
-      "peakRate": 2.6,
-      "offPeakRate": 2.4
-    },
-    "createdAt": "2023-07-10T07:07:52.733Z",
-    "updatedAt": "2026-01-16T18:01:11.071Z",
-    "hasFreePorts": true
-  },
-  {
-    "id": "41ecfdf5-24ba-4276-80fe-2adf1e78d2da",
-    "code": "ORBH49C71X",
-    "name": "Beer Sheva infrastructures Charging Station",
+    "id": "2f684083-dbbb-4e90-bca5-c732fc5fbb0d",
+    "code": "TJFRFYASNB",
+    "name": "Beer Sheva blockchains Charging Station",
     "owner": "ElectroCharge Israel Ltd",
     "city": "Beer Sheva",
-    "address": "3884 Derwent Close",
-    "phone": "0347095411",
-    "email": "Earl_Bogisich66@gmail.com",
-    "siteTechnician": "Mr. Armand Bashirian IV",
+    "address": "23051 Schimmel Place",
+    "phone": "0807504396",
+    "email": "Edmond.Feest@yahoo.com",
+    "siteTechnician": "Sylvan Howe-Kozey DDS",
     "location": {
-      "latitude": 30.6327,
-      "longitude": 34.623572
+      "latitude": 29.870331,
+      "longitude": 34.213527
     },
-    "maxPowerKw": 270,
-    "ports": 0,
-    "state": "INACTIVE",
+    "maxPowerKw": 60,
+    "portsCount": 1,
+    "state": "OUT_OF_SERVICE",
     "ratePlan": {
       "currencyCode": "ILS",
       "currencyName": "Israeli New Shekel",
       "peakRate": 2.2,
       "offPeakRate": 1.6
     },
-    "createdAt": "2025-03-03T17:06:20.793Z",
-    "updatedAt": "2026-01-27T05:45:12.362Z",
-    "hasFreePorts": false
+    "createdAt": "2025-01-03T13:29:53.536Z",
+    "updatedAt": "2026-03-18T06:52:27.303Z",
+    "hasFreePorts": true,
+    "ports": [
+      {
+        "portId": "d4b82330-7c71-4084-be54-872359ef9bc5",
+        "portCode": "PORT-A1",
+        "status": "FREE",
+        "lastMeterKw": 36.6,
+        "createdAt": "2025-01-03T13:29:53.536Z",
+        "updatedAt": "2026-03-18T06:52:27.303Z"
+      }
+    ]
   },
   {
-    "id": "e7403d34-2d8d-4e79-90c4-3268e208df03",
-    "code": "V24R5GH4UX",
-    "name": "Tel Aviv niches Charging Station",
-    "owner": "ElectroCharge Israel Ltd",
-    "city": "Tel Aviv",
-    "address": "1602 Leffler Station",
-    "phone": "0879376031",
-    "email": "Andrea.Heller54@yahoo.com",
-    "siteTechnician": "Jessie Trantow",
-    "location": {
-      "latitude": 30.241298,
-      "longitude": 34.568496
-    },
-    "maxPowerKw": 145,
-    "ports": 25,
-    "state": "ACTIVE",
-    "ratePlan": {
-      "currencyCode": "ILS",
-      "currencyName": "Israeli New Shekel",
-      "peakRate": 3.2,
-      "offPeakRate": 1.4
-    },
-    "createdAt": "2024-04-09T12:01:22.639Z",
-    "updatedAt": "2025-12-29T00:10:00.936Z",
-    "hasFreePorts": true
-  },
-  {
-    "id": "2ef6d78f-c9f0-4033-bf40-06c932498dbf",
-    "code": "EO4J32PKZ2",
-    "name": "Ashdod web services Charging Station",
+    "id": "63f42cf1-0136-4e76-8f08-4bc4c0c61f0f",
+    "code": "OR56V4AGVT",
+    "name": "Holon applications Charging Station",
     "owner": "VoltPoint Networks",
-    "city": "Ashdod",
-    "address": "5510 Effertz Forge",
-    "phone": "0169354540",
-    "email": "Ally5@gmail.com",
-    "siteTechnician": "Jefferey Zieme IV",
+    "city": "Holon",
+    "address": "33386 Watsica Shore",
+    "phone": "0656861674",
+    "email": "Dianne.Ziemann@hotmail.com",
+    "siteTechnician": "Krystel Gleason",
     "location": {
-      "latitude": 33.052189,
-      "longitude": 34.934842
+      "latitude": 30.807547,
+      "longitude": 34.966922
     },
-    "maxPowerKw": 180,
-    "ports": 8,
+    "maxPowerKw": 325,
+    "portsCount": 3,
     "state": "OUT_OF_SERVICE",
     "ratePlan": {
       "currencyCode": "ILS",
       "currencyName": "Israeli New Shekel",
-      "peakRate": 3.7,
-      "offPeakRate": 2.2
+      "peakRate": 3,
+      "offPeakRate": 2.4
     },
-    "createdAt": "2025-04-05T23:32:54.819Z",
-    "updatedAt": "2026-01-02T14:36:58.820Z",
-    "hasFreePorts": true
+    "createdAt": "2026-03-26T08:23:47.618Z",
+    "updatedAt": "2026-02-27T15:47:17.613Z",
+    "hasFreePorts": true,
+    "ports": [
+      {
+        "portId": "7ba00192-318b-46e9-8671-9e91995c91c8",
+        "portCode": "PORT-A1",
+        "status": "OCCUPIED",
+        "lastMeterKw": 46.9,
+        "createdAt": "2026-03-26T08:23:47.618Z",
+        "updatedAt": "2026-02-27T15:47:17.613Z"
+      },
+      {
+        "portId": "1a2ba571-51de-479b-b5a8-c4f4340a9327",
+        "portCode": "PORT-A2",
+        "status": "FREE",
+        "lastMeterKw": 22.6,
+        "createdAt": "2026-03-26T08:23:47.618Z",
+        "updatedAt": "2026-02-27T15:47:17.613Z"
+      },
+      {
+        "portId": "83aecdfe-30e1-4887-862d-4d578d0671b1",
+        "portCode": "PORT-A3",
+        "status": "ERROR",
+        "lastMeterKw": 29.3,
+        "createdAt": "2026-03-26T08:23:47.618Z",
+        "updatedAt": "2026-02-27T15:47:17.613Z"
+      }
+    ]
   },
   {
-    "id": "64170538-9925-43a2-837c-8d8fa2c18e05",
-    "code": "JB7WFELOTC",
-    "name": "Haifa ROI Charging Station",
+    "id": "84b8722f-88b0-442a-b6b6-1ba8c3616328",
+    "code": "NHN17X3SGN",
+    "name": "Haifa metrics Charging Station",
     "owner": "SunCharge Energy",
     "city": "Haifa",
-    "address": "2798 Jade Estates",
-    "phone": "0486316540",
-    "email": "Jeremy34@gmail.com",
-    "siteTechnician": "Lacy Streich",
+    "address": "804 The Sidings",
+    "phone": "0540939082",
+    "email": "Edd14@gmail.com",
+    "siteTechnician": "Zula Lehner",
     "location": {
-      "latitude": 30.49432,
-      "longitude": 34.279166
+      "latitude": 30.285835,
+      "longitude": 35.771586
     },
-    "maxPowerKw": 70,
-    "ports": 2,
+    "maxPowerKw": 180,
+    "portsCount": 3,
     "state": "ACTIVE",
     "ratePlan": {
       "currencyCode": "ILS",
       "currencyName": "Israeli New Shekel",
       "peakRate": 3.7,
-      "offPeakRate": 1.3
+      "offPeakRate": 2.9
     },
-    "createdAt": "2023-06-02T17:33:46.639Z",
-    "updatedAt": "2026-01-24T20:29:04.239Z",
-    "hasFreePorts": true
+    "createdAt": "2025-03-03T14:24:25.336Z",
+    "updatedAt": "2026-03-28T02:09:15.993Z",
+    "hasFreePorts": true,
+    "ports": [
+      {
+        "portId": "ac98f83c-7335-4575-8c4a-e60c813c6712",
+        "portCode": "PORT-A1",
+        "status": "FREE",
+        "lastMeterKw": 63.8,
+        "createdAt": "2025-03-03T14:24:25.336Z",
+        "updatedAt": "2026-03-28T02:09:15.993Z"
+      },
+      {
+        "portId": "9f5b856d-714c-4c86-a001-62dd721a90a7",
+        "portCode": "PORT-A2",
+        "status": "ERROR",
+        "lastMeterKw": 93.7,
+        "createdAt": "2025-03-03T14:24:25.336Z",
+        "updatedAt": "2026-03-28T02:09:15.993Z"
+      },
+      {
+        "portId": "b109a227-ed22-4fef-aab3-912cbdeccc0b",
+        "portCode": "PORT-A3",
+        "status": "DISABLED",
+        "lastMeterKw": 23.4,
+        "createdAt": "2025-03-03T14:24:25.336Z",
+        "updatedAt": "2026-03-28T02:09:15.993Z"
+      }
+    ]
   },
   {
-    "id": "25f19acd-45e0-4a98-9cf6-b51d8b113674",
-    "code": "LLVQGLNSH5",
-    "name": "Beer Sheva networks Charging Station",
-    "owner": "EverGo Charging Co",
-    "city": "Beer Sheva",
-    "address": "74952 Jeramy Point",
-    "phone": "0751638830",
-    "email": "Niko.Predovic@hotmail.com",
-    "siteTechnician": "Lindsey Schmeler V",
-    "location": {
-      "latitude": 31.578291,
-      "longitude": 35.64014
-    },
-    "maxPowerKw": 125,
-    "ports": 25,
-    "state": "ACTIVE",
-    "ratePlan": {
-      "currencyCode": "ILS",
-      "currencyName": "Israeli New Shekel",
-      "peakRate": 3.4,
-      "offPeakRate": 2.6
-    },
-    "createdAt": "2024-11-02T14:20:17.400Z",
-    "updatedAt": "2026-01-12T11:53:47.048Z",
-    "hasFreePorts": true
-  },
-  {
-    "id": "4d275d42-287b-426f-836a-afc551c408ad",
-    "code": "EUGN0P7KDN",
-    "name": "Haifa schemas Charging Station",
-    "owner": "VoltPoint Networks",
-    "city": "Haifa",
-    "address": "8487 E 11th Street",
-    "phone": "0621653092",
-    "email": "Dana96@hotmail.com",
-    "siteTechnician": "Jayden Franey",
-    "location": {
-      "latitude": 32.506116,
-      "longitude": 34.855705
-    },
-    "maxPowerKw": 175,
-    "ports": 10,
-    "state": "INACTIVE",
-    "ratePlan": {
-      "currencyCode": "ILS",
-      "currencyName": "Israeli New Shekel",
-      "peakRate": 2,
-      "offPeakRate": 1.9
-    },
-    "createdAt": "2025-03-10T06:03:06.486Z",
-    "updatedAt": "2025-12-29T23:25:58.888Z",
-    "hasFreePorts": false
-  },
-  {
-    "id": "195be078-3d57-427a-b6c3-6158877036d8",
-    "code": "VHPUBK5F3D",
-    "name": "Beer Sheva systems Charging Station",
+    "id": "b50a8e07-c6de-4c14-9b3f-2a8f98915541",
+    "code": "M1Y6DF7NED",
+    "name": "Jerusalem platforms Charging Station",
     "owner": "GreenDrive EV Solutions",
-    "city": "Beer Sheva",
-    "address": "95812 First Street",
-    "phone": "0277475431",
-    "email": "Hazel.Douglas@gmail.com",
-    "siteTechnician": "Mrs. Abbigail Parker",
+    "city": "Jerusalem",
+    "address": "36648 Elyssa Lodge",
+    "phone": "0824825135",
+    "email": "Nayeli10@hotmail.com",
+    "siteTechnician": "Lula Quitzon",
     "location": {
-      "latitude": 32.972138,
-      "longitude": 35.874476
+      "latitude": 31.653358,
+      "longitude": 34.575572
     },
-    "maxPowerKw": 295,
-    "ports": 21,
-    "state": "INACTIVE",
+    "maxPowerKw": 150,
+    "portsCount": 3,
+    "state": "ACTIVE",
     "ratePlan": {
       "currencyCode": "ILS",
       "currencyName": "Israeli New Shekel",
       "peakRate": 3.6,
-      "offPeakRate": 2.7
+      "offPeakRate": 2.5
     },
-    "createdAt": "2023-07-07T07:57:23.676Z",
-    "updatedAt": "2026-02-12T14:11:49.348Z",
-    "hasFreePorts": false
+    "createdAt": "2025-03-06T13:07:55.694Z",
+    "updatedAt": "2026-02-22T11:41:11.106Z",
+    "hasFreePorts": true,
+    "ports": [
+      {
+        "portId": "1adf4bfd-e9a9-440d-b315-dd3ab2ef7ab1",
+        "portCode": "PORT-A1",
+        "status": "ERROR",
+        "lastMeterKw": 56,
+        "createdAt": "2025-03-06T13:07:55.694Z",
+        "updatedAt": "2026-02-22T11:41:11.106Z"
+      },
+      {
+        "portId": "142f36e9-33b3-4166-b576-5bbb3acf5d77",
+        "portCode": "PORT-A2",
+        "status": "FREE",
+        "lastMeterKw": 7.5,
+        "createdAt": "2025-03-06T13:07:55.694Z",
+        "updatedAt": "2026-02-22T11:41:11.106Z"
+      },
+      {
+        "portId": "f15bdcac-c95d-4bc4-951a-7dfc9c4930d2",
+        "portCode": "PORT-A3",
+        "status": "ERROR",
+        "lastMeterKw": 96.6,
+        "createdAt": "2025-03-06T13:07:55.694Z",
+        "updatedAt": "2026-02-22T11:41:11.106Z"
+      }
+    ]
   },
   {
-    "id": "32867db8-636e-441d-8650-51822f9246ae",
-    "code": "DKLB0EDTM3",
-    "name": "Netanya methodologies Charging Station",
-    "owner": "ElectroCharge Israel Ltd",
-    "city": "Netanya",
-    "address": "8039 Bath Street",
-    "phone": "0777231691",
-    "email": "Johnny.Erdman@hotmail.com",
-    "siteTechnician": "Jody Hamill",
-    "location": {
-      "latitude": 31.408792,
-      "longitude": 35.143225
-    },
-    "maxPowerKw": 80,
-    "ports": 2,
-    "state": "OUT_OF_SERVICE",
-    "ratePlan": {
-      "currencyCode": "ILS",
-      "currencyName": "Israeli New Shekel",
-      "peakRate": 3.9,
-      "offPeakRate": 1.7
-    },
-    "createdAt": "2025-07-14T06:02:20.716Z",
-    "updatedAt": "2026-01-24T19:29:44.805Z",
-    "hasFreePorts": true
-  },
-  {
-    "id": "c59241d2-3b47-430d-9221-47bf18acb80b",
-    "code": "I4JCX5NK6A",
-    "name": "Netanya systems Charging Station",
+    "id": "f40c2a19-1248-4f6b-91fd-a27dc14a0d90",
+    "code": "A0ITFW5NEQ",
+    "name": "Haifa smart contracts Charging Station",
     "owner": "EverGo Charging Co",
-    "city": "Netanya",
-    "address": "989 Maryjane Hill",
-    "phone": "0700742937",
-    "email": "Kathleen.Huel68@yahoo.com",
-    "siteTechnician": "Eryn Doyle",
+    "city": "Haifa",
+    "address": "74217 Howell Harbors",
+    "phone": "0312258359",
+    "email": "Thelma_Hane@hotmail.com",
+    "siteTechnician": "Kiana Larson",
     "location": {
-      "latitude": 31.778997,
-      "longitude": 35.284905
+      "latitude": 30.445574,
+      "longitude": 34.539547
     },
-    "maxPowerKw": 285,
-    "ports": 5,
+    "maxPowerKw": 85,
+    "portsCount": 5,
     "state": "ACTIVE",
     "ratePlan": {
       "currencyCode": "ILS",
       "currencyName": "Israeli New Shekel",
-      "peakRate": 2.8,
-      "offPeakRate": 1.2
+      "peakRate": 3.7,
+      "offPeakRate": 2.9
     },
-    "createdAt": "2023-05-21T00:05:30.143Z",
-    "updatedAt": "2026-02-18T11:25:28.050Z",
-    "hasFreePorts": true
+    "createdAt": "2025-11-08T18:21:27.812Z",
+    "updatedAt": "2026-01-11T16:07:58.269Z",
+    "hasFreePorts": true,
+    "ports": [
+      {
+        "portId": "6bef5e8f-2759-46e8-9f5c-de4a5c75d0e4",
+        "portCode": "PORT-A1",
+        "status": "FREE",
+        "lastMeterKw": 73.5,
+        "createdAt": "2025-11-08T18:21:27.812Z",
+        "updatedAt": "2026-01-11T16:07:58.269Z"
+      },
+      {
+        "portId": "432c121d-ba27-4190-8ee7-e498ebca4904",
+        "portCode": "PORT-A2",
+        "status": "DISABLED",
+        "lastMeterKw": 76.3,
+        "createdAt": "2025-11-08T18:21:27.812Z",
+        "updatedAt": "2026-01-11T16:07:58.269Z"
+      },
+      {
+        "portId": "7e6cc6a1-7397-4f6e-b457-fa0f73a54354",
+        "portCode": "PORT-A3",
+        "status": "BOOKED",
+        "lastMeterKw": 37.5,
+        "createdAt": "2025-11-08T18:21:27.812Z",
+        "updatedAt": "2026-01-11T16:07:58.269Z"
+      },
+      {
+        "portId": "53c0491a-e8a4-4bb5-a6df-1fa3ae737ac5",
+        "portCode": "PORT-A4",
+        "status": "BOOKED",
+        "lastMeterKw": 55.6,
+        "createdAt": "2025-11-08T18:21:27.812Z",
+        "updatedAt": "2026-01-11T16:07:58.269Z"
+      },
+      {
+        "portId": "a8934643-fe33-4e69-8fd2-07c24f3b5c7c",
+        "portCode": "PORT-A5",
+        "status": "FREE",
+        "lastMeterKw": 27.9,
+        "createdAt": "2025-11-08T18:21:27.812Z",
+        "updatedAt": "2026-01-11T16:07:58.269Z"
+      }
+    ]
   },
   {
-    "id": "76cbdd3a-e612-4bab-a2a2-b939e7e09b80",
-    "code": "6ZDICC9EE3",
-    "name": "Jerusalem paradigms Charging Station",
-    "owner": "SunCharge Energy",
-    "city": "Jerusalem",
-    "address": "111 Center Avenue",
-    "phone": "0815629453",
-    "email": "Shawna_Rempel0@hotmail.com",
-    "siteTechnician": "Sammy Kihn",
+    "id": "b7e13971-7dbe-4067-9c0b-61b4cc3d4226",
+    "code": "N1D97WVEBZ",
+    "name": "Beer Sheva paradigms Charging Station",
+    "owner": "GreenDrive EV Solutions",
+    "city": "Beer Sheva",
+    "address": "8992 N East Street",
+    "phone": "0022874156",
+    "email": "Rochelle84@hotmail.com",
+    "siteTechnician": "Mr. Geoffrey Langworth",
     "location": {
-      "latitude": 32.533596,
-      "longitude": 35.208692
+      "latitude": 30.693673,
+      "longitude": 34.627133
     },
-    "maxPowerKw": 125,
-    "ports": 13,
+    "maxPowerKw": 95,
+    "portsCount": 5,
+    "state": "ACTIVE",
+    "ratePlan": {
+      "currencyCode": "ILS",
+      "currencyName": "Israeli New Shekel",
+      "peakRate": 3.9,
+      "offPeakRate": 3.1
+    },
+    "createdAt": "2023-08-04T04:36:26.617Z",
+    "updatedAt": "2026-03-18T06:59:46.355Z",
+    "hasFreePorts": true,
+    "ports": [
+      {
+        "portId": "bccd1df2-5801-4f66-a1b1-2cfcff98f35c",
+        "portCode": "PORT-A1",
+        "status": "ERROR",
+        "lastMeterKw": 11.3,
+        "createdAt": "2023-08-04T04:36:26.617Z",
+        "updatedAt": "2026-03-18T06:59:46.355Z"
+      },
+      {
+        "portId": "5a1f0b96-abe4-451a-ac1e-d6b3768ace5a",
+        "portCode": "PORT-A2",
+        "status": "FREE",
+        "lastMeterKw": 51.5,
+        "createdAt": "2023-08-04T04:36:26.617Z",
+        "updatedAt": "2026-03-18T06:59:46.355Z"
+      },
+      {
+        "portId": "50280aa7-f507-41ee-bac3-44eab30bc93c",
+        "portCode": "PORT-A3",
+        "status": "ERROR",
+        "lastMeterKw": 20.1,
+        "createdAt": "2023-08-04T04:36:26.617Z",
+        "updatedAt": "2026-03-18T06:59:46.355Z"
+      },
+      {
+        "portId": "15b5729e-f022-4bf5-b7e7-847cc90f6822",
+        "portCode": "PORT-A4",
+        "status": "BOOKED",
+        "lastMeterKw": 73.1,
+        "createdAt": "2023-08-04T04:36:26.617Z",
+        "updatedAt": "2026-03-18T06:59:46.355Z"
+      },
+      {
+        "portId": "89eb96bf-8b8b-4cb8-bddd-6038c101b8e2",
+        "portCode": "PORT-A5",
+        "status": "DISABLED",
+        "lastMeterKw": 4.7,
+        "createdAt": "2023-08-04T04:36:26.617Z",
+        "updatedAt": "2026-03-18T06:59:46.355Z"
+      }
+    ]
+  },
+  {
+    "id": "75208981-8caa-458a-abc4-8359cff444a3",
+    "code": "ET3D1GYJ6A",
+    "name": "Haifa communities Charging Station",
+    "owner": "EverGo Charging Co",
+    "city": "Haifa",
+    "address": "328 Homenick Village",
+    "phone": "0596086355",
+    "email": "Dayna.Swaniawski@hotmail.com",
+    "siteTechnician": "Dorothea Weber",
+    "location": {
+      "latitude": 30.529841,
+      "longitude": 34.82588
+    },
+    "maxPowerKw": 275,
+    "portsCount": 5,
+    "state": "OUT_OF_SERVICE",
+    "ratePlan": {
+      "currencyCode": "ILS",
+      "currencyName": "Israeli New Shekel",
+      "peakRate": 1.5,
+      "offPeakRate": 1.2
+    },
+    "createdAt": "2026-01-25T18:09:16.912Z",
+    "updatedAt": "2026-01-25T15:12:48.913Z",
+    "hasFreePorts": false,
+    "ports": [
+      {
+        "portId": "cd740f2b-f36f-47d1-9701-1f5182da2601",
+        "portCode": "PORT-A1",
+        "status": "OCCUPIED",
+        "lastMeterKw": 99,
+        "createdAt": "2026-01-25T18:09:16.912Z",
+        "updatedAt": "2026-01-25T15:12:48.913Z"
+      },
+      {
+        "portId": "1c8ced6b-ef64-4cea-8cc2-cc8734aafead",
+        "portCode": "PORT-A2",
+        "status": "BOOKED",
+        "lastMeterKw": 75.6,
+        "createdAt": "2026-01-25T18:09:16.912Z",
+        "updatedAt": "2026-01-25T15:12:48.913Z"
+      },
+      {
+        "portId": "6d948dfa-819b-45e2-b667-bd64e81e74a5",
+        "portCode": "PORT-A3",
+        "status": "BOOKED",
+        "lastMeterKw": 95.3,
+        "createdAt": "2026-01-25T18:09:16.912Z",
+        "updatedAt": "2026-01-25T15:12:48.913Z"
+      },
+      {
+        "portId": "89cedfe9-259c-4ae5-a5cf-985625caacb3",
+        "portCode": "PORT-A4",
+        "status": "OCCUPIED",
+        "lastMeterKw": 50.4,
+        "createdAt": "2026-01-25T18:09:16.912Z",
+        "updatedAt": "2026-01-25T15:12:48.913Z"
+      },
+      {
+        "portId": "90e6273c-0005-460c-9714-762ed6203b32",
+        "portCode": "PORT-A5",
+        "status": "BOOKED",
+        "lastMeterKw": 84.8,
+        "createdAt": "2026-01-25T18:09:16.912Z",
+        "updatedAt": "2026-01-25T15:12:48.913Z"
+      }
+    ]
+  },
+  {
+    "id": "da5e3101-ad5f-4ce7-9360-92243a563121",
+    "code": "LO8QIDDFPO",
+    "name": "Jerusalem large language models Charging Station",
+    "owner": "EverGo Charging Co",
+    "city": "Jerusalem",
+    "address": "6763 The Green",
+    "phone": "0828682158",
+    "email": "Patience29@gmail.com",
+    "siteTechnician": "Franz Cronin",
+    "location": {
+      "latitude": 30.791182,
+      "longitude": 34.600015
+    },
+    "maxPowerKw": 165,
+    "portsCount": 0,
+    "state": "INACTIVE",
+    "ratePlan": {
+      "currencyCode": "ILS",
+      "currencyName": "Israeli New Shekel",
+      "peakRate": 3.1,
+      "offPeakRate": 3
+    },
+    "createdAt": "2025-07-18T23:48:33.444Z",
+    "updatedAt": "2026-03-07T18:40:23.596Z",
+    "hasFreePorts": false,
+    "ports": []
+  },
+  {
+    "id": "925d60a0-2ead-40d5-b705-eeadd2083c5c",
+    "code": "W5CZLUS4GG",
+    "name": "Ashdod e-commerce Charging Station",
+    "owner": "EverGo Charging Co",
+    "city": "Ashdod",
+    "address": "717 Gus Oval",
+    "phone": "0012267924",
+    "email": "Pete95@gmail.com",
+    "siteTechnician": "Misty Ritchie",
+    "location": {
+      "latitude": 30.056486,
+      "longitude": 34.307105
+    },
+    "maxPowerKw": 160,
+    "portsCount": 5,
+    "state": "ACTIVE",
+    "ratePlan": {
+      "currencyCode": "ILS",
+      "currencyName": "Israeli New Shekel",
+      "peakRate": 2.2,
+      "offPeakRate": 2.1
+    },
+    "createdAt": "2024-01-23T02:42:38.567Z",
+    "updatedAt": "2026-02-02T12:09:17.891Z",
+    "hasFreePorts": true,
+    "ports": [
+      {
+        "portId": "4527cf38-522e-42c7-bd7b-326e80a24652",
+        "portCode": "PORT-A1",
+        "status": "BOOKED",
+        "lastMeterKw": 60.8,
+        "createdAt": "2024-01-23T02:42:38.567Z",
+        "updatedAt": "2026-02-02T12:09:17.891Z"
+      },
+      {
+        "portId": "b2efcbe1-2031-48f0-be88-0dd3695d0f24",
+        "portCode": "PORT-A2",
+        "status": "ERROR",
+        "lastMeterKw": 1.6,
+        "createdAt": "2024-01-23T02:42:38.567Z",
+        "updatedAt": "2026-02-02T12:09:17.891Z"
+      },
+      {
+        "portId": "600184f3-d4d6-4918-8c04-897727d6340c",
+        "portCode": "PORT-A3",
+        "status": "BOOKED",
+        "lastMeterKw": 54,
+        "createdAt": "2024-01-23T02:42:38.567Z",
+        "updatedAt": "2026-02-02T12:09:17.891Z"
+      },
+      {
+        "portId": "09cdd542-c7d4-41ef-bafc-1a3695e12db5",
+        "portCode": "PORT-A4",
+        "status": "FREE",
+        "lastMeterKw": 0.8,
+        "createdAt": "2024-01-23T02:42:38.567Z",
+        "updatedAt": "2026-02-02T12:09:17.891Z"
+      },
+      {
+        "portId": "1d24ab1c-7e54-42e3-8589-948129843fc7",
+        "portCode": "PORT-A5",
+        "status": "BOOKED",
+        "lastMeterKw": 79.1,
+        "createdAt": "2024-01-23T02:42:38.567Z",
+        "updatedAt": "2026-02-02T12:09:17.891Z"
+      }
+    ]
+  },
+  {
+    "id": "7e43027b-671b-4fab-95d0-977878e1e0a2",
+    "code": "QU7PZMKQ3G",
+    "name": "Ashdod interfaces Charging Station",
+    "owner": "EverGo Charging Co",
+    "city": "Ashdod",
+    "address": "464 Hansen Circles",
+    "phone": "0429924494",
+    "email": "Brooke_Breitenberg@gmail.com",
+    "siteTechnician": "Dr. Michael Keebler",
+    "location": {
+      "latitude": 31.013659,
+      "longitude": 35.761354
+    },
+    "maxPowerKw": 295,
+    "portsCount": 3,
+    "state": "OUT_OF_SERVICE",
+    "ratePlan": {
+      "currencyCode": "ILS",
+      "currencyName": "Israeli New Shekel",
+      "peakRate": 3.8,
+      "offPeakRate": 2.2
+    },
+    "createdAt": "2024-04-06T16:38:33.325Z",
+    "updatedAt": "2026-03-28T14:07:39.008Z",
+    "hasFreePorts": false,
+    "ports": [
+      {
+        "portId": "581cd9ed-ee31-4dbf-bc8e-eab129a9714a",
+        "portCode": "PORT-A1",
+        "status": "BOOKED",
+        "lastMeterKw": 87.6,
+        "createdAt": "2024-04-06T16:38:33.325Z",
+        "updatedAt": "2026-03-28T14:07:39.008Z"
+      },
+      {
+        "portId": "528131cb-5f44-4ba7-9e5b-3ac4a7c9839d",
+        "portCode": "PORT-A2",
+        "status": "BOOKED",
+        "lastMeterKw": 62,
+        "createdAt": "2024-04-06T16:38:33.325Z",
+        "updatedAt": "2026-03-28T14:07:39.008Z"
+      },
+      {
+        "portId": "1dc161e2-6c23-4f9c-857b-6206ffe91b8c",
+        "portCode": "PORT-A3",
+        "status": "DISABLED",
+        "lastMeterKw": 38,
+        "createdAt": "2024-04-06T16:38:33.325Z",
+        "updatedAt": "2026-03-28T14:07:39.008Z"
+      }
+    ]
+  },
+  {
+    "id": "c0ca5c63-92db-493b-9f48-df6b87d2f777",
+    "code": "Z4GJM0W5JQ",
+    "name": "Tel Aviv content Charging Station",
+    "owner": "EverGo Charging Co",
+    "city": "Tel Aviv",
+    "address": "78333 Wyman Track",
+    "phone": "0802814519",
+    "email": "Emma29@gmail.com",
+    "siteTechnician": "Beulah Auer I",
+    "location": {
+      "latitude": 31.02635,
+      "longitude": 34.207194
+    },
+    "maxPowerKw": 290,
+    "portsCount": 5,
+    "state": "ACTIVE",
+    "ratePlan": {
+      "currencyCode": "ILS",
+      "currencyName": "Israeli New Shekel",
+      "peakRate": 2,
+      "offPeakRate": 1.1
+    },
+    "createdAt": "2024-03-03T23:00:03.916Z",
+    "updatedAt": "2026-03-23T19:27:15.663Z",
+    "hasFreePorts": true,
+    "ports": [
+      {
+        "portId": "b45b9e96-c62b-4d37-b20f-07ca7f51ebd7",
+        "portCode": "PORT-A1",
+        "status": "OCCUPIED",
+        "lastMeterKw": 96.6,
+        "createdAt": "2024-03-03T23:00:03.916Z",
+        "updatedAt": "2026-03-23T19:27:15.663Z"
+      },
+      {
+        "portId": "1553a550-9a57-4444-bc7c-91174b81dda4",
+        "portCode": "PORT-A2",
+        "status": "DISABLED",
+        "lastMeterKw": 75.6,
+        "createdAt": "2024-03-03T23:00:03.916Z",
+        "updatedAt": "2026-03-23T19:27:15.663Z"
+      },
+      {
+        "portId": "3a1cd78e-9346-4af8-985d-cbc12ce45548",
+        "portCode": "PORT-A3",
+        "status": "FREE",
+        "lastMeterKw": 21.4,
+        "createdAt": "2024-03-03T23:00:03.916Z",
+        "updatedAt": "2026-03-23T19:27:15.663Z"
+      },
+      {
+        "portId": "6bd4f415-b230-4aaa-80fb-1ec0e8990914",
+        "portCode": "PORT-A4",
+        "status": "BOOKED",
+        "lastMeterKw": 19.6,
+        "createdAt": "2024-03-03T23:00:03.916Z",
+        "updatedAt": "2026-03-23T19:27:15.663Z"
+      },
+      {
+        "portId": "3199f45a-3228-488f-a596-cbecc4cb7541",
+        "portCode": "PORT-A5",
+        "status": "ERROR",
+        "lastMeterKw": 14.7,
+        "createdAt": "2024-03-03T23:00:03.916Z",
+        "updatedAt": "2026-03-23T19:27:15.663Z"
+      }
+    ]
+  },
+  {
+    "id": "818e5512-9795-4d09-9785-f0555e6867ef",
+    "code": "BN1M4NVMU9",
+    "name": "Jerusalem mindshare Charging Station",
+    "owner": "ElectroCharge Israel Ltd",
+    "city": "Jerusalem",
+    "address": "96950 Gulgowski Rue",
+    "phone": "0439597125",
+    "email": "Cynthia67@yahoo.com",
+    "siteTechnician": "Demario Ankunding",
+    "location": {
+      "latitude": 31.888654,
+      "longitude": 35.070486
+    },
+    "maxPowerKw": 175,
+    "portsCount": 3,
     "state": "ACTIVE",
     "ratePlan": {
       "currencyCode": "ILS",
       "currencyName": "Israeli New Shekel",
       "peakRate": 2.4,
-      "offPeakRate": 2.2
+      "offPeakRate": 1.8
     },
-    "createdAt": "2023-06-13T00:08:40.645Z",
-    "updatedAt": "2026-03-08T21:42:55.085Z",
-    "hasFreePorts": false
+    "createdAt": "2025-10-11T19:55:16.121Z",
+    "updatedAt": "2026-01-03T00:49:18.343Z",
+    "hasFreePorts": false,
+    "ports": [
+      {
+        "portId": "1209ab02-48c7-4b29-9780-4bd6e5c53183",
+        "portCode": "PORT-A1",
+        "status": "ERROR",
+        "lastMeterKw": 79.7,
+        "createdAt": "2025-10-11T19:55:16.121Z",
+        "updatedAt": "2026-01-03T00:49:18.343Z"
+      },
+      {
+        "portId": "0c071215-1086-4002-9f98-4fdb84b9b8af",
+        "portCode": "PORT-A2",
+        "status": "BOOKED",
+        "lastMeterKw": 35.6,
+        "createdAt": "2025-10-11T19:55:16.121Z",
+        "updatedAt": "2026-01-03T00:49:18.343Z"
+      },
+      {
+        "portId": "b6d730bd-7a5e-4bd0-8e48-c421e53b3f5d",
+        "portCode": "PORT-A3",
+        "status": "OCCUPIED",
+        "lastMeterKw": 20.7,
+        "createdAt": "2025-10-11T19:55:16.121Z",
+        "updatedAt": "2026-01-03T00:49:18.343Z"
+      }
+    ]
   },
   {
-    "id": "ec1a679d-2f9e-48bf-ac06-5e2987772b21",
-    "code": "QWPUJXC1ND",
-    "name": "Nahariya architectures Charging Station",
+    "id": "461954b0-46c1-49dd-b89c-05f96c4e3e7c",
+    "code": "AT9J9U2L88",
+    "name": "Holon mindshare Charging Station",
     "owner": "ElectroCharge Israel Ltd",
-    "city": "Nahariya",
-    "address": "5065 Desmond Mountains",
-    "phone": "0556699551",
-    "email": "Dianne71@yahoo.com",
-    "siteTechnician": "Arvel Koepp IV",
+    "city": "Holon",
+    "address": "75651 Johnson Creek",
+    "phone": "0980557361",
+    "email": "Benny13@yahoo.com",
+    "siteTechnician": "Mr. Raymond Gleason",
     "location": {
-      "latitude": 30.274401,
-      "longitude": 35.228736
+      "latitude": 29.607783,
+      "longitude": 35.405138
     },
-    "maxPowerKw": 290,
-    "ports": 21,
+    "maxPowerKw": 315,
+    "portsCount": 4,
     "state": "ACTIVE",
     "ratePlan": {
       "currencyCode": "ILS",
       "currencyName": "Israeli New Shekel",
-      "peakRate": 3.9,
-      "offPeakRate": 3.6
+      "peakRate": 2.3,
+      "offPeakRate": 1.8
     },
-    "createdAt": "2025-02-05T16:34:25.104Z",
-    "updatedAt": "2026-01-01T15:11:00.946Z",
-    "hasFreePorts": true
+    "createdAt": "2024-12-04T21:09:47.178Z",
+    "updatedAt": "2026-03-10T03:25:21.473Z",
+    "hasFreePorts": true,
+    "ports": [
+      {
+        "portId": "895519b7-5133-42a3-8297-86bd6cf65926",
+        "portCode": "PORT-A1",
+        "status": "OCCUPIED",
+        "lastMeterKw": 80.5,
+        "createdAt": "2024-12-04T21:09:47.178Z",
+        "updatedAt": "2026-03-10T03:25:21.473Z"
+      },
+      {
+        "portId": "482e650b-7183-47b3-a01a-1ec0072e24dc",
+        "portCode": "PORT-A2",
+        "status": "DISABLED",
+        "lastMeterKw": 66.5,
+        "createdAt": "2024-12-04T21:09:47.178Z",
+        "updatedAt": "2026-03-10T03:25:21.473Z"
+      },
+      {
+        "portId": "ad2718a0-1257-490d-af21-aa43a723dc92",
+        "portCode": "PORT-A3",
+        "status": "OCCUPIED",
+        "lastMeterKw": 20.1,
+        "createdAt": "2024-12-04T21:09:47.178Z",
+        "updatedAt": "2026-03-10T03:25:21.473Z"
+      },
+      {
+        "portId": "58c8252a-5035-41ad-b6c0-14e9989ccb66",
+        "portCode": "PORT-A4",
+        "status": "FREE",
+        "lastMeterKw": 75.8,
+        "createdAt": "2024-12-04T21:09:47.178Z",
+        "updatedAt": "2026-03-10T03:25:21.473Z"
+      }
+    ]
   },
   {
-    "id": "51d59932-e091-4321-9d82-2cd87f089d50",
-    "code": "U5ZRZQ43VB",
-    "name": "Beer Sheva content Charging Station",
-    "owner": "EverGo Charging Co",
-    "city": "Beer Sheva",
-    "address": "815 Jon Loaf",
-    "phone": "0278008826",
-    "email": "Earl66@hotmail.com",
-    "siteTechnician": "Jorge Blanda PhD",
+    "id": "123f5d39-e335-42eb-b33a-3da0ad4b75a0",
+    "code": "HY6TQ0IIM4",
+    "name": "Ashdod systems Charging Station",
+    "owner": "SunCharge Energy",
+    "city": "Ashdod",
+    "address": "87398 Garrison Manor",
+    "phone": "0898883869",
+    "email": "Charlie66@hotmail.com",
+    "siteTechnician": "Eliane Jerde",
     "location": {
-      "latitude": 31.620139,
-      "longitude": 34.275435
+      "latitude": 31.066422,
+      "longitude": 34.6042
     },
-    "maxPowerKw": 175,
-    "ports": 5,
+    "maxPowerKw": 270,
+    "portsCount": 5,
     "state": "ACTIVE",
     "ratePlan": {
       "currencyCode": "ILS",
       "currencyName": "Israeli New Shekel",
       "peakRate": 2.8,
-      "offPeakRate": 2.6
-    },
-    "createdAt": "2024-02-17T17:11:14.317Z",
-    "updatedAt": "2026-02-19T04:23:59.046Z",
-    "hasFreePorts": true
-  },
-  {
-    "id": "4be60010-99d8-41dd-92fa-ae3fe720d535",
-    "code": "DBTAYVP8XP",
-    "name": "Netanya models Charging Station",
-    "owner": "ElectroCharge Israel Ltd",
-    "city": "Netanya",
-    "address": "583 Aufderhar Tunnel",
-    "phone": "0312000937",
-    "email": "Sophia_Huel@gmail.com",
-    "siteTechnician": "Kathryn Rowe",
-    "location": {
-      "latitude": 30.069783,
-      "longitude": 34.79761
-    },
-    "maxPowerKw": 250,
-    "ports": 4,
-    "state": "OUT_OF_SERVICE",
-    "ratePlan": {
-      "currencyCode": "ILS",
-      "currencyName": "Israeli New Shekel",
-      "peakRate": 1.5,
       "offPeakRate": 1.4
     },
-    "createdAt": "2025-07-28T09:25:04.300Z",
-    "updatedAt": "2026-01-09T15:18:02.413Z",
-    "hasFreePorts": true
+    "createdAt": "2025-05-26T21:01:29.390Z",
+    "updatedAt": "2026-03-13T01:28:10.183Z",
+    "hasFreePorts": false,
+    "ports": [
+      {
+        "portId": "6044fa27-4940-4be3-8b58-8612dd67ca8b",
+        "portCode": "PORT-A1",
+        "status": "ERROR",
+        "lastMeterKw": 15.7,
+        "createdAt": "2025-05-26T21:01:29.390Z",
+        "updatedAt": "2026-03-13T01:28:10.183Z"
+      },
+      {
+        "portId": "1c9eead3-4193-49d1-8420-f7e20325795f",
+        "portCode": "PORT-A2",
+        "status": "BOOKED",
+        "lastMeterKw": 53.1,
+        "createdAt": "2025-05-26T21:01:29.390Z",
+        "updatedAt": "2026-03-13T01:28:10.183Z"
+      },
+      {
+        "portId": "3ae5f281-c4f2-4b7d-91e0-49da908d3b20",
+        "portCode": "PORT-A3",
+        "status": "BOOKED",
+        "lastMeterKw": 74.9,
+        "createdAt": "2025-05-26T21:01:29.390Z",
+        "updatedAt": "2026-03-13T01:28:10.183Z"
+      },
+      {
+        "portId": "5aaf1f71-0f51-4352-8457-f9ad31e8716f",
+        "portCode": "PORT-A4",
+        "status": "BOOKED",
+        "lastMeterKw": 44,
+        "createdAt": "2025-05-26T21:01:29.390Z",
+        "updatedAt": "2026-03-13T01:28:10.183Z"
+      },
+      {
+        "portId": "e524feca-ec49-4ca7-afed-e6b55df2400d",
+        "portCode": "PORT-A5",
+        "status": "ERROR",
+        "lastMeterKw": 63.3,
+        "createdAt": "2025-05-26T21:01:29.390Z",
+        "updatedAt": "2026-03-13T01:28:10.183Z"
+      }
+    ]
   },
   {
-    "id": "468fa419-b0bd-4dd5-8136-6fa57353396d",
-    "code": "3F5D8NSA80",
-    "name": "Netanya applications Charging Station",
-    "owner": "VoltPoint Networks",
-    "city": "Netanya",
-    "address": "40167 Clifton Road",
-    "phone": "0966465222",
-    "email": "Damon0@gmail.com",
-    "siteTechnician": "Maggie Bergnaum",
-    "location": {
-      "latitude": 29.717788,
-      "longitude": 34.916487
-    },
-    "maxPowerKw": 135,
-    "ports": 2,
-    "state": "OUT_OF_SERVICE",
-    "ratePlan": {
-      "currencyCode": "ILS",
-      "currencyName": "Israeli New Shekel",
-      "peakRate": 3.1,
-      "offPeakRate": 1.7
-    },
-    "createdAt": "2023-12-26T12:53:33.175Z",
-    "updatedAt": "2026-03-11T16:13:49.684Z",
-    "hasFreePorts": true
-  },
-  {
-    "id": "f9b64752-0731-450a-9352-6e9ab1b34f65",
-    "code": "LUVGU3CCQ6",
-    "name": "Ashkelon models Charging Station",
-    "owner": "VoltPoint Networks",
-    "city": "Ashkelon",
-    "address": "364 Pouros Curve",
-    "phone": "0248219109",
-    "email": "Griffin71@yahoo.com",
-    "siteTechnician": "Nellie Upton",
-    "location": {
-      "latitude": 30.438835,
-      "longitude": 35.368236
-    },
-    "maxPowerKw": 310,
-    "ports": 7,
-    "state": "ACTIVE",
-    "ratePlan": {
-      "currencyCode": "ILS",
-      "currencyName": "Israeli New Shekel",
-      "peakRate": 2.6,
-      "offPeakRate": 1.5
-    },
-    "createdAt": "2024-09-14T04:55:55.371Z",
-    "updatedAt": "2026-02-11T01:52:20.597Z",
-    "hasFreePorts": true
-  },
-  {
-    "id": "ccac7e75-df26-4be7-9370-3d77a5726372",
-    "code": "CDYVYK8MSE",
-    "name": "Beer Sheva relationships Charging Station",
-    "owner": "EverGo Charging Co",
-    "city": "Beer Sheva",
-    "address": "9035 Boyle Spurs",
-    "phone": "0233061690",
-    "email": "Vivian_Hand@hotmail.com",
-    "siteTechnician": "Dr. Fanny Schroeder",
-    "location": {
-      "latitude": 30.311479,
-      "longitude": 34.797804
-    },
-    "maxPowerKw": 315,
-    "ports": 6,
-    "state": "ACTIVE",
-    "ratePlan": {
-      "currencyCode": "ILS",
-      "currencyName": "Israeli New Shekel",
-      "peakRate": 3.8,
-      "offPeakRate": 1.2
-    },
-    "createdAt": "2025-12-01T01:06:30.592Z",
-    "updatedAt": "2026-01-12T16:17:55.978Z",
-    "hasFreePorts": true
-  },
-  {
-    "id": "c0fc71d5-be95-48fc-b3c0-a37055113b0d",
-    "code": "FXCBIFZ28U",
-    "name": "Netanya architectures Charging Station",
+    "id": "78225ce9-44eb-4564-83f4-ea0ada3fa2e1",
+    "code": "J77TTTQULQ",
+    "name": "Nahariya web services Charging Station",
     "owner": "GreenDrive EV Solutions",
-    "city": "Netanya",
-    "address": "69338 Collins Stravenue",
-    "phone": "0969707063",
-    "email": "Deion.Shanahan50@yahoo.com",
-    "siteTechnician": "Loretta Rippin",
+    "city": "Nahariya",
+    "address": "3326 Borer Pine",
+    "phone": "0862089900",
+    "email": "Domingo73@yahoo.com",
+    "siteTechnician": "Delaney Kiehn",
     "location": {
-      "latitude": 30.13344,
-      "longitude": 34.517557
+      "latitude": 30.013125,
+      "longitude": 34.861248
     },
-    "maxPowerKw": 65,
-    "ports": 8,
-    "state": "ACTIVE",
-    "ratePlan": {
-      "currencyCode": "ILS",
-      "currencyName": "Israeli New Shekel",
-      "peakRate": 2.7,
-      "offPeakRate": 1.2
-    },
-    "createdAt": "2023-08-03T03:33:56.899Z",
-    "updatedAt": "2026-01-10T04:25:29.583Z",
-    "hasFreePorts": true
-  },
-  {
-    "id": "230e8003-a5c2-4e05-9c15-8a516a57a54c",
-    "code": "CL567LBOIQ",
-    "name": "Hadera smart contracts Charging Station",
-    "owner": "ElectroCharge Israel Ltd",
-    "city": "Hadera",
-    "address": "2869 Windsor Avenue",
-    "phone": "0545630340",
-    "email": "Vernon_Kihn@hotmail.com",
-    "siteTechnician": "Roland Effertz",
-    "location": {
-      "latitude": 32.092283,
-      "longitude": 35.237033
-    },
-    "maxPowerKw": 55,
-    "ports": 10,
-    "state": "ACTIVE",
-    "ratePlan": {
-      "currencyCode": "ILS",
-      "currencyName": "Israeli New Shekel",
-      "peakRate": 3.9,
-      "offPeakRate": 1.8
-    },
-    "createdAt": "2026-01-27T16:09:09.124Z",
-    "updatedAt": "2026-01-30T23:06:07.163Z",
-    "hasFreePorts": true
-  },
-  {
-    "id": "0d118aad-a3ef-49b7-8701-94e380110153",
-    "code": "RTVQJC44YP",
-    "name": "Hadera technologies Charging Station",
-    "owner": "VoltPoint Networks",
-    "city": "Hadera",
-    "address": "49180 Theron Trace",
-    "phone": "0481072795",
-    "email": "Marquise28@hotmail.com",
-    "siteTechnician": "Debbie Morar II",
-    "location": {
-      "latitude": 30.479876,
-      "longitude": 35.177652
-    },
-    "maxPowerKw": 235,
-    "ports": 12,
-    "state": "ACTIVE",
-    "ratePlan": {
-      "currencyCode": "ILS",
-      "currencyName": "Israeli New Shekel",
-      "peakRate": 3.9,
-      "offPeakRate": 3.2
-    },
-    "createdAt": "2024-09-28T18:35:29.629Z",
-    "updatedAt": "2026-01-11T16:41:34.364Z",
-    "hasFreePorts": false
-  },
-  {
-    "id": "b4274e63-c56f-4e15-9931-5cfb90b48b70",
-    "code": "48HP3OI6AS",
-    "name": "Netanya lifetime value Charging Station",
-    "owner": "EverGo Charging Co",
-    "city": "Netanya",
-    "address": "21947 Jacynthe Wells",
-    "phone": "0422198367",
-    "email": "Leta_Metz49@hotmail.com",
-    "siteTechnician": "Scotty Kub",
-    "location": {
-      "latitude": 29.924097,
-      "longitude": 35.175983
-    },
-    "maxPowerKw": 140,
-    "ports": 21,
-    "state": "ACTIVE",
-    "ratePlan": {
-      "currencyCode": "ILS",
-      "currencyName": "Israeli New Shekel",
-      "peakRate": 3.3,
-      "offPeakRate": 3
-    },
-    "createdAt": "2025-07-28T20:11:12.362Z",
-    "updatedAt": "2026-03-03T21:17:19.532Z",
-    "hasFreePorts": false
-  },
-  {
-    "id": "f43e8314-d52a-417e-80c7-ed67d2bef9d7",
-    "code": "HDGZIR36NC",
-    "name": "Hadera communities Charging Station",
-    "owner": "GreenDrive EV Solutions",
-    "city": "Hadera",
-    "address": "1362 Stanton Throughway",
-    "phone": "0456549647",
-    "email": "Kimberly.Dare@yahoo.com",
-    "siteTechnician": "Yvonne Doyle II",
-    "location": {
-      "latitude": 31.935252,
-      "longitude": 34.810731
-    },
-    "maxPowerKw": 55,
-    "ports": 10,
-    "state": "ACTIVE",
-    "ratePlan": {
-      "currencyCode": "ILS",
-      "currencyName": "Israeli New Shekel",
-      "peakRate": 3.9,
-      "offPeakRate": 1.5
-    },
-    "createdAt": "2023-09-21T02:45:29.611Z",
-    "updatedAt": "2026-02-23T06:41:20.527Z",
-    "hasFreePorts": true
-  },
-  {
-    "id": "9a38ee8d-1534-4b16-b536-66f3c420575f",
-    "code": "OHCIJTGAOW",
-    "name": "Ashkelon channels Charging Station",
-    "owner": "SunCharge Energy",
-    "city": "Ashkelon",
-    "address": "2866 Nightingale Close",
-    "phone": "0000590081",
-    "email": "Joann.Hirthe@gmail.com",
-    "siteTechnician": "Bernice Goyette",
-    "location": {
-      "latitude": 30.82802,
-      "longitude": 35.868488
-    },
-    "maxPowerKw": 155,
-    "ports": 6,
+    "maxPowerKw": 145,
+    "portsCount": 4,
     "state": "ACTIVE",
     "ratePlan": {
       "currencyCode": "ILS",
       "currencyName": "Israeli New Shekel",
       "peakRate": 3.4,
-      "offPeakRate": 1.8
+      "offPeakRate": 2.2
     },
-    "createdAt": "2026-03-20T12:14:08.926Z",
-    "updatedAt": "2026-02-07T11:39:56.081Z",
-    "hasFreePorts": true
+    "createdAt": "2024-04-04T09:43:25.559Z",
+    "updatedAt": "2026-03-27T08:57:00.362Z",
+    "hasFreePorts": true,
+    "ports": [
+      {
+        "portId": "360779ef-e9a0-4aad-9c36-14559d830aeb",
+        "portCode": "PORT-A1",
+        "status": "FREE",
+        "lastMeterKw": 14.1,
+        "createdAt": "2024-04-04T09:43:25.559Z",
+        "updatedAt": "2026-03-27T08:57:00.362Z"
+      },
+      {
+        "portId": "350f3b1c-4661-47ed-9490-e913d59f8607",
+        "portCode": "PORT-A2",
+        "status": "ERROR",
+        "lastMeterKw": 49,
+        "createdAt": "2024-04-04T09:43:25.559Z",
+        "updatedAt": "2026-03-27T08:57:00.362Z"
+      },
+      {
+        "portId": "bd1dd448-f323-4edd-abe8-5f9347eeec90",
+        "portCode": "PORT-A3",
+        "status": "OCCUPIED",
+        "lastMeterKw": 5.5,
+        "createdAt": "2024-04-04T09:43:25.559Z",
+        "updatedAt": "2026-03-27T08:57:00.362Z"
+      },
+      {
+        "portId": "ea11b050-4528-46f0-b013-066c0fe21ec2",
+        "portCode": "PORT-A4",
+        "status": "DISABLED",
+        "lastMeterKw": 43.4,
+        "createdAt": "2024-04-04T09:43:25.559Z",
+        "updatedAt": "2026-03-27T08:57:00.362Z"
+      }
+    ]
   },
   {
-    "id": "1cf612bd-83fa-4431-b062-11c11c44ee7e",
-    "code": "52OPMHQXDC",
-    "name": "Ashkelon interfaces Charging Station",
-    "owner": "ElectroCharge Israel Ltd",
-    "city": "Ashkelon",
-    "address": "13435 O'Hara Vista",
-    "phone": "0448075586",
-    "email": "Arden.Hoeger@yahoo.com",
-    "siteTechnician": "Stacey Kertzmann",
-    "location": {
-      "latitude": 33.037997,
-      "longitude": 34.243932
-    },
-    "maxPowerKw": 115,
-    "ports": 6,
-    "state": "ACTIVE",
-    "ratePlan": {
-      "currencyCode": "ILS",
-      "currencyName": "Israeli New Shekel",
-      "peakRate": 3.8,
-      "offPeakRate": 3.7
-    },
-    "createdAt": "2024-03-15T01:15:45.027Z",
-    "updatedAt": "2026-02-06T13:43:25.438Z",
-    "hasFreePorts": true
-  },
-  {
-    "id": "d9fec0e4-bf08-44d9-b029-470f77db4ac6",
-    "code": "6TCN0KC7HE",
-    "name": "Hadera large language models Charging Station",
-    "owner": "ElectroCharge Israel Ltd",
-    "city": "Hadera",
-    "address": "53499 Okuneva Harbor",
-    "phone": "0084428217",
-    "email": "Kody.Crist80@yahoo.com",
-    "siteTechnician": "Miss Pedro O'Conner",
-    "location": {
-      "latitude": 30.229209,
-      "longitude": 35.186943
-    },
-    "maxPowerKw": 80,
-    "ports": 8,
-    "state": "ACTIVE",
-    "ratePlan": {
-      "currencyCode": "ILS",
-      "currencyName": "Israeli New Shekel",
-      "peakRate": 3.5,
-      "offPeakRate": 2
-    },
-    "createdAt": "2023-10-30T07:40:41.772Z",
-    "updatedAt": "2026-03-20T14:37:30.886Z",
-    "hasFreePorts": false
-  },
-  {
-    "id": "5f26b0d6-0b73-4fb5-a4a8-700be36630d9",
-    "code": "HLZ7N9WTBD",
-    "name": "Tel Aviv ROI Charging Station",
-    "owner": "SunCharge Energy",
-    "city": "Tel Aviv",
-    "address": "568 Hal Brook",
-    "phone": "0289971344",
-    "email": "Axel7@hotmail.com",
-    "siteTechnician": "Lance Ullrich",
-    "location": {
-      "latitude": 30.396059,
-      "longitude": 34.776251
-    },
-    "maxPowerKw": 245,
-    "ports": 17,
-    "state": "ACTIVE",
-    "ratePlan": {
-      "currencyCode": "ILS",
-      "currencyName": "Israeli New Shekel",
-      "peakRate": 2.7,
-      "offPeakRate": 1.3
-    },
-    "createdAt": "2023-10-19T09:39:02.103Z",
-    "updatedAt": "2026-01-29T05:03:08.439Z",
-    "hasFreePorts": true
-  },
-  {
-    "id": "a37e6a21-9dbd-43cc-9b0b-720a0b676209",
-    "code": "F9O2U8F21P",
-    "name": "Hadera AI Charging Station",
-    "owner": "VoltPoint Networks",
-    "city": "Hadera",
-    "address": "211 Otto Wells",
-    "phone": "0248022911",
-    "email": "Hattie87@hotmail.com",
-    "siteTechnician": "Loy O'Reilly",
-    "location": {
-      "latitude": 33.169618,
-      "longitude": 35.873852
-    },
-    "maxPowerKw": 105,
-    "ports": 7,
-    "state": "ACTIVE",
-    "ratePlan": {
-      "currencyCode": "ILS",
-      "currencyName": "Israeli New Shekel",
-      "peakRate": 1.5,
-      "offPeakRate": 1.4
-    },
-    "createdAt": "2025-07-15T20:09:29.413Z",
-    "updatedAt": "2026-03-02T08:38:45.340Z",
-    "hasFreePorts": true
-  },
-  {
-    "id": "819529a9-8b90-4c2b-a092-4c08b3614812",
-    "code": "2HCKXPY4BW",
-    "name": "Holon solutions Charging Station",
-    "owner": "ElectroCharge Israel Ltd",
-    "city": "Holon",
-    "address": "73676 Commerce Street",
-    "phone": "0086873674",
-    "email": "Dwayne57@yahoo.com",
-    "siteTechnician": "Kaia Dicki",
-    "location": {
-      "latitude": 30.850903,
-      "longitude": 34.371649
-    },
-    "maxPowerKw": 270,
-    "ports": 5,
-    "state": "OUT_OF_SERVICE",
-    "ratePlan": {
-      "currencyCode": "ILS",
-      "currencyName": "Israeli New Shekel",
-      "peakRate": 3.5,
-      "offPeakRate": 3.4
-    },
-    "createdAt": "2026-03-19T17:27:38.041Z",
-    "updatedAt": "2026-02-02T21:06:43.630Z",
-    "hasFreePorts": true
-  },
-  {
-    "id": "b9c8bd01-8d85-47a3-9cc4-949d01f80412",
-    "code": "TKOWVOZPUG",
-    "name": "Beer Sheva solutions Charging Station",
-    "owner": "ElectroCharge Israel Ltd",
-    "city": "Beer Sheva",
-    "address": "37597 W Washington Avenue",
-    "phone": "0634278274",
-    "email": "Mikayla_Tillman@yahoo.com",
-    "siteTechnician": "Cristina MacGyver",
-    "location": {
-      "latitude": 30.66893,
-      "longitude": 34.962464
-    },
-    "maxPowerKw": 200,
-    "ports": 25,
-    "state": "ACTIVE",
-    "ratePlan": {
-      "currencyCode": "ILS",
-      "currencyName": "Israeli New Shekel",
-      "peakRate": 2.3,
-      "offPeakRate": 1.4
-    },
-    "createdAt": "2024-03-03T00:25:10.955Z",
-    "updatedAt": "2026-03-22T07:48:38.662Z",
-    "hasFreePorts": true
-  },
-  {
-    "id": "bb988c89-56d3-45aa-868e-d35e0f21ff24",
-    "code": "2WQZA9OXUM",
-    "name": "Netanya systems Charging Station",
-    "owner": "SunCharge Energy",
-    "city": "Netanya",
-    "address": "7792 Melvin Shore",
-    "phone": "0184037054",
-    "email": "Danny69@hotmail.com",
-    "siteTechnician": "Hope Gerhold",
-    "location": {
-      "latitude": 31.670669,
-      "longitude": 34.297061
-    },
-    "maxPowerKw": 130,
-    "ports": 23,
-    "state": "OUT_OF_SERVICE",
-    "ratePlan": {
-      "currencyCode": "ILS",
-      "currencyName": "Israeli New Shekel",
-      "peakRate": 2.5,
-      "offPeakRate": 2
-    },
-    "createdAt": "2024-11-17T22:34:19.228Z",
-    "updatedAt": "2026-01-25T08:21:40.921Z",
-    "hasFreePorts": true
-  },
-  {
-    "id": "122f3429-e2d1-4a6d-9e43-2f03c809a746",
-    "code": "0JV016F5QC",
-    "name": "Holon synergies Charging Station",
-    "owner": "EverGo Charging Co",
-    "city": "Holon",
-    "address": "3292 Windermere Road",
-    "phone": "0406243203",
-    "email": "Erwin51@hotmail.com",
-    "siteTechnician": "Virgil Cremin",
-    "location": {
-      "latitude": 30.025943,
-      "longitude": 34.909764
-    },
-    "maxPowerKw": 315,
-    "ports": 14,
-    "state": "OUT_OF_SERVICE",
-    "ratePlan": {
-      "currencyCode": "ILS",
-      "currencyName": "Israeli New Shekel",
-      "peakRate": 2.3,
-      "offPeakRate": 1.9
-    },
-    "createdAt": "2026-03-12T16:18:07.868Z",
-    "updatedAt": "2026-01-03T05:04:48.903Z",
-    "hasFreePorts": true
-  },
-  {
-    "id": "60d8156d-2a11-4f63-ba65-f68dd7d04ce5",
-    "code": "BW1D02N2KG",
-    "name": "Ashdod experiences Charging Station",
-    "owner": "EverGo Charging Co",
-    "city": "Ashdod",
-    "address": "804 Carroll Loaf",
-    "phone": "0574339067",
-    "email": "Rodolfo.Huel@yahoo.com",
-    "siteTechnician": "Dr. Johnpaul VonRueden",
-    "location": {
-      "latitude": 31.417417,
-      "longitude": 35.644363
-    },
-    "maxPowerKw": 200,
-    "ports": 0,
-    "state": "ACTIVE",
-    "ratePlan": {
-      "currencyCode": "ILS",
-      "currencyName": "Israeli New Shekel",
-      "peakRate": 2.7,
-      "offPeakRate": 1.7
-    },
-    "createdAt": "2023-12-13T00:59:41.697Z",
-    "updatedAt": "2026-01-13T04:13:52.621Z",
-    "hasFreePorts": false
-  },
-  {
-    "id": "13628632-d203-468b-a2fa-3d0829284be4",
-    "code": "00TAP696WO",
-    "name": "Holon web services Charging Station",
-    "owner": "SunCharge Energy",
-    "city": "Holon",
-    "address": "596 Tillman Islands",
-    "phone": "0776683021",
-    "email": "Traci_Watsica@hotmail.com",
-    "siteTechnician": "Dandre Zieme",
-    "location": {
-      "latitude": 31.039745,
-      "longitude": 35.564583
-    },
-    "maxPowerKw": 55,
-    "ports": 19,
-    "state": "INACTIVE",
-    "ratePlan": {
-      "currencyCode": "ILS",
-      "currencyName": "Israeli New Shekel",
-      "peakRate": 2.8,
-      "offPeakRate": 1.3
-    },
-    "createdAt": "2024-10-09T10:17:24.792Z",
-    "updatedAt": "2026-02-17T19:53:33.785Z",
-    "hasFreePorts": true
-  },
-  {
-    "id": "d0df999c-bc30-49a3-9cf9-8700ffbc93e6",
-    "code": "LTJO33WZ0L",
-    "name": "Netanya schemas Charging Station",
-    "owner": "EverGo Charging Co",
-    "city": "Netanya",
-    "address": "30353 Canal Street",
-    "phone": "0502635684",
-    "email": "Shelly_Schroeder@gmail.com",
-    "siteTechnician": "Marlon Runolfsdottir",
-    "location": {
-      "latitude": 29.931901,
-      "longitude": 35.15001
-    },
-    "maxPowerKw": 260,
-    "ports": 17,
-    "state": "OUT_OF_SERVICE",
-    "ratePlan": {
-      "currencyCode": "ILS",
-      "currencyName": "Israeli New Shekel",
-      "peakRate": 2.8,
-      "offPeakRate": 1.4
-    },
-    "createdAt": "2025-10-19T22:02:08.896Z",
-    "updatedAt": "2026-01-25T17:51:24.845Z",
-    "hasFreePorts": false
-  },
-  {
-    "id": "a9710264-93ae-48e2-9f5a-cfea27dda21c",
-    "code": "KBG8H80BUH",
-    "name": "Ashkelon methodologies Charging Station",
+    "id": "097edadb-ceab-4133-8140-b30ae8f6995f",
+    "code": "4TRZMTMRGV",
+    "name": "Ashkelon large language models Charging Station",
     "owner": "SunCharge Energy",
     "city": "Ashkelon",
-    "address": "474 Westfield Road",
-    "phone": "0167777732",
-    "email": "Anna85@yahoo.com",
-    "siteTechnician": "Alycia Barrows",
+    "address": "267 Von Port",
+    "phone": "0402015406",
+    "email": "Glen_Block@yahoo.com",
+    "siteTechnician": "Clifford Nienow",
     "location": {
-      "latitude": 33.296862,
-      "longitude": 34.664887
+      "latitude": 31.202007,
+      "longitude": 35.511565
     },
-    "maxPowerKw": 145,
-    "ports": 25,
-    "state": "OUT_OF_SERVICE",
-    "ratePlan": {
-      "currencyCode": "ILS",
-      "currencyName": "Israeli New Shekel",
-      "peakRate": 2.8,
-      "offPeakRate": 2.7
-    },
-    "createdAt": "2026-03-03T00:45:42.383Z",
-    "updatedAt": "2025-12-29T10:24:06.460Z",
-    "hasFreePorts": false
-  },
-  {
-    "id": "2552942b-3a31-4768-9b9b-cdaabaef35d4",
-    "code": "0CG5PORV7F",
-    "name": "Holon lifetime value Charging Station",
-    "owner": "GreenDrive EV Solutions",
-    "city": "Holon",
-    "address": "787 Gottlieb Way",
-    "phone": "0303384093",
-    "email": "Angie_Friesen49@yahoo.com",
-    "siteTechnician": "Dr. Jane Harris",
-    "location": {
-      "latitude": 32.471964,
-      "longitude": 35.593184
-    },
-    "maxPowerKw": 225,
-    "ports": 11,
+    "maxPowerKw": 95,
+    "portsCount": 0,
     "state": "OUT_OF_SERVICE",
     "ratePlan": {
       "currencyCode": "ILS",
       "currencyName": "Israeli New Shekel",
       "peakRate": 3.6,
-      "offPeakRate": 2
+      "offPeakRate": 1.9
     },
-    "createdAt": "2023-07-03T01:45:25.262Z",
-    "updatedAt": "2026-03-16T05:14:47.954Z",
-    "hasFreePorts": false
+    "createdAt": "2025-03-15T01:21:30.153Z",
+    "updatedAt": "2026-01-10T17:44:17.358Z",
+    "hasFreePorts": false,
+    "ports": []
   },
   {
-    "id": "6c64743c-1e76-4fa4-ae3b-acadeebf082e",
-    "code": "AV3UC31V3B",
-    "name": "Ashkelon markets Charging Station",
+    "id": "0519afd7-fe40-42d5-8412-9fdf0f439f77",
+    "code": "BOYWCS2RA1",
+    "name": "Haifa systems Charging Station",
     "owner": "GreenDrive EV Solutions",
-    "city": "Ashkelon",
-    "address": "81312 Mable Points",
-    "phone": "0977752073",
-    "email": "Terrance.Herzog@yahoo.com",
-    "siteTechnician": "Donald Heller",
+    "city": "Haifa",
+    "address": "350 Mckayla Dam",
+    "phone": "0326060463",
+    "email": "Kamille.Yost74@yahoo.com",
+    "siteTechnician": "Della Halvorson",
     "location": {
-      "latitude": 33.092191,
-      "longitude": 34.720585
+      "latitude": 30.026125,
+      "longitude": 35.877623
     },
-    "maxPowerKw": 150,
-    "ports": 17,
+    "maxPowerKw": 335,
+    "portsCount": 3,
     "state": "ACTIVE",
     "ratePlan": {
       "currencyCode": "ILS",
       "currencyName": "Israeli New Shekel",
-      "peakRate": 2.8,
+      "peakRate": 3.6,
+      "offPeakRate": 2.2
+    },
+    "createdAt": "2023-10-04T13:38:59.041Z",
+    "updatedAt": "2026-03-16T00:42:50.632Z",
+    "hasFreePorts": true,
+    "ports": [
+      {
+        "portId": "e8a65636-d320-4aa0-9341-dbf4754bbacc",
+        "portCode": "PORT-A1",
+        "status": "FREE",
+        "lastMeterKw": 41.8,
+        "createdAt": "2023-10-04T13:38:59.041Z",
+        "updatedAt": "2026-03-16T00:42:50.632Z"
+      },
+      {
+        "portId": "342bc43d-a173-430f-9a91-c92df56946c0",
+        "portCode": "PORT-A2",
+        "status": "DISABLED",
+        "lastMeterKw": 18,
+        "createdAt": "2023-10-04T13:38:59.041Z",
+        "updatedAt": "2026-03-16T00:42:50.632Z"
+      },
+      {
+        "portId": "e502eb49-36df-4b90-a4a2-97ba5d381ffa",
+        "portCode": "PORT-A3",
+        "status": "ERROR",
+        "lastMeterKw": 89.2,
+        "createdAt": "2023-10-04T13:38:59.041Z",
+        "updatedAt": "2026-03-16T00:42:50.632Z"
+      }
+    ]
+  },
+  {
+    "id": "6baa6dea-753c-439b-ad32-67961b65174a",
+    "code": "BG7XI2TIKF",
+    "name": "Hadera blockchains Charging Station",
+    "owner": "SunCharge Energy",
+    "city": "Hadera",
+    "address": "405 Bethel Squares",
+    "phone": "0658791417",
+    "email": "Olive.Brown98@hotmail.com",
+    "siteTechnician": "Mr. Tanya Lowe PhD",
+    "location": {
+      "latitude": 31.149483,
+      "longitude": 34.849893
+    },
+    "maxPowerKw": 335,
+    "portsCount": 0,
+    "state": "OUT_OF_SERVICE",
+    "ratePlan": {
+      "currencyCode": "ILS",
+      "currencyName": "Israeli New Shekel",
+      "peakRate": 3.5,
       "offPeakRate": 2.4
     },
-    "createdAt": "2023-08-15T15:57:32.466Z",
-    "updatedAt": "2026-02-22T10:51:14.566Z",
-    "hasFreePorts": true
+    "createdAt": "2024-11-07T19:25:37.697Z",
+    "updatedAt": "2026-02-16T17:59:53.887Z",
+    "hasFreePorts": false,
+    "ports": []
   },
   {
-    "id": "59e5bc90-80e9-4973-aca4-ae6cca652385",
-    "code": "DDDWN2GBAF",
-    "name": "Hadera methodologies Charging Station",
-    "owner": "VoltPoint Networks",
-    "city": "Hadera",
-    "address": "5199 Ransom Glens",
-    "phone": "0022387479",
-    "email": "Toni26@yahoo.com",
-    "siteTechnician": "Viola Medhurst DDS",
+    "id": "9d4ac258-3497-4c0d-b938-fe763cd136c5",
+    "code": "LGQXI1GZ0W",
+    "name": "Beer Sheva models Charging Station",
+    "owner": "GreenDrive EV Solutions",
+    "city": "Beer Sheva",
+    "address": "70843 Daniella Corners",
+    "phone": "0594646281",
+    "email": "Jeff_Berge@yahoo.com",
+    "siteTechnician": "Ella Reichert",
     "location": {
-      "latitude": 33.075363,
-      "longitude": 35.464766
+      "latitude": 31.851816,
+      "longitude": 34.26299
     },
-    "maxPowerKw": 355,
-    "ports": 12,
+    "maxPowerKw": 105,
+    "portsCount": 0,
+    "state": "OUT_OF_SERVICE",
+    "ratePlan": {
+      "currencyCode": "ILS",
+      "currencyName": "Israeli New Shekel",
+      "peakRate": 3.9,
+      "offPeakRate": 2.9
+    },
+    "createdAt": "2026-03-02T18:32:58.603Z",
+    "updatedAt": "2026-02-23T03:56:29.836Z",
+    "hasFreePorts": false,
+    "ports": []
+  },
+  {
+    "id": "7815e168-c441-4c77-937e-04a4e6ccc461",
+    "code": "QS09HXK2Z9",
+    "name": "Nahariya channels Charging Station",
+    "owner": "SunCharge Energy",
+    "city": "Nahariya",
+    "address": "82763 Oak Lane",
+    "phone": "0227836085",
+    "email": "Marcus77@hotmail.com",
+    "siteTechnician": "Melba Raynor",
+    "location": {
+      "latitude": 32.678801,
+      "longitude": 34.436859
+    },
+    "maxPowerKw": 170,
+    "portsCount": 4,
     "state": "ACTIVE",
     "ratePlan": {
       "currencyCode": "ILS",
       "currencyName": "Israeli New Shekel",
-      "peakRate": 1.2,
-      "offPeakRate": 1.1
+      "peakRate": 2.3,
+      "offPeakRate": 2
     },
-    "createdAt": "2025-06-13T23:35:18.548Z",
-    "updatedAt": "2026-03-15T22:29:32.155Z",
-    "hasFreePorts": false
+    "createdAt": "2023-06-04T04:53:58.123Z",
+    "updatedAt": "2026-03-23T14:56:34.468Z",
+    "hasFreePorts": false,
+    "ports": [
+      {
+        "portId": "c3039cf5-9bb8-4a06-bcfc-9fe64274b36c",
+        "portCode": "PORT-A1",
+        "status": "OCCUPIED",
+        "lastMeterKw": 49.1,
+        "createdAt": "2023-06-04T04:53:58.123Z",
+        "updatedAt": "2026-03-23T14:56:34.468Z"
+      },
+      {
+        "portId": "82b13128-1736-49bd-b728-6d7a8f2ff37f",
+        "portCode": "PORT-A2",
+        "status": "ERROR",
+        "lastMeterKw": 8.7,
+        "createdAt": "2023-06-04T04:53:58.123Z",
+        "updatedAt": "2026-03-23T14:56:34.468Z"
+      },
+      {
+        "portId": "c51183b4-830c-4be5-a42a-a9907038da3a",
+        "portCode": "PORT-A3",
+        "status": "DISABLED",
+        "lastMeterKw": 81.2,
+        "createdAt": "2023-06-04T04:53:58.123Z",
+        "updatedAt": "2026-03-23T14:56:34.468Z"
+      },
+      {
+        "portId": "24df6d71-2341-41a0-9786-6f9457bad035",
+        "portCode": "PORT-A4",
+        "status": "ERROR",
+        "lastMeterKw": 91.6,
+        "createdAt": "2023-06-04T04:53:58.123Z",
+        "updatedAt": "2026-03-23T14:56:34.468Z"
+      }
+    ]
   },
   {
-    "id": "44d9e3ee-8299-4f05-97cb-9080864d3524",
-    "code": "OG3JOLIAHH",
-    "name": "Holon AI Charging Station",
-    "owner": "EverGo Charging Co",
-    "city": "Holon",
-    "address": "8805 Meadow Close",
-    "phone": "0557325670",
-    "email": "Melvin_Skiles@hotmail.com",
-    "siteTechnician": "Cleveland Wunsch",
+    "id": "a47fb895-b549-4b2e-a30a-f35736297569",
+    "code": "MCUO3N5W1Z",
+    "name": "Ashkelon niches Charging Station",
+    "owner": "SunCharge Energy",
+    "city": "Ashkelon",
+    "address": "12468 Barton Meadows",
+    "phone": "0680774055",
+    "email": "Joey11@gmail.com",
+    "siteTechnician": "Boyd Kerluke",
     "location": {
-      "latitude": 30.276659,
-      "longitude": 34.628504
+      "latitude": 30.550577,
+      "longitude": 35.361694
     },
-    "maxPowerKw": 250,
-    "ports": 22,
+    "maxPowerKw": 120,
+    "portsCount": 0,
+    "state": "INACTIVE",
+    "ratePlan": {
+      "currencyCode": "ILS",
+      "currencyName": "Israeli New Shekel",
+      "peakRate": 3.3,
+      "offPeakRate": 2.9
+    },
+    "createdAt": "2024-01-25T12:32:48.290Z",
+    "updatedAt": "2026-03-21T17:12:49.717Z",
+    "hasFreePorts": false,
+    "ports": []
+  },
+  {
+    "id": "21e4ae5f-658f-4915-9928-b837343e4160",
+    "code": "MDXIAX0TDU",
+    "name": "Holon applications Charging Station",
+    "owner": "ElectroCharge Israel Ltd",
+    "city": "Holon",
+    "address": "15008 Center Street",
+    "phone": "0952098899",
+    "email": "Ethel_Swift97@yahoo.com",
+    "siteTechnician": "Julius Jast",
+    "location": {
+      "latitude": 30.99128,
+      "longitude": 35.579663
+    },
+    "maxPowerKw": 220,
+    "portsCount": 5,
+    "state": "ACTIVE",
+    "ratePlan": {
+      "currencyCode": "ILS",
+      "currencyName": "Israeli New Shekel",
+      "peakRate": 2.1,
+      "offPeakRate": 1.5
+    },
+    "createdAt": "2025-02-15T23:02:17.876Z",
+    "updatedAt": "2026-03-06T00:53:59.218Z",
+    "hasFreePorts": true,
+    "ports": [
+      {
+        "portId": "166c7965-1a6f-48fe-9009-956b8ae9fa79",
+        "portCode": "PORT-A1",
+        "status": "ERROR",
+        "lastMeterKw": 41,
+        "createdAt": "2025-02-15T23:02:17.876Z",
+        "updatedAt": "2026-03-06T00:53:59.218Z"
+      },
+      {
+        "portId": "db16d4b2-b08c-4928-97fa-df0715893a13",
+        "portCode": "PORT-A2",
+        "status": "FREE",
+        "lastMeterKw": 45.8,
+        "createdAt": "2025-02-15T23:02:17.876Z",
+        "updatedAt": "2026-03-06T00:53:59.218Z"
+      },
+      {
+        "portId": "0dfbc8fe-7619-4805-ba42-317fb45e2586",
+        "portCode": "PORT-A3",
+        "status": "DISABLED",
+        "lastMeterKw": 26.7,
+        "createdAt": "2025-02-15T23:02:17.876Z",
+        "updatedAt": "2026-03-06T00:53:59.218Z"
+      },
+      {
+        "portId": "b8047759-96b1-4fa0-8b8b-7fde44869763",
+        "portCode": "PORT-A4",
+        "status": "DISABLED",
+        "lastMeterKw": 89.1,
+        "createdAt": "2025-02-15T23:02:17.876Z",
+        "updatedAt": "2026-03-06T00:53:59.218Z"
+      },
+      {
+        "portId": "af8fdf4b-8b94-42f6-9a33-16240f1aa9a8",
+        "portCode": "PORT-A5",
+        "status": "FREE",
+        "lastMeterKw": 14.8,
+        "createdAt": "2025-02-15T23:02:17.876Z",
+        "updatedAt": "2026-03-06T00:53:59.218Z"
+      }
+    ]
+  },
+  {
+    "id": "3d215fe0-f2d0-4b81-863c-3edd8f34ddb7",
+    "code": "SWPNEEX2XD",
+    "name": "Ashdod convergence Charging Station",
+    "owner": "EverGo Charging Co",
+    "city": "Ashdod",
+    "address": "754 Ratke Ways",
+    "phone": "0246187058",
+    "email": "Giovanni.Olson98@hotmail.com",
+    "siteTechnician": "Evelyn Bailey",
+    "location": {
+      "latitude": 30.035634,
+      "longitude": 34.480085
+    },
+    "maxPowerKw": 205,
+    "portsCount": 3,
+    "state": "ACTIVE",
+    "ratePlan": {
+      "currencyCode": "ILS",
+      "currencyName": "Israeli New Shekel",
+      "peakRate": 2,
+      "offPeakRate": 1.6
+    },
+    "createdAt": "2024-01-20T10:50:26.586Z",
+    "updatedAt": "2026-02-04T00:22:04.252Z",
+    "hasFreePorts": true,
+    "ports": [
+      {
+        "portId": "cadc7f0e-2349-4b75-9cbb-44af8700521d",
+        "portCode": "PORT-A1",
+        "status": "ERROR",
+        "lastMeterKw": 23.7,
+        "createdAt": "2024-01-20T10:50:26.586Z",
+        "updatedAt": "2026-02-04T00:22:04.252Z"
+      },
+      {
+        "portId": "df8273ff-146a-4c31-b31d-2d2ab87d15d3",
+        "portCode": "PORT-A2",
+        "status": "OCCUPIED",
+        "lastMeterKw": 32.1,
+        "createdAt": "2024-01-20T10:50:26.586Z",
+        "updatedAt": "2026-02-04T00:22:04.252Z"
+      },
+      {
+        "portId": "55bdb16d-6e2f-4ff6-9013-cbe632183a8a",
+        "portCode": "PORT-A3",
+        "status": "FREE",
+        "lastMeterKw": 27.5,
+        "createdAt": "2024-01-20T10:50:26.586Z",
+        "updatedAt": "2026-02-04T00:22:04.252Z"
+      }
+    ]
+  },
+  {
+    "id": "42866384-46c5-4228-b0ab-3eb68a42d36d",
+    "code": "JK22DQ0X9S",
+    "name": "Holon paradigms Charging Station",
+    "owner": "SunCharge Energy",
+    "city": "Holon",
+    "address": "877 Jerod Valley",
+    "phone": "0250879573",
+    "email": "Nelle66@yahoo.com",
+    "siteTechnician": "Margaret Heller",
+    "location": {
+      "latitude": 31.687592,
+      "longitude": 35.406172
+    },
+    "maxPowerKw": 245,
+    "portsCount": 4,
+    "state": "ACTIVE",
+    "ratePlan": {
+      "currencyCode": "ILS",
+      "currencyName": "Israeli New Shekel",
+      "peakRate": 3.4,
+      "offPeakRate": 3.1
+    },
+    "createdAt": "2024-12-21T10:44:06.502Z",
+    "updatedAt": "2026-03-01T04:39:56.726Z",
+    "hasFreePorts": false,
+    "ports": [
+      {
+        "portId": "7acc69aa-9248-4e38-b212-543cd8dc6cde",
+        "portCode": "PORT-A1",
+        "status": "BOOKED",
+        "lastMeterKw": 74.5,
+        "createdAt": "2024-12-21T10:44:06.502Z",
+        "updatedAt": "2026-03-01T04:39:56.726Z"
+      },
+      {
+        "portId": "7306d94d-5be5-4189-a84f-f7d9fc43a206",
+        "portCode": "PORT-A2",
+        "status": "BOOKED",
+        "lastMeterKw": 3.7,
+        "createdAt": "2024-12-21T10:44:06.502Z",
+        "updatedAt": "2026-03-01T04:39:56.726Z"
+      },
+      {
+        "portId": "b2706cab-a287-4675-90df-53e8fe147117",
+        "portCode": "PORT-A3",
+        "status": "BOOKED",
+        "lastMeterKw": 72.1,
+        "createdAt": "2024-12-21T10:44:06.502Z",
+        "updatedAt": "2026-03-01T04:39:56.726Z"
+      },
+      {
+        "portId": "e1fb7375-21ca-44f5-9f0f-83cb421dc4d1",
+        "portCode": "PORT-A4",
+        "status": "DISABLED",
+        "lastMeterKw": 98.4,
+        "createdAt": "2024-12-21T10:44:06.502Z",
+        "updatedAt": "2026-03-01T04:39:56.726Z"
+      }
+    ]
+  },
+  {
+    "id": "2a945777-4697-4ad3-9879-3dcd0f270089",
+    "code": "02NT4UYLPG",
+    "name": "Hadera partnerships Charging Station",
+    "owner": "GreenDrive EV Solutions",
+    "city": "Hadera",
+    "address": "172 The Limes",
+    "phone": "0536745187",
+    "email": "Winston_Douglas@yahoo.com",
+    "siteTechnician": "Dr. Roland Hahn",
+    "location": {
+      "latitude": 31.745353,
+      "longitude": 35.832394
+    },
+    "maxPowerKw": 270,
+    "portsCount": 0,
+    "state": "INACTIVE",
+    "ratePlan": {
+      "currencyCode": "ILS",
+      "currencyName": "Israeli New Shekel",
+      "peakRate": 2.4,
+      "offPeakRate": 1.9
+    },
+    "createdAt": "2026-03-18T12:54:00.086Z",
+    "updatedAt": "2026-01-09T18:31:04.399Z",
+    "hasFreePorts": false,
+    "ports": []
+  },
+  {
+    "id": "b8803dd8-2293-4cf0-bc40-2bfd785ff92d",
+    "code": "L9T3RVRH94",
+    "name": "Tel Aviv synergies Charging Station",
+    "owner": "VoltPoint Networks",
+    "city": "Tel Aviv",
+    "address": "410 Susana Course",
+    "phone": "0846908551",
+    "email": "Rosemary.Watsica86@gmail.com",
+    "siteTechnician": "Miss Jesse Frami",
+    "location": {
+      "latitude": 30.672759,
+      "longitude": 35.288807
+    },
+    "maxPowerKw": 140,
+    "portsCount": 5,
+    "state": "ACTIVE",
+    "ratePlan": {
+      "currencyCode": "ILS",
+      "currencyName": "Israeli New Shekel",
+      "peakRate": 2.6,
+      "offPeakRate": 1.6
+    },
+    "createdAt": "2023-12-09T09:06:20.025Z",
+    "updatedAt": "2025-12-29T19:46:04.456Z",
+    "hasFreePorts": false,
+    "ports": [
+      {
+        "portId": "d580d958-490e-4f66-81e4-138d0f4f9191",
+        "portCode": "PORT-A1",
+        "status": "BOOKED",
+        "lastMeterKw": 75.5,
+        "createdAt": "2023-12-09T09:06:20.025Z",
+        "updatedAt": "2025-12-29T19:46:04.456Z"
+      },
+      {
+        "portId": "879538e1-0bf0-4faf-a185-b2820e541b69",
+        "portCode": "PORT-A2",
+        "status": "OCCUPIED",
+        "lastMeterKw": 3.3,
+        "createdAt": "2023-12-09T09:06:20.025Z",
+        "updatedAt": "2025-12-29T19:46:04.456Z"
+      },
+      {
+        "portId": "b7dad805-aa64-4fbe-8dc1-d6cd088f91b8",
+        "portCode": "PORT-A3",
+        "status": "OCCUPIED",
+        "lastMeterKw": 74.6,
+        "createdAt": "2023-12-09T09:06:20.025Z",
+        "updatedAt": "2025-12-29T19:46:04.456Z"
+      },
+      {
+        "portId": "6e57f087-f8f4-4b23-9849-42097f4d450f",
+        "portCode": "PORT-A4",
+        "status": "OCCUPIED",
+        "lastMeterKw": 53.8,
+        "createdAt": "2023-12-09T09:06:20.025Z",
+        "updatedAt": "2025-12-29T19:46:04.456Z"
+      },
+      {
+        "portId": "5261bd2b-0193-425c-8d9c-c4d50f8aa2e9",
+        "portCode": "PORT-A5",
+        "status": "DISABLED",
+        "lastMeterKw": 79.8,
+        "createdAt": "2023-12-09T09:06:20.025Z",
+        "updatedAt": "2025-12-29T19:46:04.456Z"
+      }
+    ]
+  },
+  {
+    "id": "7d6852ef-c5ef-4e15-a960-ce9f59d839a5",
+    "code": "TDQOI9DAS4",
+    "name": "Nahariya synergies Charging Station",
+    "owner": "GreenDrive EV Solutions",
+    "city": "Nahariya",
+    "address": "45521 Merle Valley",
+    "phone": "0920879691",
+    "email": "Clifton_Effertz@gmail.com",
+    "siteTechnician": "Miss Maximus Frami",
+    "location": {
+      "latitude": 32.59329,
+      "longitude": 35.318885
+    },
+    "maxPowerKw": 85,
+    "portsCount": 5,
+    "state": "ACTIVE",
+    "ratePlan": {
+      "currencyCode": "ILS",
+      "currencyName": "Israeli New Shekel",
+      "peakRate": 3.4,
+      "offPeakRate": 2.5
+    },
+    "createdAt": "2025-05-27T06:49:39.558Z",
+    "updatedAt": "2026-01-28T14:49:35.958Z",
+    "hasFreePorts": true,
+    "ports": [
+      {
+        "portId": "ac090192-09aa-4c0f-9e3b-1456d908b110",
+        "portCode": "PORT-A1",
+        "status": "FREE",
+        "lastMeterKw": 2.1,
+        "createdAt": "2025-05-27T06:49:39.558Z",
+        "updatedAt": "2026-01-28T14:49:35.958Z"
+      },
+      {
+        "portId": "f18f7b0a-9b5f-44ff-8581-57e17f046b10",
+        "portCode": "PORT-A2",
+        "status": "FREE",
+        "lastMeterKw": 18.7,
+        "createdAt": "2025-05-27T06:49:39.558Z",
+        "updatedAt": "2026-01-28T14:49:35.958Z"
+      },
+      {
+        "portId": "675963c9-f331-4d47-b174-5e46acd1fbc8",
+        "portCode": "PORT-A3",
+        "status": "FREE",
+        "lastMeterKw": 63.9,
+        "createdAt": "2025-05-27T06:49:39.558Z",
+        "updatedAt": "2026-01-28T14:49:35.958Z"
+      },
+      {
+        "portId": "a1931679-ce9f-4c93-a279-d498a241d702",
+        "portCode": "PORT-A4",
+        "status": "ERROR",
+        "lastMeterKw": 85.5,
+        "createdAt": "2025-05-27T06:49:39.558Z",
+        "updatedAt": "2026-01-28T14:49:35.958Z"
+      },
+      {
+        "portId": "80ac1bfb-e282-473f-9e00-db7df3e07060",
+        "portCode": "PORT-A5",
+        "status": "DISABLED",
+        "lastMeterKw": 15.1,
+        "createdAt": "2025-05-27T06:49:39.558Z",
+        "updatedAt": "2026-01-28T14:49:35.958Z"
+      }
+    ]
+  },
+  {
+    "id": "64cb4912-9a49-4325-ba7a-ec0c26c92810",
+    "code": "LWUDFMNHON",
+    "name": "Ashkelon AI Charging Station",
+    "owner": "VoltPoint Networks",
+    "city": "Ashkelon",
+    "address": "13329 McCullough Loaf",
+    "phone": "0127539316",
+    "email": "Elta53@gmail.com",
+    "siteTechnician": "Weldon Gutmann PhD",
+    "location": {
+      "latitude": 32.041784,
+      "longitude": 34.588684
+    },
+    "maxPowerKw": 125,
+    "portsCount": 0,
+    "state": "INACTIVE",
+    "ratePlan": {
+      "currencyCode": "ILS",
+      "currencyName": "Israeli New Shekel",
+      "peakRate": 3.6,
+      "offPeakRate": 3.3
+    },
+    "createdAt": "2025-11-25T14:50:58.156Z",
+    "updatedAt": "2026-02-15T14:57:58.423Z",
+    "hasFreePorts": false,
+    "ports": []
+  },
+  {
+    "id": "1fa420fc-48ba-4f66-868a-ac7345f9ee76",
+    "code": "78PXKZA6G6",
+    "name": "Nahariya smart contracts Charging Station",
+    "owner": "SunCharge Energy",
+    "city": "Nahariya",
+    "address": "51864 Norbert Lock",
+    "phone": "0076337387",
+    "email": "Jannie_Boyer94@hotmail.com",
+    "siteTechnician": "Bert McDermott",
+    "location": {
+      "latitude": 32.499515,
+      "longitude": 34.550544
+    },
+    "maxPowerKw": 215,
+    "portsCount": 4,
     "state": "ACTIVE",
     "ratePlan": {
       "currencyCode": "ILS",
@@ -1264,89 +1703,1087 @@
       "peakRate": 3.8,
       "offPeakRate": 1.8
     },
-    "createdAt": "2025-04-05T05:56:58.490Z",
-    "updatedAt": "2026-02-07T21:55:46.493Z",
-    "hasFreePorts": true
+    "createdAt": "2025-10-20T11:00:13.456Z",
+    "updatedAt": "2026-02-16T01:23:05.510Z",
+    "hasFreePorts": true,
+    "ports": [
+      {
+        "portId": "6ea3a6c1-0e38-4aab-a490-b1ea9a67ac21",
+        "portCode": "PORT-A1",
+        "status": "ERROR",
+        "lastMeterKw": 52.8,
+        "createdAt": "2025-10-20T11:00:13.456Z",
+        "updatedAt": "2026-02-16T01:23:05.510Z"
+      },
+      {
+        "portId": "f57b6ee4-996f-405f-93e1-24c1cf576578",
+        "portCode": "PORT-A2",
+        "status": "OCCUPIED",
+        "lastMeterKw": 36.3,
+        "createdAt": "2025-10-20T11:00:13.456Z",
+        "updatedAt": "2026-02-16T01:23:05.510Z"
+      },
+      {
+        "portId": "f59c0c71-e0c4-4eec-be04-a01a41bccb33",
+        "portCode": "PORT-A3",
+        "status": "FREE",
+        "lastMeterKw": 19.4,
+        "createdAt": "2025-10-20T11:00:13.456Z",
+        "updatedAt": "2026-02-16T01:23:05.510Z"
+      },
+      {
+        "portId": "834b9c60-c431-4b8c-ab2a-3af63a0e90ec",
+        "portCode": "PORT-A4",
+        "status": "OCCUPIED",
+        "lastMeterKw": 96.2,
+        "createdAt": "2025-10-20T11:00:13.456Z",
+        "updatedAt": "2026-02-16T01:23:05.510Z"
+      }
+    ]
   },
   {
-    "id": "b9150ac4-45a6-49b0-a68c-1c6af89b60b4",
-    "code": "BERQNM7ML0",
-    "name": "Haifa systems Charging Station",
-    "owner": "EverGo Charging Co",
-    "city": "Haifa",
-    "address": "367 Kerluke Greens",
-    "phone": "0791977105",
-    "email": "Declan.Dare3@yahoo.com",
-    "siteTechnician": "Lester Stark-Bogisich",
+    "id": "5fb26750-85e5-45d0-9791-2f654707f45f",
+    "code": "B5EMT789HR",
+    "name": "Netanya web services Charging Station",
+    "owner": "VoltPoint Networks",
+    "city": "Netanya",
+    "address": "7942 Sallie Rapid",
+    "phone": "0474675000",
+    "email": "Jocelyn_Purdy72@gmail.com",
+    "siteTechnician": "Nick Terry",
     "location": {
-      "latitude": 31.477211,
-      "longitude": 35.166342
+      "latitude": 29.868066,
+      "longitude": 34.999722
     },
-    "maxPowerKw": 320,
-    "ports": 0,
+    "maxPowerKw": 325,
+    "portsCount": 4,
     "state": "ACTIVE",
     "ratePlan": {
       "currencyCode": "ILS",
       "currencyName": "Israeli New Shekel",
-      "peakRate": 3.7,
-      "offPeakRate": 3
+      "peakRate": 2.3,
+      "offPeakRate": 1.3
     },
-    "createdAt": "2024-06-06T04:33:02.452Z",
-    "updatedAt": "2026-03-21T08:23:17.086Z",
-    "hasFreePorts": false
+    "createdAt": "2024-09-13T08:06:17.963Z",
+    "updatedAt": "2026-02-20T10:53:39.937Z",
+    "hasFreePorts": false,
+    "ports": [
+      {
+        "portId": "1d3b1ece-4ca0-4c97-b19e-0d8b1dfb0596",
+        "portCode": "PORT-A1",
+        "status": "BOOKED",
+        "lastMeterKw": 51.1,
+        "createdAt": "2024-09-13T08:06:17.963Z",
+        "updatedAt": "2026-02-20T10:53:39.937Z"
+      },
+      {
+        "portId": "6358bee8-05ea-4243-a682-9ba1250b0947",
+        "portCode": "PORT-A2",
+        "status": "OCCUPIED",
+        "lastMeterKw": 54.4,
+        "createdAt": "2024-09-13T08:06:17.963Z",
+        "updatedAt": "2026-02-20T10:53:39.937Z"
+      },
+      {
+        "portId": "22925aaf-0cd9-4058-84a4-35ff3eefe4cf",
+        "portCode": "PORT-A3",
+        "status": "OCCUPIED",
+        "lastMeterKw": 53.9,
+        "createdAt": "2024-09-13T08:06:17.963Z",
+        "updatedAt": "2026-02-20T10:53:39.937Z"
+      },
+      {
+        "portId": "fd88be6d-2e6a-47c6-94e8-a5f52157594c",
+        "portCode": "PORT-A4",
+        "status": "ERROR",
+        "lastMeterKw": 84.5,
+        "createdAt": "2024-09-13T08:06:17.963Z",
+        "updatedAt": "2026-02-20T10:53:39.937Z"
+      }
+    ]
   },
   {
-    "id": "26f29b75-8a70-4e17-9079-70a3eb44376b",
-    "code": "WZI7YJ8QFT",
-    "name": "Hadera supply-chains Charging Station",
+    "id": "330e5b6d-3049-4d58-b4dc-ffe0504ce789",
+    "code": "6M9C06H2AH",
+    "name": "Jerusalem markets Charging Station",
     "owner": "EverGo Charging Co",
-    "city": "Hadera",
-    "address": "5596 Delphia Squares",
-    "phone": "0391300989",
-    "email": "Bertram86@yahoo.com",
-    "siteTechnician": "Lorine Schneider",
+    "city": "Jerusalem",
+    "address": "362 Rosalinda Forges",
+    "phone": "0182703193",
+    "email": "Randal.Cummerata@gmail.com",
+    "siteTechnician": "Jermaine Franey",
     "location": {
-      "latitude": 32.37196,
-      "longitude": 35.277891
+      "latitude": 31.708815,
+      "longitude": 34.703028
     },
-    "maxPowerKw": 140,
-    "ports": 22,
-    "state": "OUT_OF_SERVICE",
+    "maxPowerKw": 135,
+    "portsCount": 4,
+    "state": "ACTIVE",
     "ratePlan": {
       "currencyCode": "ILS",
       "currencyName": "Israeli New Shekel",
-      "peakRate": 3.2,
+      "peakRate": 3.1,
       "offPeakRate": 1.8
     },
-    "createdAt": "2025-09-07T04:57:30.231Z",
-    "updatedAt": "2026-02-24T10:47:44.106Z",
-    "hasFreePorts": false
+    "createdAt": "2025-07-01T02:47:36.524Z",
+    "updatedAt": "2026-01-18T21:39:31.877Z",
+    "hasFreePorts": false,
+    "ports": [
+      {
+        "portId": "5b9a0a3f-4743-4e18-be97-6ebea54efc66",
+        "portCode": "PORT-A1",
+        "status": "ERROR",
+        "lastMeterKw": 84.5,
+        "createdAt": "2025-07-01T02:47:36.524Z",
+        "updatedAt": "2026-01-18T21:39:31.877Z"
+      },
+      {
+        "portId": "e1d5b5e0-48ef-4e8a-bddc-08e822122dbf",
+        "portCode": "PORT-A2",
+        "status": "BOOKED",
+        "lastMeterKw": 24.2,
+        "createdAt": "2025-07-01T02:47:36.524Z",
+        "updatedAt": "2026-01-18T21:39:31.877Z"
+      },
+      {
+        "portId": "92047587-ab2b-41ac-b6a9-f7c22de97f40",
+        "portCode": "PORT-A3",
+        "status": "BOOKED",
+        "lastMeterKw": 41.8,
+        "createdAt": "2025-07-01T02:47:36.524Z",
+        "updatedAt": "2026-01-18T21:39:31.877Z"
+      },
+      {
+        "portId": "7d043fb5-2e46-4634-b6a5-2cc511230d64",
+        "portCode": "PORT-A4",
+        "status": "BOOKED",
+        "lastMeterKw": 31.8,
+        "createdAt": "2025-07-01T02:47:36.524Z",
+        "updatedAt": "2026-01-18T21:39:31.877Z"
+      }
+    ]
   },
   {
-    "id": "f662e05b-3e3f-499e-ae80-38d0f3f819e7",
-    "code": "HKWAXHTUGM",
-    "name": "Ashkelon models Charging Station",
-    "owner": "EverGo Charging Co",
-    "city": "Ashkelon",
-    "address": "8648 Milton Road",
-    "phone": "0149173528",
-    "email": "Rita.Langworth35@yahoo.com",
-    "siteTechnician": "Rosemary Botsford Jr.",
+    "id": "8d30a71a-61d7-4c74-a81b-a08dad849cb0",
+    "code": "6XDR1V1R7C",
+    "name": "Tel Aviv systems Charging Station",
+    "owner": "VoltPoint Networks",
+    "city": "Tel Aviv",
+    "address": "404 Sienna Streets",
+    "phone": "0794671493",
+    "email": "Lambert41@gmail.com",
+    "siteTechnician": "Mrs. Sonya Morissette",
     "location": {
-      "latitude": 31.855361,
-      "longitude": 34.431601
+      "latitude": 32.022208,
+      "longitude": 34.709932
     },
-    "maxPowerKw": 275,
-    "ports": 9,
+    "maxPowerKw": 220,
+    "portsCount": 3,
+    "state": "ACTIVE",
+    "ratePlan": {
+      "currencyCode": "ILS",
+      "currencyName": "Israeli New Shekel",
+      "peakRate": 3.6,
+      "offPeakRate": 3.5
+    },
+    "createdAt": "2023-12-18T10:38:18.464Z",
+    "updatedAt": "2026-03-08T18:39:27.914Z",
+    "hasFreePorts": false,
+    "ports": [
+      {
+        "portId": "f69ccd95-df84-4c37-b735-6df5fc6ec4cd",
+        "portCode": "PORT-A1",
+        "status": "BOOKED",
+        "lastMeterKw": 82.7,
+        "createdAt": "2023-12-18T10:38:18.464Z",
+        "updatedAt": "2026-03-08T18:39:27.914Z"
+      },
+      {
+        "portId": "1d6b2d5e-9cf0-4af3-be29-f34cd58bfbdd",
+        "portCode": "PORT-A2",
+        "status": "DISABLED",
+        "lastMeterKw": 96.2,
+        "createdAt": "2023-12-18T10:38:18.464Z",
+        "updatedAt": "2026-03-08T18:39:27.914Z"
+      },
+      {
+        "portId": "d4da10bd-65c1-4731-ae9f-e10481c1cc44",
+        "portCode": "PORT-A3",
+        "status": "OCCUPIED",
+        "lastMeterKw": 46.5,
+        "createdAt": "2023-12-18T10:38:18.464Z",
+        "updatedAt": "2026-03-08T18:39:27.914Z"
+      }
+    ]
+  },
+  {
+    "id": "a8fef73b-c103-4e8e-beac-8005f0578f19",
+    "code": "CSWVKQSTEE",
+    "name": "Jerusalem deliverables Charging Station",
+    "owner": "EverGo Charging Co",
+    "city": "Jerusalem",
+    "address": "455 Marsh Lane",
+    "phone": "0112637077",
+    "email": "Krystina.Kreiger-Klocko70@hotmail.com",
+    "siteTechnician": "Dr. Rosendo Jones I",
+    "location": {
+      "latitude": 30.509214,
+      "longitude": 35.604025
+    },
+    "maxPowerKw": 280,
+    "portsCount": 4,
+    "state": "ACTIVE",
+    "ratePlan": {
+      "currencyCode": "ILS",
+      "currencyName": "Israeli New Shekel",
+      "peakRate": 3.8,
+      "offPeakRate": 3.1
+    },
+    "createdAt": "2024-10-27T21:46:54.599Z",
+    "updatedAt": "2026-02-05T19:38:37.397Z",
+    "hasFreePorts": true,
+    "ports": [
+      {
+        "portId": "82e6a00d-01b8-458c-bf13-a2224bf3f3bd",
+        "portCode": "PORT-A1",
+        "status": "DISABLED",
+        "lastMeterKw": 63.4,
+        "createdAt": "2024-10-27T21:46:54.599Z",
+        "updatedAt": "2026-02-05T19:38:37.397Z"
+      },
+      {
+        "portId": "6fba7520-126f-43ae-a77b-b3ae305fdc24",
+        "portCode": "PORT-A2",
+        "status": "BOOKED",
+        "lastMeterKw": 72.9,
+        "createdAt": "2024-10-27T21:46:54.599Z",
+        "updatedAt": "2026-02-05T19:38:37.397Z"
+      },
+      {
+        "portId": "31998821-df95-4ceb-9ecf-99615ff354f3",
+        "portCode": "PORT-A3",
+        "status": "OCCUPIED",
+        "lastMeterKw": 42.6,
+        "createdAt": "2024-10-27T21:46:54.599Z",
+        "updatedAt": "2026-02-05T19:38:37.397Z"
+      },
+      {
+        "portId": "06b8c53b-e3ca-4974-8474-cae811cec116",
+        "portCode": "PORT-A4",
+        "status": "FREE",
+        "lastMeterKw": 89.8,
+        "createdAt": "2024-10-27T21:46:54.599Z",
+        "updatedAt": "2026-02-05T19:38:37.397Z"
+      }
+    ]
+  },
+  {
+    "id": "00c6d2fc-165a-481d-9e7a-87136326966f",
+    "code": "OK7K09XDBQ",
+    "name": "Haifa models Charging Station",
+    "owner": "SunCharge Energy",
+    "city": "Haifa",
+    "address": "433 Huel Ville",
+    "phone": "0128192880",
+    "email": "Marion95@yahoo.com",
+    "siteTechnician": "Alexandra Hegmann",
+    "location": {
+      "latitude": 30.695247,
+      "longitude": 34.620733
+    },
+    "maxPowerKw": 170,
+    "portsCount": 5,
+    "state": "ACTIVE",
+    "ratePlan": {
+      "currencyCode": "ILS",
+      "currencyName": "Israeli New Shekel",
+      "peakRate": 3.1,
+      "offPeakRate": 2.9
+    },
+    "createdAt": "2023-06-20T09:02:02.667Z",
+    "updatedAt": "2026-01-13T20:22:59.836Z",
+    "hasFreePorts": false,
+    "ports": [
+      {
+        "portId": "c6893376-cc3c-4056-8524-955c73fb0436",
+        "portCode": "PORT-A1",
+        "status": "BOOKED",
+        "lastMeterKw": 88.6,
+        "createdAt": "2023-06-20T09:02:02.667Z",
+        "updatedAt": "2026-01-13T20:22:59.836Z"
+      },
+      {
+        "portId": "d62cd0dd-984e-4f3b-818b-2f8bb4ecacbf",
+        "portCode": "PORT-A2",
+        "status": "DISABLED",
+        "lastMeterKw": 80.6,
+        "createdAt": "2023-06-20T09:02:02.667Z",
+        "updatedAt": "2026-01-13T20:22:59.836Z"
+      },
+      {
+        "portId": "b9a12659-8cc6-4181-813a-0f2d8e09c938",
+        "portCode": "PORT-A3",
+        "status": "BOOKED",
+        "lastMeterKw": 35.9,
+        "createdAt": "2023-06-20T09:02:02.667Z",
+        "updatedAt": "2026-01-13T20:22:59.836Z"
+      },
+      {
+        "portId": "f54b3003-251b-435a-bc16-17c5c836236d",
+        "portCode": "PORT-A4",
+        "status": "BOOKED",
+        "lastMeterKw": 97.5,
+        "createdAt": "2023-06-20T09:02:02.667Z",
+        "updatedAt": "2026-01-13T20:22:59.836Z"
+      },
+      {
+        "portId": "82ffbcfa-620b-447a-bf7d-b09d98e08b5d",
+        "portCode": "PORT-A5",
+        "status": "DISABLED",
+        "lastMeterKw": 35.3,
+        "createdAt": "2023-06-20T09:02:02.667Z",
+        "updatedAt": "2026-01-13T20:22:59.836Z"
+      }
+    ]
+  },
+  {
+    "id": "427892a7-68a0-4fb3-83d1-de28cea088ff",
+    "code": "W4HJT8JMA3",
+    "name": "Holon channels Charging Station",
+    "owner": "ElectroCharge Israel Ltd",
+    "city": "Holon",
+    "address": "15586 Champlin Forest",
+    "phone": "0394877402",
+    "email": "Thea0@gmail.com",
+    "siteTechnician": "Blanche Donnelly",
+    "location": {
+      "latitude": 30.235341,
+      "longitude": 35.041386
+    },
+    "maxPowerKw": 55,
+    "portsCount": 5,
     "state": "ACTIVE",
     "ratePlan": {
       "currencyCode": "ILS",
       "currencyName": "Israeli New Shekel",
       "peakRate": 3.4,
-      "offPeakRate": 2.4
+      "offPeakRate": 3
     },
-    "createdAt": "2023-09-06T16:05:20.059Z",
-    "updatedAt": "2025-12-25T15:51:04.868Z",
-    "hasFreePorts": true
+    "createdAt": "2024-08-16T16:46:41.722Z",
+    "updatedAt": "2026-02-14T20:28:46.521Z",
+    "hasFreePorts": true,
+    "ports": [
+      {
+        "portId": "43d34a4b-8fbe-45fb-be92-f64b0afe1e00",
+        "portCode": "PORT-A1",
+        "status": "DISABLED",
+        "lastMeterKw": 64.2,
+        "createdAt": "2024-08-16T16:46:41.722Z",
+        "updatedAt": "2026-02-14T20:28:46.521Z"
+      },
+      {
+        "portId": "4a48defb-96ab-48fe-8528-a314555008cb",
+        "portCode": "PORT-A2",
+        "status": "DISABLED",
+        "lastMeterKw": 93.2,
+        "createdAt": "2024-08-16T16:46:41.722Z",
+        "updatedAt": "2026-02-14T20:28:46.521Z"
+      },
+      {
+        "portId": "2e0c3c8a-d16a-4963-8fc5-5d2a5a49c0dc",
+        "portCode": "PORT-A3",
+        "status": "FREE",
+        "lastMeterKw": 12.1,
+        "createdAt": "2024-08-16T16:46:41.722Z",
+        "updatedAt": "2026-02-14T20:28:46.521Z"
+      },
+      {
+        "portId": "6e2368e8-b06a-40c2-a91a-c4e33d4544fd",
+        "portCode": "PORT-A4",
+        "status": "OCCUPIED",
+        "lastMeterKw": 22.3,
+        "createdAt": "2024-08-16T16:46:41.722Z",
+        "updatedAt": "2026-02-14T20:28:46.521Z"
+      },
+      {
+        "portId": "194e810a-7c35-4bf8-a424-5262b4c6d089",
+        "portCode": "PORT-A5",
+        "status": "FREE",
+        "lastMeterKw": 32.4,
+        "createdAt": "2024-08-16T16:46:41.722Z",
+        "updatedAt": "2026-02-14T20:28:46.521Z"
+      }
+    ]
+  },
+  {
+    "id": "914ea92e-a333-49cc-8109-7bbf6491eacf",
+    "code": "H7S4MRQO0X",
+    "name": "Netanya lifetime value Charging Station",
+    "owner": "EverGo Charging Co",
+    "city": "Netanya",
+    "address": "2562 Rod Meadow",
+    "phone": "0530211228",
+    "email": "Ronnie.Cruickshank-Kris@hotmail.com",
+    "siteTechnician": "Florine Doyle DVM",
+    "location": {
+      "latitude": 31.249772,
+      "longitude": 34.652827
+    },
+    "maxPowerKw": 265,
+    "portsCount": 3,
+    "state": "OUT_OF_SERVICE",
+    "ratePlan": {
+      "currencyCode": "ILS",
+      "currencyName": "Israeli New Shekel",
+      "peakRate": 3.5,
+      "offPeakRate": 2.8
+    },
+    "createdAt": "2025-08-12T18:31:59.118Z",
+    "updatedAt": "2026-01-21T09:17:52.753Z",
+    "hasFreePorts": false,
+    "ports": [
+      {
+        "portId": "e7d3cc7a-0964-49c4-a5bb-259de702adf2",
+        "portCode": "PORT-A1",
+        "status": "BOOKED",
+        "lastMeterKw": 18.9,
+        "createdAt": "2025-08-12T18:31:59.118Z",
+        "updatedAt": "2026-01-21T09:17:52.753Z"
+      },
+      {
+        "portId": "003c7263-a807-4ffd-9565-a551e5d9553e",
+        "portCode": "PORT-A2",
+        "status": "OCCUPIED",
+        "lastMeterKw": 59.9,
+        "createdAt": "2025-08-12T18:31:59.118Z",
+        "updatedAt": "2026-01-21T09:17:52.753Z"
+      },
+      {
+        "portId": "ffa331ae-1b92-4ed2-b55a-b7b4def26e79",
+        "portCode": "PORT-A3",
+        "status": "BOOKED",
+        "lastMeterKw": 66.7,
+        "createdAt": "2025-08-12T18:31:59.118Z",
+        "updatedAt": "2026-01-21T09:17:52.753Z"
+      }
+    ]
+  },
+  {
+    "id": "2504dc79-b332-444e-9ecf-f44b98ab73aa",
+    "code": "ENZPFA1MM0",
+    "name": "Hadera content Charging Station",
+    "owner": "EverGo Charging Co",
+    "city": "Hadera",
+    "address": "466 Abbigail Streets",
+    "phone": "0379109398",
+    "email": "Jacquelyn.Farrell39@yahoo.com",
+    "siteTechnician": "Maudie Reichert",
+    "location": {
+      "latitude": 31.336679,
+      "longitude": 35.390812
+    },
+    "maxPowerKw": 80,
+    "portsCount": 4,
+    "state": "ACTIVE",
+    "ratePlan": {
+      "currencyCode": "ILS",
+      "currencyName": "Israeli New Shekel",
+      "peakRate": 2.9,
+      "offPeakRate": 1.8
+    },
+    "createdAt": "2023-10-30T14:32:25.095Z",
+    "updatedAt": "2026-03-06T00:06:16.029Z",
+    "hasFreePorts": false,
+    "ports": [
+      {
+        "portId": "cb1e2776-1dfb-4699-90fa-f1ea47a301d8",
+        "portCode": "PORT-A1",
+        "status": "DISABLED",
+        "lastMeterKw": 31.3,
+        "createdAt": "2023-10-30T14:32:25.095Z",
+        "updatedAt": "2026-03-06T00:06:16.029Z"
+      },
+      {
+        "portId": "388344df-8ed8-4c33-977d-ea1f5a35bdb2",
+        "portCode": "PORT-A2",
+        "status": "OCCUPIED",
+        "lastMeterKw": 52.2,
+        "createdAt": "2023-10-30T14:32:25.095Z",
+        "updatedAt": "2026-03-06T00:06:16.029Z"
+      },
+      {
+        "portId": "cc17f720-a7c2-4558-9508-52bd85dca274",
+        "portCode": "PORT-A3",
+        "status": "OCCUPIED",
+        "lastMeterKw": 7.6,
+        "createdAt": "2023-10-30T14:32:25.095Z",
+        "updatedAt": "2026-03-06T00:06:16.029Z"
+      },
+      {
+        "portId": "c4a797cc-a79c-40c5-aa2f-57b98495c46a",
+        "portCode": "PORT-A4",
+        "status": "ERROR",
+        "lastMeterKw": 55.9,
+        "createdAt": "2023-10-30T14:32:25.095Z",
+        "updatedAt": "2026-03-06T00:06:16.029Z"
+      }
+    ]
+  },
+  {
+    "id": "68668bce-51f1-4d9d-ad94-fe9a0fc45f4a",
+    "code": "T47OGK3WXK",
+    "name": "Haifa experiences Charging Station",
+    "owner": "SunCharge Energy",
+    "city": "Haifa",
+    "address": "842 Stephen Villages",
+    "phone": "0297387385",
+    "email": "Beverly.Lowe@yahoo.com",
+    "siteTechnician": "Dr. Carole Pouros",
+    "location": {
+      "latitude": 33.027515,
+      "longitude": 35.605911
+    },
+    "maxPowerKw": 70,
+    "portsCount": 3,
+    "state": "ACTIVE",
+    "ratePlan": {
+      "currencyCode": "ILS",
+      "currencyName": "Israeli New Shekel",
+      "peakRate": 3,
+      "offPeakRate": 1.1
+    },
+    "createdAt": "2025-12-06T07:12:17.393Z",
+    "updatedAt": "2026-03-04T06:13:23.270Z",
+    "hasFreePorts": false,
+    "ports": [
+      {
+        "portId": "fd276341-13d0-4651-94b1-45283b20c5cf",
+        "portCode": "PORT-A1",
+        "status": "OCCUPIED",
+        "lastMeterKw": 46.9,
+        "createdAt": "2025-12-06T07:12:17.393Z",
+        "updatedAt": "2026-03-04T06:13:23.270Z"
+      },
+      {
+        "portId": "47f0c727-7f02-4f11-b02a-07cd54efeb9e",
+        "portCode": "PORT-A2",
+        "status": "OCCUPIED",
+        "lastMeterKw": 66.2,
+        "createdAt": "2025-12-06T07:12:17.393Z",
+        "updatedAt": "2026-03-04T06:13:23.270Z"
+      },
+      {
+        "portId": "badb6cf5-effd-4a58-a31e-f44e1592baec",
+        "portCode": "PORT-A3",
+        "status": "BOOKED",
+        "lastMeterKw": 80.1,
+        "createdAt": "2025-12-06T07:12:17.393Z",
+        "updatedAt": "2026-03-04T06:13:23.270Z"
+      }
+    ]
+  },
+  {
+    "id": "6730dea3-2406-45d7-b2c8-6526f7498b4c",
+    "code": "54BRY09OWW",
+    "name": "Ashdod initiatives Charging Station",
+    "owner": "ElectroCharge Israel Ltd",
+    "city": "Ashdod",
+    "address": "5521 Rosalyn Gardens",
+    "phone": "0863500031",
+    "email": "Emanuel41@yahoo.com",
+    "siteTechnician": "Levi Fadel",
+    "location": {
+      "latitude": 31.591362,
+      "longitude": 34.613437
+    },
+    "maxPowerKw": 200,
+    "portsCount": 5,
+    "state": "ACTIVE",
+    "ratePlan": {
+      "currencyCode": "ILS",
+      "currencyName": "Israeli New Shekel",
+      "peakRate": 3.5,
+      "offPeakRate": 1.4
+    },
+    "createdAt": "2025-05-10T03:33:00.998Z",
+    "updatedAt": "2026-03-02T04:39:51.149Z",
+    "hasFreePorts": true,
+    "ports": [
+      {
+        "portId": "8c7bb785-a341-41dd-824a-bb81887f64e6",
+        "portCode": "PORT-A1",
+        "status": "DISABLED",
+        "lastMeterKw": 27,
+        "createdAt": "2025-05-10T03:33:00.998Z",
+        "updatedAt": "2026-03-02T04:39:51.149Z"
+      },
+      {
+        "portId": "f1403adc-2029-4c4c-af8e-e27f2646d9a3",
+        "portCode": "PORT-A2",
+        "status": "FREE",
+        "lastMeterKw": 53,
+        "createdAt": "2025-05-10T03:33:00.998Z",
+        "updatedAt": "2026-03-02T04:39:51.149Z"
+      },
+      {
+        "portId": "813aafb1-da73-447e-814b-650a2681e3a5",
+        "portCode": "PORT-A3",
+        "status": "FREE",
+        "lastMeterKw": 27.7,
+        "createdAt": "2025-05-10T03:33:00.998Z",
+        "updatedAt": "2026-03-02T04:39:51.149Z"
+      },
+      {
+        "portId": "579d26ad-e3c1-43ed-ba06-3005c0aed943",
+        "portCode": "PORT-A4",
+        "status": "BOOKED",
+        "lastMeterKw": 91.3,
+        "createdAt": "2025-05-10T03:33:00.998Z",
+        "updatedAt": "2026-03-02T04:39:51.149Z"
+      },
+      {
+        "portId": "79bdb7e5-cbfe-469f-883d-87d2f66e3af2",
+        "portCode": "PORT-A5",
+        "status": "BOOKED",
+        "lastMeterKw": 57.2,
+        "createdAt": "2025-05-10T03:33:00.998Z",
+        "updatedAt": "2026-03-02T04:39:51.149Z"
+      }
+    ]
+  },
+  {
+    "id": "92ba13cb-9ee8-4370-89c6-92aa532e7355",
+    "code": "YNBKVD4CFO",
+    "name": "Beer Sheva smart contracts Charging Station",
+    "owner": "GreenDrive EV Solutions",
+    "city": "Beer Sheva",
+    "address": "573 Water Lane",
+    "phone": "0256343943",
+    "email": "Celine_Wehner@gmail.com",
+    "siteTechnician": "Mr. Vincenzo Buckridge MD",
+    "location": {
+      "latitude": 32.591496,
+      "longitude": 35.127184
+    },
+    "maxPowerKw": 305,
+    "portsCount": 5,
+    "state": "OUT_OF_SERVICE",
+    "ratePlan": {
+      "currencyCode": "ILS",
+      "currencyName": "Israeli New Shekel",
+      "peakRate": 3,
+      "offPeakRate": 2.1
+    },
+    "createdAt": "2024-09-13T01:30:46.475Z",
+    "updatedAt": "2026-03-04T15:57:17.717Z",
+    "hasFreePorts": true,
+    "ports": [
+      {
+        "portId": "f95c0f5e-c9a9-4e72-896f-107d5f7e171a",
+        "portCode": "PORT-A1",
+        "status": "ERROR",
+        "lastMeterKw": 2.2,
+        "createdAt": "2024-09-13T01:30:46.475Z",
+        "updatedAt": "2026-03-04T15:57:17.717Z"
+      },
+      {
+        "portId": "ea41eb6a-fd95-4ed2-a492-83c5b45652df",
+        "portCode": "PORT-A2",
+        "status": "FREE",
+        "lastMeterKw": 33.3,
+        "createdAt": "2024-09-13T01:30:46.475Z",
+        "updatedAt": "2026-03-04T15:57:17.717Z"
+      },
+      {
+        "portId": "483bb17a-241b-4461-a5f0-721d1764057f",
+        "portCode": "PORT-A3",
+        "status": "ERROR",
+        "lastMeterKw": 73.3,
+        "createdAt": "2024-09-13T01:30:46.475Z",
+        "updatedAt": "2026-03-04T15:57:17.717Z"
+      },
+      {
+        "portId": "f8ffc0ef-a6a0-4c6b-845d-7c79632f84ba",
+        "portCode": "PORT-A4",
+        "status": "ERROR",
+        "lastMeterKw": 66.3,
+        "createdAt": "2024-09-13T01:30:46.475Z",
+        "updatedAt": "2026-03-04T15:57:17.717Z"
+      },
+      {
+        "portId": "ce061331-29eb-43a6-ae92-0db078787735",
+        "portCode": "PORT-A5",
+        "status": "ERROR",
+        "lastMeterKw": 10.7,
+        "createdAt": "2024-09-13T01:30:46.475Z",
+        "updatedAt": "2026-03-04T15:57:17.717Z"
+      }
+    ]
+  },
+  {
+    "id": "41f6cc85-903f-4ab8-9300-9666138ae697",
+    "code": "JQQW8PVSO9",
+    "name": "Beer Sheva supply-chains Charging Station",
+    "owner": "VoltPoint Networks",
+    "city": "Beer Sheva",
+    "address": "3654 Cecile Green",
+    "phone": "0623276111",
+    "email": "Elvira.Rutherford@hotmail.com",
+    "siteTechnician": "Denise O'Hara",
+    "location": {
+      "latitude": 30.460217,
+      "longitude": 34.687006
+    },
+    "maxPowerKw": 320,
+    "portsCount": 3,
+    "state": "ACTIVE",
+    "ratePlan": {
+      "currencyCode": "ILS",
+      "currencyName": "Israeli New Shekel",
+      "peakRate": 3.2,
+      "offPeakRate": 2.2
+    },
+    "createdAt": "2025-07-09T11:40:58.352Z",
+    "updatedAt": "2026-01-15T08:02:11.243Z",
+    "hasFreePorts": false,
+    "ports": [
+      {
+        "portId": "772f8073-722a-47c4-acc0-37b05b67507c",
+        "portCode": "PORT-A1",
+        "status": "BOOKED",
+        "lastMeterKw": 10.6,
+        "createdAt": "2025-07-09T11:40:58.352Z",
+        "updatedAt": "2026-01-15T08:02:11.243Z"
+      },
+      {
+        "portId": "d6b68852-bf29-4636-8813-e24a6936ca6b",
+        "portCode": "PORT-A2",
+        "status": "DISABLED",
+        "lastMeterKw": 77.6,
+        "createdAt": "2025-07-09T11:40:58.352Z",
+        "updatedAt": "2026-01-15T08:02:11.243Z"
+      },
+      {
+        "portId": "c4b6a97a-0923-4be1-900d-a9bc25ecdc54",
+        "portCode": "PORT-A3",
+        "status": "OCCUPIED",
+        "lastMeterKw": 12.5,
+        "createdAt": "2025-07-09T11:40:58.352Z",
+        "updatedAt": "2026-01-15T08:02:11.243Z"
+      }
+    ]
+  },
+  {
+    "id": "583555c6-42c9-4f56-8006-9e6be7e90c94",
+    "code": "N4MPEA122Z",
+    "name": "Tel Aviv functionalities Charging Station",
+    "owner": "SunCharge Energy",
+    "city": "Tel Aviv",
+    "address": "29507 Carmela Burgs",
+    "phone": "0906312697",
+    "email": "Kelli.Zemlak70@yahoo.com",
+    "siteTechnician": "Mr. Neha Sanford",
+    "location": {
+      "latitude": 33.26883,
+      "longitude": 34.501547
+    },
+    "maxPowerKw": 215,
+    "portsCount": 4,
+    "state": "ACTIVE",
+    "ratePlan": {
+      "currencyCode": "ILS",
+      "currencyName": "Israeli New Shekel",
+      "peakRate": 2.9,
+      "offPeakRate": 2.7
+    },
+    "createdAt": "2023-07-18T19:47:11.233Z",
+    "updatedAt": "2026-03-26T00:53:25.573Z",
+    "hasFreePorts": true,
+    "ports": [
+      {
+        "portId": "7fa7fed5-c833-4201-9b6c-8608c6db6fa1",
+        "portCode": "PORT-A1",
+        "status": "DISABLED",
+        "lastMeterKw": 24.6,
+        "createdAt": "2023-07-18T19:47:11.233Z",
+        "updatedAt": "2026-03-26T00:53:25.573Z"
+      },
+      {
+        "portId": "2b679766-e1eb-4668-9dcf-4184f2af371e",
+        "portCode": "PORT-A2",
+        "status": "FREE",
+        "lastMeterKw": 51.9,
+        "createdAt": "2023-07-18T19:47:11.233Z",
+        "updatedAt": "2026-03-26T00:53:25.573Z"
+      },
+      {
+        "portId": "8b0ceaa9-fdc2-4087-9a5f-11da9dcb6abe",
+        "portCode": "PORT-A3",
+        "status": "BOOKED",
+        "lastMeterKw": 4.4,
+        "createdAt": "2023-07-18T19:47:11.233Z",
+        "updatedAt": "2026-03-26T00:53:25.573Z"
+      },
+      {
+        "portId": "238aa164-0abf-4ff2-ae5d-326168c76fcf",
+        "portCode": "PORT-A4",
+        "status": "DISABLED",
+        "lastMeterKw": 21.2,
+        "createdAt": "2023-07-18T19:47:11.233Z",
+        "updatedAt": "2026-03-26T00:53:25.573Z"
+      }
+    ]
+  },
+  {
+    "id": "e180475c-3578-4e47-b7f4-97006dd0ac5d",
+    "code": "SE7VZBS1IR",
+    "name": "Hadera initiatives Charging Station",
+    "owner": "SunCharge Energy",
+    "city": "Hadera",
+    "address": "5668 Cydney Crest",
+    "phone": "0985504749",
+    "email": "Joan_Durgan58@hotmail.com",
+    "siteTechnician": "Thelma Huels",
+    "location": {
+      "latitude": 32.013289,
+      "longitude": 34.632979
+    },
+    "maxPowerKw": 55,
+    "portsCount": 5,
+    "state": "ACTIVE",
+    "ratePlan": {
+      "currencyCode": "ILS",
+      "currencyName": "Israeli New Shekel",
+      "peakRate": 3.1,
+      "offPeakRate": 2.7
+    },
+    "createdAt": "2025-10-25T02:50:07.932Z",
+    "updatedAt": "2026-03-06T07:34:29.273Z",
+    "hasFreePorts": true,
+    "ports": [
+      {
+        "portId": "ae835ea0-53b5-494f-a3f5-616a134eb645",
+        "portCode": "PORT-A1",
+        "status": "BOOKED",
+        "lastMeterKw": 27.3,
+        "createdAt": "2025-10-25T02:50:07.932Z",
+        "updatedAt": "2026-03-06T07:34:29.273Z"
+      },
+      {
+        "portId": "9502adb5-8b4f-4fa2-b65c-0eeccb1651b8",
+        "portCode": "PORT-A2",
+        "status": "FREE",
+        "lastMeterKw": 22.8,
+        "createdAt": "2025-10-25T02:50:07.932Z",
+        "updatedAt": "2026-03-06T07:34:29.273Z"
+      },
+      {
+        "portId": "7264591c-1eb4-403a-8910-d29faf1343e6",
+        "portCode": "PORT-A3",
+        "status": "BOOKED",
+        "lastMeterKw": 11.7,
+        "createdAt": "2025-10-25T02:50:07.932Z",
+        "updatedAt": "2026-03-06T07:34:29.273Z"
+      },
+      {
+        "portId": "5c5db1d6-ffad-4cbb-9f17-2918d1439233",
+        "portCode": "PORT-A4",
+        "status": "ERROR",
+        "lastMeterKw": 30.6,
+        "createdAt": "2025-10-25T02:50:07.932Z",
+        "updatedAt": "2026-03-06T07:34:29.273Z"
+      },
+      {
+        "portId": "59777fe4-34b7-4744-8a33-fa25da60df0a",
+        "portCode": "PORT-A5",
+        "status": "OCCUPIED",
+        "lastMeterKw": 37.4,
+        "createdAt": "2025-10-25T02:50:07.932Z",
+        "updatedAt": "2026-03-06T07:34:29.273Z"
+      }
+    ]
+  },
+  {
+    "id": "1334c14c-debe-4ffc-b27c-6a815705d85d",
+    "code": "VEVW55FOSX",
+    "name": "Ashdod methodologies Charging Station",
+    "owner": "EverGo Charging Co",
+    "city": "Ashdod",
+    "address": "956 Deven Isle",
+    "phone": "0328389692",
+    "email": "Jermain.Friesen@yahoo.com",
+    "siteTechnician": "Dr. Salvatore Daugherty V",
+    "location": {
+      "latitude": 30.302097,
+      "longitude": 34.427289
+    },
+    "maxPowerKw": 295,
+    "portsCount": 5,
+    "state": "ACTIVE",
+    "ratePlan": {
+      "currencyCode": "ILS",
+      "currencyName": "Israeli New Shekel",
+      "peakRate": 2.9,
+      "offPeakRate": 1.2
+    },
+    "createdAt": "2024-09-06T16:53:40.467Z",
+    "updatedAt": "2026-03-21T16:06:08.010Z",
+    "hasFreePorts": false,
+    "ports": [
+      {
+        "portId": "b99cccc2-788c-4483-9888-d6ba94e924a4",
+        "portCode": "PORT-A1",
+        "status": "OCCUPIED",
+        "lastMeterKw": 17,
+        "createdAt": "2024-09-06T16:53:40.467Z",
+        "updatedAt": "2026-03-21T16:06:08.010Z"
+      },
+      {
+        "portId": "44b6fbc1-98dc-44d7-882d-3854d2e1efcd",
+        "portCode": "PORT-A2",
+        "status": "OCCUPIED",
+        "lastMeterKw": 86.4,
+        "createdAt": "2024-09-06T16:53:40.467Z",
+        "updatedAt": "2026-03-21T16:06:08.010Z"
+      },
+      {
+        "portId": "3254befe-c3c5-4c54-a5b0-5135f1805fd7",
+        "portCode": "PORT-A3",
+        "status": "BOOKED",
+        "lastMeterKw": 53.5,
+        "createdAt": "2024-09-06T16:53:40.467Z",
+        "updatedAt": "2026-03-21T16:06:08.010Z"
+      },
+      {
+        "portId": "0e3b32be-9d4a-49fc-8d24-e6ec13803390",
+        "portCode": "PORT-A4",
+        "status": "DISABLED",
+        "lastMeterKw": 11.7,
+        "createdAt": "2024-09-06T16:53:40.467Z",
+        "updatedAt": "2026-03-21T16:06:08.010Z"
+      },
+      {
+        "portId": "811b3650-e636-4ada-b880-724c4f276d13",
+        "portCode": "PORT-A5",
+        "status": "ERROR",
+        "lastMeterKw": 97,
+        "createdAt": "2024-09-06T16:53:40.467Z",
+        "updatedAt": "2026-03-21T16:06:08.010Z"
+      }
+    ]
+  },
+  {
+    "id": "8f932a19-b93f-44f4-a7ef-2576887138cf",
+    "code": "J2E021DZMA",
+    "name": "Tel Aviv models Charging Station",
+    "owner": "GreenDrive EV Solutions",
+    "city": "Tel Aviv",
+    "address": "6500 Cyril Plaza",
+    "phone": "0443998996",
+    "email": "Jeramie.Hegmann74@yahoo.com",
+    "siteTechnician": "Madeline Heaney",
+    "location": {
+      "latitude": 30.739857,
+      "longitude": 34.618456
+    },
+    "maxPowerKw": 250,
+    "portsCount": 4,
+    "state": "OUT_OF_SERVICE",
+    "ratePlan": {
+      "currencyCode": "ILS",
+      "currencyName": "Israeli New Shekel",
+      "peakRate": 3.9,
+      "offPeakRate": 1.7
+    },
+    "createdAt": "2025-04-19T12:01:56.051Z",
+    "updatedAt": "2026-01-28T00:42:40.353Z",
+    "hasFreePorts": true,
+    "ports": [
+      {
+        "portId": "2552574a-d651-4634-9a7b-fe8e7861cbe1",
+        "portCode": "PORT-A1",
+        "status": "DISABLED",
+        "lastMeterKw": 81.3,
+        "createdAt": "2025-04-19T12:01:56.051Z",
+        "updatedAt": "2026-01-28T00:42:40.353Z"
+      },
+      {
+        "portId": "3ff6cea9-9266-48ec-8bb6-74d47de003be",
+        "portCode": "PORT-A2",
+        "status": "ERROR",
+        "lastMeterKw": 12.4,
+        "createdAt": "2025-04-19T12:01:56.051Z",
+        "updatedAt": "2026-01-28T00:42:40.353Z"
+      },
+      {
+        "portId": "3097036e-0d2d-4a8e-b098-7218e241f23f",
+        "portCode": "PORT-A3",
+        "status": "FREE",
+        "lastMeterKw": 35.8,
+        "createdAt": "2025-04-19T12:01:56.051Z",
+        "updatedAt": "2026-01-28T00:42:40.353Z"
+      },
+      {
+        "portId": "4f20042c-c5df-471a-b1ec-e1740c019975",
+        "portCode": "PORT-A4",
+        "status": "BOOKED",
+        "lastMeterKw": 7.8,
+        "createdAt": "2025-04-19T12:01:56.051Z",
+        "updatedAt": "2026-01-28T00:42:40.353Z"
+      }
+    ]
+  },
+  {
+    "id": "8cdaf688-b1eb-412f-bfb7-8bce774cb606",
+    "code": "0LYZPKQ2F7",
+    "name": "Ashkelon niches Charging Station",
+    "owner": "EverGo Charging Co",
+    "city": "Ashkelon",
+    "address": "3999 White Tunnel",
+    "phone": "0674167122",
+    "email": "Glenda.Lynch24@yahoo.com",
+    "siteTechnician": "Rolando Langosh",
+    "location": {
+      "latitude": 30.057194,
+      "longitude": 34.861703
+    },
+    "maxPowerKw": 180,
+    "portsCount": 3,
+    "state": "ACTIVE",
+    "ratePlan": {
+      "currencyCode": "ILS",
+      "currencyName": "Israeli New Shekel",
+      "peakRate": 3.8,
+      "offPeakRate": 1.9
+    },
+    "createdAt": "2024-01-21T15:24:03.940Z",
+    "updatedAt": "2026-01-24T15:53:07.537Z",
+    "hasFreePorts": false,
+    "ports": [
+      {
+        "portId": "1f037f85-51d0-408c-94a7-95b4c81e78e9",
+        "portCode": "PORT-A1",
+        "status": "DISABLED",
+        "lastMeterKw": 73.2,
+        "createdAt": "2024-01-21T15:24:03.940Z",
+        "updatedAt": "2026-01-24T15:53:07.537Z"
+      },
+      {
+        "portId": "7987045e-937e-4452-851d-47c7dabeab9f",
+        "portCode": "PORT-A2",
+        "status": "OCCUPIED",
+        "lastMeterKw": 33.3,
+        "createdAt": "2024-01-21T15:24:03.940Z",
+        "updatedAt": "2026-01-24T15:53:07.537Z"
+      },
+      {
+        "portId": "63d0ff0c-6dff-4adb-9169-3d643a2a3f53",
+        "portCode": "PORT-A3",
+        "status": "ERROR",
+        "lastMeterKw": 57.2,
+        "createdAt": "2024-01-21T15:24:03.940Z",
+        "updatedAt": "2026-01-24T15:53:07.537Z"
+      }
+    ]
   }
 ]

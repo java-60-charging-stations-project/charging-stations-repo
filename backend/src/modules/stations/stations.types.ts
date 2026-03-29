@@ -40,7 +40,7 @@ export interface StationBase {
   siteTechnician: string | null;
   location?: Location;
   maxPowerKw: number | null;
-  ports: number;
+  portsCount: number;
   occupiedPorts?: number;
   blockedUntil?: string | null;
   state: StationState;
@@ -48,6 +48,7 @@ export interface StationBase {
   createdAt: string;
   updatedAt: string;
   hasFreePorts?: boolean;
+  ports?: ApiPort[];
 }
 
 export interface LambdaLocation {
@@ -108,7 +109,7 @@ export function mapLambdaStation(raw: LambdaStation): StationBase {
     email: raw.email,
     siteTechnician: raw.siteTechnician ?? raw.site_technician ?? null,
     maxPowerKw: raw.maxPowerKw ?? raw.max_power_kw ?? null,
-    ports: raw.ports ?? 0,
+    portsCount: raw.ports ?? 0,
     state: raw.state ?? raw.status ?? 'INACTIVE',
     ratePlan: parseLambdaRatePlan(raw.ratePlan ?? raw.rate_plan ?? undefined),
     createdAt: raw.created_at,
@@ -190,7 +191,7 @@ export interface AdminUpdateStationStateResponse {
 
 export interface AdminUpdateStationPortsResponse {
   updatedAt: string;
-  ports: number;
+  portsCount: number;
   occupiedPorts: number;
 }
 
@@ -276,6 +277,16 @@ export interface AdminUpdateStationStateRequest {
   stationId: string;
   oldState: StationLifecycleState;
   newState: StationLifecycleState;
+}
+
+/** Single item inside StationPortsCreateRequest.ports */
+export interface AddPortInput {
+  portCode: string;
+}
+
+/** Request body for POST /support/stations/{stationId}/ports */
+export interface AddPortsRequest {
+  ports: AddPortInput[];
 }
 
 export function mapLambdaPortRow(row: LambdaPortDynamoRow): ApiPort {

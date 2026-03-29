@@ -20,6 +20,7 @@ import AppRedirect from './AppRedirect';
 import AuthRoute from './AuthRoute';
 import { APP_PATH } from './roleNavigation';
 import StationEditPage from '@/pages/StationEditPage';
+import StationPortsViewPage from '@/pages/StationPortsViewPage';
 
 const router = createBrowserRouter([
     /* Unprotected GUEST pages */
@@ -53,6 +54,7 @@ const router = createBrowserRouter([
                             { index: true, element: <SupportDashboardPage /> },
                             { path: "logs", element: <SupportLogsPage /> },
                             { path: "stations", element: <SupportStationsPage /> },
+                            { path: "stations/view/:stationId/ports", element: <StationPortsViewPage /> },
                             { path: "stations/view/:stationId", element: <StationEditPage /> },
                             { path: "sessions", element: <SupportSessionsPage /> },
                         ]

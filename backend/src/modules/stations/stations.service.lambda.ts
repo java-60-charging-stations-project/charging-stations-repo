@@ -14,6 +14,7 @@ import { createLogger } from '../../utils/logger';
 import { wrapLambdaRequest } from '../../common/wrappers';
 import { DEFAULT_PAGE_SIZE } from '../../common/constants';
 import type {
+  AddPortsRequest,
   AdminCreateStationRequest,
   AdminCreateStationResponse,
   AdminDeleteStationResponse,
@@ -101,7 +102,7 @@ export class StationsServiceLambda implements StationsService {
     return { data: stations, meta };
   }
 
-  async getById(stationId: string, callerId: string): Promise<StationBase> {
+  async getById(stationId: string, callerId: string, includePorts?: boolean): Promise<StationBase> {
     logger.debug('Invoking stations lambda: getById', { stationId, callerId });
     const result = await LAMBDA_INVOKER.invokeJson<{ data: LambdaStation | null } | LambdaErrorResponse>(
       env.stationsLambdaFunctionName,
@@ -113,7 +114,11 @@ export class StationsServiceLambda implements StationsService {
     if (!result.data) {
       throw new ResourceNotFoundError('Station not found');
     }
-    return mapLambdaStation(result.data);
+    const station = mapLambdaStation(result.data);
+    if (includePorts) {
+      station.ports = await this.getPorts(stationId, callerId);
+    }
+    return station;
   }
 
   async getPorts(stationId: string, callerId: string): Promise<ApiPort[]> {
@@ -201,9 +206,17 @@ export class StationsServiceLambda implements StationsService {
     const station = await this.getById(stationId, callerId);
     return {
       updatedAt: station.updatedAt,
-      ports: station.ports,
+      portsCount: station.portsCount,
       occupiedPorts: station.occupiedPorts ?? 0,
     };
+  }
+
+  async addPorts(_stationId: string, _payload: AddPortsRequest, _callerId: string): Promise<ApiPort[]> {
+    throw new ServiceError('addPorts is not implemented for Lambda service', 501, 'NOT_IMPLEMENTED');
+  }
+
+  async deletePort(_stationId: string, _portId: string, _callerId: string): Promise<void> {
+    throw new ServiceError('deletePort is not implemented for Lambda service', 501, 'NOT_IMPLEMENTED');
   }
 
   async deleteStation(stationId: string, callerId: string): Promise<AdminDeleteStationResponse> {
