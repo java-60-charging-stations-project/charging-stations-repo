@@ -83,7 +83,10 @@ const PortsView: FC<PortsViewProps> = ({
     }
 
     if (isLoading) {
-        return <EasySpinner size="lg" />;
+        return (<div className="w-full flex justify-center items-center">
+            <EasySpinner size="lg" />
+            </div>
+        );
     }
     return (
         <div className="flex flex-col gap-2 text-xs w-full">

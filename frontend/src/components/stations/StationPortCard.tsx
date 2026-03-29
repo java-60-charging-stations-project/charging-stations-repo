@@ -30,7 +30,10 @@ const StationPortCard: FC<StationPortCardProps> = ({ port, isUpdating, isLocked,
     const toggleDetails = useCallback(() => setDetailsOpen((v) => !v), []);
 
     if (isUpdating) {
-        return <EasySpinner size="sm" />;
+        return (<div className="w-full flex justify-center items-center">
+            <EasySpinner size="sm" />
+            </div>
+        );
     }
 
     return (

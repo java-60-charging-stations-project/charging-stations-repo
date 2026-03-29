@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { fetchStationById, fetchStationPorts } from "@/services/api/supportApi";
+import { fetchStationById, fetchStationPorts, deleteStationPort } from "@/services/api/supportApi";
 import type { StationState } from "@/types/stations";
 import NavButton from "@/components/NavButton";
 import PortsView from "@/components/stations/PortsView";
@@ -63,6 +63,7 @@ const StationPortsViewPage = () => {
                     stationState={stationState}
                     enabled={userRole === "SUPPORT"}
                     fetchPortsFn={fetchStationPorts}
+                    deletePortFn={deleteStationPort}
                 />
             )}
         </div>
