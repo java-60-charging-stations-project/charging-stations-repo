@@ -247,7 +247,10 @@ paths:
     get:
       operationId: getUserStationById
       summary: Get station by ID (end-user path)
-      description: Same response as `GET /stations/{stationId}`.
+      description: >
+        Returns a single station by its ID. Identical response shape to
+        `GET /support/stations/{stationId}` and `GET /admin/stations/{stationId}`.
+        When `includePorts=true` the response includes the full `ports` array.
       security:
         - bearerAuth: []
       parameters:
@@ -256,9 +259,16 @@ paths:
           required: true
           schema:
             type: string
+        - name: includePorts
+          in: query
+          required: false
+          description: When `true`, the response `data` object includes the `ports` array with full port details.
+          schema:
+            type: boolean
+            default: false
       responses:
         '200':
-          description: Charging station data
+          description: Charging station data (includes `ports` when `includePorts=true`)
           content:
             application/json:
               schema:
@@ -274,7 +284,7 @@ paths:
     get:
       operationId: getUserStationPorts
       summary: List physical ports for a station (end-user path)
-      description: Same response as `GET /stations/{stationId}/ports`.
+      description: Returns all ports belonging to the given station. Identical response to `GET /support/stations/{stationId}/ports`.
       security:
         - bearerAuth: []
       parameters:
@@ -285,19 +295,11 @@ paths:
             type: string
       responses:
         '200':
-          description: Ports list
+          description: List of station ports
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      ports:
-                        type: array
-                        items:
-                          type: object
+                $ref: '#/components/schemas/StationPortsListApiResponse'
         '401':
           $ref: '#/components/responses/UnauthenticatedResponse'
         '404':
@@ -434,7 +436,11 @@ paths:
     get:
       operationId: getAdminStationById
       summary: Get charging station by ID as admin
-      description: Returns a single charging station by its ID. Requires admin privileges.
+      description: >
+        Returns a single charging station by its ID. Identical response shape to
+        `GET /user/stations/{stationId}` and `GET /support/stations/{stationId}`.
+        When `includePorts=true` the response includes the full `ports` array.
+        Requires admin privileges.
       security:
         - bearerAuth: []
       x-roles: [ADMIN]
@@ -445,9 +451,16 @@ paths:
           description: Station identifier
           schema:
             type: string
+        - name: includePorts
+          in: query
+          required: false
+          description: When `true`, the response `data` object includes the `ports` array with full port details.
+          schema:
+            type: boolean
+            default: false
       responses:
         '200':
-          description: Charging station data
+          description: Charging station data (includes `ports` when `includePorts=true`)
           content:
             application/json:
               schema:
@@ -476,6 +489,19 @@ paths:
                     offPeakRate: 1.47
                   createdAt: "2026-03-18T14:19:07+02:00"
                   updatedAt: "2026-03-18T14:19:07+02:00"
+                  ports:
+                    - portId: prt-a1b2c3d4
+                      portCode: PORT-A1
+                      status: FREE
+                      lastMeterKw: 0.0
+                      createdAt: "2026-03-18T14:19:07+02:00"
+                      updatedAt: "2026-03-18T14:19:07+02:00"
+                    - portId: prt-e5f6a7b8
+                      portCode: PORT-A2
+                      status: OCCUPIED
+                      lastMeterKw: 42.5
+                      createdAt: "2026-03-18T14:19:07+02:00"
+                      updatedAt: "2026-03-18T14:19:07+02:00"
         '401':
           $ref: '#/components/responses/UnauthenticatedResponse'
         '403':
@@ -1129,7 +1155,11 @@ paths:
     get:
       operationId: getSupportStationById
       summary: Get support station by ID
-      description: Returns support station information for a charging station, including the full list of ports. Requires Cognito JWT and **SUPPORT** group.
+      description: >
+        Returns a single station by its ID. Identical response shape to
+        `GET /user/stations/{stationId}` and `GET /admin/stations/{stationId}`.
+        When `includePorts=true` the response includes the full `ports` array.
+        Requires Cognito JWT and **SUPPORT** group.
       security:
         - bearerAuth: []
       parameters:
@@ -1139,13 +1169,20 @@ paths:
           description: Station identifier
           schema:
             type: string
+        - name: includePorts
+          in: query
+          required: false
+          description: When `true`, the response `data` object includes the `ports` array with full port details.
+          schema:
+            type: boolean
+            default: false
       responses:
         '200':
-          description: Support station details with ports array
+          description: Charging station data (includes `ports` when `includePorts=true`)
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/StationSupportSingleResponse'
+                $ref: '#/components/schemas/StationBaseSingleResponse'
         '401':
           $ref: '#/components/responses/UnauthenticatedResponse'
         '403':
@@ -1851,6 +1888,13 @@ components:
           type: string
           format: date-time
           example: "2026-03-18T11:07:12Z"
+        ports:
+          type: array
+          description: >
+            Full port details for this station.
+            Present only when the `includePorts=true` query parameter is supplied.
+          items:
+            $ref: '#/components/schemas/StationPort'
       example:
         id: stn-8f2a9b31
         code: HA-DC-0018
@@ -1874,6 +1918,19 @@ components:
           offPeakRate: 1.34
         createdAt: "2025-11-04T07:16:28+02:00"
         updatedAt: "2026-03-18T10:41:03Z"
+        ports:
+          - portId: prt-a1b2c3d4
+            portCode: PORT-A1
+            status: FREE
+            lastMeterKw: 0.0
+            createdAt: "2025-11-04T07:16:28+02:00"
+            updatedAt: "2026-03-18T10:41:03Z"
+          - portId: prt-e5f6a7b8
+            portCode: PORT-A2
+            status: OCCUPIED
+            lastMeterKw: 42.5
+            createdAt: "2025-11-04T07:16:28+02:00"
+            updatedAt: "2026-03-18T10:41:03Z"
 
     StationDetailed:
       allOf:
@@ -1950,30 +2007,9 @@ components:
           items:
             $ref: '#/components/schemas/StationPortCreate'
 
-    StationSupportProjection:
-      description: >
-        Station record returned to the SUPPORT role. Extends StationBase with a required
-        `ports` array containing the full port details for the station.
-      allOf:
-        - $ref: '#/components/schemas/StationBase'
-        - type: object
-          required: [ports]
-          properties:
-            ports:
-              type: array
-              items:
-                $ref: '#/components/schemas/StationPort'
-
-    StationSupportSingleResponse:
-      type: object
-      required: [data]
-      properties:
-        data:
-          $ref: '#/components/schemas/StationSupportProjection'
-
     StationPortsListApiResponse:
       type: object
-      description: Response envelope for GET /support/stations/{stationId}/ports.
+      description: Response envelope for GET /support/stations/{stationId}/ports and GET /user/stations/{stationId}/ports.
       required: [data]
       properties:
         data:
