@@ -56,7 +56,7 @@ Parameters:
     Default: charging-stations-get-ports-sessions-dynamo
   LambdaStationsDynamoWriteName:
     Type: String
-    Default: charging-stations-write-ports-dynamo
+    Default: charging-stations-write-station-ports-dynamo
   CognitoCrossAccountRoleArn:
     Type: String
     Description: Cross-account IAM role ARN used by the backend to manage Cognito users
