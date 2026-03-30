@@ -287,7 +287,7 @@ export interface LambdaUpdateDynamoPortsData {
 
 export interface LambdaDeleteStationPortsData {
   stationId: string;
-  portKeys: string[];
+  portKey: string;
 }
 
 export interface LambdaInsertStationPortsSuccessData {

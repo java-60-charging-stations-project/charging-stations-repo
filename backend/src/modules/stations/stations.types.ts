@@ -1,7 +1,5 @@
 import type {
   ApiPort,
-  LambdaDeleteDynamoPortSuccessItem,
-  LambdaDeleteStationPortsSuccessData,
   LambdaInsertStationPortsSuccessData,
   LambdaPortDynamoRow,
 } from '../../common/lambdaContracts';
@@ -321,17 +319,4 @@ export function mapLambdaCreatedPortKeys(raw: LambdaInsertStationPortsSuccessDat
   }
   return raw.created_port_keys
     .filter((value): value is string => typeof value === 'string' && value.length > 0);
-}
-
-export function mapLambdaDeleteStationPortsResponse(raw: LambdaDeleteStationPortsSuccessData): LambdaDeleteDynamoPortSuccessItem[] {
-  if (!Array.isArray(raw.deleted_ports)) {
-    return [];
-  }
-  return raw.deleted_ports.filter(
-    (item): item is LambdaDeleteDynamoPortSuccessItem =>
-      Boolean(item) &&
-      typeof item.station_id === 'string' &&
-      typeof item.port_key === 'string' &&
-      typeof item.deleted_at === 'string'
-  );
 }

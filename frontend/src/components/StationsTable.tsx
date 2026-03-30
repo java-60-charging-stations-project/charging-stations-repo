@@ -22,6 +22,7 @@ export interface StationsTableProps {
     fetchFn: (params: StationsListParams) => Promise<ApiArrayResponse<StationBase>>;
     // If provided, station name becomes a clickable link navigating to this path.
     detailPath?: (stationId: string) => string;
+    showStateFilter?: boolean;
 }
 
 function SortButton({
@@ -47,7 +48,7 @@ function SortButton({
     );
 }
 
-const StationsTable: FC<StationsTableProps> =({ fetchFn, detailPath }) => {
+const StationsTable: FC<StationsTableProps> =({ fetchFn, detailPath, showStateFilter = true }) => {
     const navigate = useNavigate();
     const { isLoading, error, stations, meta, parameters, setters } =
         useStationsQuery(fetchFn);
@@ -86,20 +87,22 @@ const StationsTable: FC<StationsTableProps> =({ fetchFn, detailPath }) => {
                     onChange={(e) => setOwnerInput(e.target.value)}
                     onKeyDown={handleKeyDown}
                 />
-                <select
-                    className="border border-slate-300 px-1.5 py-0.5 rounded bg-white"
-                    value={parameters.state ?? ""}
-                    onChange={(e) =>
-                        setters.setStateFilter(e.target.value as StationState || undefined)
-                    }
-                >
-                    <option value="">All states</option>
-                    {STATE_OPTIONS.map((status) => (
-                        <option key={status} value={status}>
-                            {status}
-                        </option>
-                    ))}
-                </select>
+                {showStateFilter && (
+                    <select
+                        className="border border-slate-300 px-1.5 py-0.5 rounded bg-white"
+                        value={parameters.state ?? ""}
+                        onChange={(e) =>
+                            setters.setStateFilter(e.target.value as StationState || undefined)
+                        }
+                    >
+                        <option value="">All states</option>
+                        {STATE_OPTIONS.map((status) => (
+                            <option key={status} value={status}>
+                                {status}
+                            </option>
+                            ))}
+                    </select>
+                )}
                 <SimpleButton
                     caption="Load"
                     size="xs"

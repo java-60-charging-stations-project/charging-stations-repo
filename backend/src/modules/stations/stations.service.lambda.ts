@@ -8,8 +8,8 @@ import {
 } from '../../common/serviceErrors';
 import {
   isLambdaErrorPayload,
+  LambdaDeleteDynamoPortSuccessItem,
   type LambdaDeleteStationPortsData,
-  type LambdaDeleteStationPortsSuccessData,
   type LambdaGetPortsByStationSuccessData,
   type LambdaInsertStationPortsData,
   type LambdaInsertStationPortsSuccessData,
@@ -43,7 +43,6 @@ import {
   mapLambdaAdminCreateStationResponse,
   mapLambdaDeleteStationResponse,
   mapLambdaCreatedPortKeys,
-  mapLambdaDeleteStationPortsResponse,
   mapLambdaInsertStationPortsResponse,
   mapLambdaPortRow,
   mapLambdaStation,
@@ -302,22 +301,19 @@ export class StationsServiceLambda implements StationsService {
       callerId,
     });
     const result = await LAMBDA_INVOKER.invokeJson<
-      { data: LambdaDeleteStationPortsSuccessData } | LambdaErrorResponse
+      { data: LambdaDeleteDynamoPortSuccessItem } | LambdaErrorResponse
     >(
       env.stationsPortsWriteLambdaFunctionName,
       wrapLambdaRequest<LambdaDeleteStationPortsData, Record<string, never>>('deleteStationPorts', callerId, {
         stationId,
-        portKeys: [portKey],
+        portKey,
       })
     );
     if (isLambdaErrorPayload(result)) {
       throwFromStationsLambdaError(result);
     }
-
-    const deletedPorts = mapLambdaDeleteStationPortsResponse(result.data);
-    if (!deletedPorts.some((port) => port.port_key === portKey)) {
-      throw new ServiceError('stations ports lambda: invalid delete response', 502, 'INVALID_RESPONSE');
-    }
+    const deletePortData = result.data;
+    logger.debug("Delete successful. Lambda response: ", deletePortData);
   }
 
   async deleteStation(stationId: string, callerId: string): Promise<AdminDeleteStationResponse> {

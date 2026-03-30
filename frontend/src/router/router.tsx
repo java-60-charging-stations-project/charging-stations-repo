@@ -5,6 +5,8 @@ import GuestDashboardPage from '@/pages/guest/GuestDashboardPage';
 import UserDashboardPage from '@/pages/user/UserDashboardPage';
 import UserCurrentSessionPage from '@/pages/user/UserCurrentSessionPage';
 import UserProfilePage from '@/pages/user/UserProfilePage';
+import UserStationsListPage from '@/pages/user/UserStationsListPage';
+import UserStationPage from '@/pages/user/UserStationPage';
 import SupportDashboardPage from '@/pages/support/SupportDashboardPage';
 import SupportLogsPage from '@/pages/support/SupportLogsPage';
 import SupportStationsPage from '@/pages/support/SupportStationsPage';
@@ -44,6 +46,8 @@ const router = createBrowserRouter([
                         children: [
                             { index: true, element: <UserDashboardPage /> },
                             { path: "session", element: <UserCurrentSessionPage /> },
+                            { path: "stations", element: <UserStationsListPage /> },
+                            { path: "stations/:stationId", element: <UserStationPage /> },
                             { path: "profile", element: <UserProfilePage /> },
                         ]
                     },
