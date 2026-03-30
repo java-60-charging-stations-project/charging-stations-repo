@@ -742,6 +742,53 @@ Resources:
             BisectBatchOnFunctionError: true
             Enabled: true
   
+
+  GetPortsSessionsFunction:
+    Type: AWS::Serverless::Function
+    DependsOn:
+      - StationEntitiesTable
+      - DynamoDBGatewayEndpoint
+    Properties:
+      Runtime: python3.12
+      FunctionName: charging-stations-get-ports-sessions-dynamo
+      Handler: get_ports_sessions_dynamo.handler
+      CodeUri: db/read
+      Layers:
+        - !Ref CommonToolsLayer
+      Description: Read station ports from DynamoDB single-table (filters out session rows)
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds:
+          - !Ref PrivateSubnet1Id
+          - !Ref PrivateSubnet2Id
+      Environment:
+        Variables:
+          STATIONS_DYNAMO_TABLE: !Ref StationEntitiesTable
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:Query
+              Resource: !GetAtt StationEntitiesTable.Arn
+
+  GetPortsSessionsInvokePermissionA:
+    Type: AWS::Lambda::Permission
+    Condition: UseInvokerAccountA
+    Properties:
+      FunctionName: !Ref GetPortsSessionsFunction
+      Action: lambda:InvokeFunction
+      Principal: !Sub "arn:aws:iam::${InvokerAccountIdA}:root"
+
+  GetPortsSessionsInvokePermissionB:
+    Type: AWS::Lambda::Permission
+    Condition: UseInvokerAccountB
+    Properties:
+      FunctionName: !Ref GetPortsSessionsFunction
+      Action: lambda:InvokeFunction
+      Principal: !Sub "arn:aws:iam::${InvokerAccountIdB}:root"
+
 Outputs:
   UserPoolId:
     Description: Cognito User Pool ID (backend API / Fargate env)
