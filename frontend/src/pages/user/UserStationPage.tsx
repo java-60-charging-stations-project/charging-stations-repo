@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import NavButton from "@/components/NavButton";
+import Modal from "@/components/Modal";
 import SimpleButton from "@/components/SimpleButton";
 import {
   createBooking,
   fetchStationById,
   fetchStationPorts,
+  startChargingSession,
 } from "@/services/api/userApi";
 import type { StationBase, StationPort } from "@/types/stations";
 
@@ -18,6 +20,13 @@ const UserStationPage = () => {
   const [isBooking, setIsBooking] = useState<boolean>(false);
   const [bookingMessage, setBookingMessage] = useState<string | null>(null);
   const [bookingError, setBookingError] = useState<string | null>(null);
+  const [isPreparingCharging, setIsPreparingCharging] = useState<boolean>(false);
+  const [isStartingCharging, setIsStartingCharging] = useState<boolean>(false);
+  const [chargingMessage, setChargingMessage] = useState<string | null>(null);
+  const [chargingError, setChargingError] = useState<string | null>(null);
+  const [chargeModalOpen, setChargeModalOpen] = useState<boolean>(false);
+  const [availableFreePorts, setAvailableFreePorts] = useState<StationPort[]>([]);
+  const [selectedPortCode, setSelectedPortCode] = useState<string>("");
 
   const loadStation = useCallback(async () => {
     if (!stationId) {
@@ -35,9 +44,10 @@ const UserStationPage = () => {
 
   const loadPorts = useCallback(async (): Promise<StationPort[]> => {
     if (!stationId) {
-      setError("Missing station id.");
+      const missingStationError = "Missing station id.";
+      setError(missingStationError);
       setIsLoading(false);
-      return [];
+      throw new Error(missingStationError);
     }
 
     setIsLoading(true);
@@ -48,8 +58,10 @@ const UserStationPage = () => {
       setPorts(nextPorts);
       return nextPorts;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load station ports");
-      return [];
+      const message =
+        err instanceof Error ? err.message : "Failed to load station ports";
+      setError(message);
+      throw new Error(message);
     } finally {
       setIsLoading(false);
     }
@@ -60,7 +72,7 @@ const UserStationPage = () => {
   }, [loadStation]);
 
   useEffect(() => {
-    void loadPorts();
+    void loadPorts().catch(() => undefined);
   }, [loadPorts]);
 
   const freePortsCount = useMemo(
@@ -106,6 +118,61 @@ const UserStationPage = () => {
       setIsBooking(false);
     }
   }, [loadPorts, stationId]);
+
+  const handleInitiateCharging = useCallback(async () => {
+    setIsPreparingCharging(true);
+    setChargingMessage(null);
+    setChargingError(null);
+    setSelectedPortCode("");
+
+    try {
+      const latestPorts = await loadPorts();
+      const freePorts = latestPorts.filter((port) => port.status === "FREE");
+
+      if (freePorts.length === 0) {
+        setAvailableFreePorts([]);
+        setChargingError("There is no free ports right now");
+        return;
+      }
+
+      setAvailableFreePorts(freePorts);
+      setChargeModalOpen(true);
+    } catch (err) {
+      setAvailableFreePorts([]);
+      setChargingError(
+        err instanceof Error ? err.message : "Failed to load station ports",
+      );
+    } finally {
+      setIsPreparingCharging(false);
+    }
+  }, [loadPorts]);
+
+  const handleCharge = useCallback(async () => {
+    if (!stationId || !selectedPortCode) {
+      return;
+    }
+
+    setChargeModalOpen(false);
+    setIsStartingCharging(true);
+    setChargingMessage(null);
+    setChargingError(null);
+
+    try {
+      await startChargingSession({
+        stationId,
+        portCode: selectedPortCode,
+        oldState: "FREE",
+      });
+      setChargingMessage("Your charging session is started");
+      await loadPorts();
+    } catch (err) {
+      setChargingError(
+        err instanceof Error ? err.message : "Failed to start charging session",
+      );
+    } finally {
+      setIsStartingCharging(false);
+    }
+  }, [loadPorts, selectedPortCode, stationId]);
 
   return (
     <div className="mx-auto mt-5 max-w-md space-y-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -174,6 +241,64 @@ const UserStationPage = () => {
           />
         </div>
       </section>
+
+      <section className="space-y-3 rounded-md border border-slate-200 bg-slate-50 p-4">
+        <h2 className="text-lg font-semibold text-slate-900">On the station right now?</h2>
+
+        {chargingMessage && (
+          <p className="rounded border border-green-300 bg-green-50 p-3 text-sm text-green-700">
+            {chargingMessage}
+          </p>
+        )}
+
+        {chargingError && (
+          <p className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+            {chargingError}
+          </p>
+        )}
+
+        <div className="flex justify-center">
+          <SimpleButton
+            caption="Initiate charging"
+            loadingCaption="Preparing..."
+            handleClick={() => void handleInitiateCharging()}
+            isLoading={isPreparingCharging}
+            isDisabled={!stationId || isLoading || isStartingCharging}
+          />
+        </div>
+      </section>
+
+      <Modal
+        isOpen={chargeModalOpen}
+        onClose={() => setChargeModalOpen(false)}
+        showCloseButton={true}
+        title="Start charging"
+      >
+        <div className="mt-4 space-y-4">
+          <select
+            className="w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm"
+            value={selectedPortCode}
+            onChange={(e) => setSelectedPortCode(e.target.value)}
+          >
+            <option value="">--Chose your port--</option>
+            {availableFreePorts.map((port) => (
+              <option key={port.portId} value={port.portCode}>
+                {port.portCode}
+              </option>
+            ))}
+          </select>
+
+          <div className="flex justify-end">
+            <SimpleButton
+              caption="Charge"
+              loadingCaption="Charging..."
+              handleClick={() => void handleCharge()}
+              isLoading={isStartingCharging}
+              isDisabled={!selectedPortCode}
+            />
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
