@@ -1,5 +1,5 @@
 import HealthChecker from '@/components/HealthChecker';
-import WelcomeTable from '@/components/WelcomeTable';
+import GuestStationsTable from '@/components/GuestStationsTable';
 import NavMenu from '@/components/NavMenu';
 import NavButton from '@/components/NavButton';
 import { LOGIN_PATH, REGISTER_PATH } from '@/router/roleNavigation';
@@ -14,9 +14,9 @@ const GuestDashboardPage = () => {
           <p className="text-lg">
             You can <NavButton to={LOGIN_PATH} caption='Login' color="secondary" size="xs"/> or <NavButton to={REGISTER_PATH} caption="Join us" color="secondary" size="xs"/>
           </p>
-          <div>
-            <WelcomeTable />
-            <div className="flex flex-col md:flex-row justify-around md:justify-center items-center gap-4 pt-7">
+          <div className="w-full">
+            <GuestStationsTable />
+            <div className="w-full flex flex-col md:flex-row justify-between md:justify-center items-center gap-4 pt-7">
               <HealthChecker 
                 defaultInfo="Click to check!" 
                 endpoint='/health' 

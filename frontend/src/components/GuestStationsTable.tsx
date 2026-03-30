@@ -18,7 +18,7 @@ async function fetchStationsList(state: StationState = "ACTIVE", pageSize: numbe
     logger.debug("Stations fetched", { meta, stationsCount: data.length });
     return data;
 };
-const WelcomeTable = () => {
+const GuestStationsTable = () => {
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
     const [stations, setStations] = useState<StationBase[]>([]);
@@ -54,26 +54,26 @@ const WelcomeTable = () => {
                     <caption>List of charging stations</caption>
                         <thead>
                         <tr>
-                            <th>Name</th>
+                            <th className="hidden xl:table-cell">Name</th>
                             <th>City</th>
-                            <th>Owner</th>
+                            <th className="hidden md:table-cell">Owner</th>
                             <th>Address</th>
                             <th>Busy</th>
-                            <th>Max power (Kw)</th>
-                            <th>Ports</th>
+                            <th className="hidden md:table-cell">Max power (Kw)</th>
+                            <th className="hidden lg:table-cell">Ports</th>
                         </tr>
                     </thead>
                     <tbody>
                     {stationsToDisplay.map(
                         (item: StationBase) => (
                             <tr key={item.id}>
-                                <td>{item.name}</td>
+                                <td className="hidden xl:table-cell text-left">{item.name}</td>
                                 <td>{item.city}</td>
-                                <td>{item.owner}</td>
+                                <td className="hidden md:table-cell">{item.owner}</td>
                                 <td>{item.address}</td>
                                 <td>{item.hasFreePorts? <StatusBadgeGreen labelText="Free ports" />: <StatusBadgeError labelText="Busy" /> }</td>
-                                <td>{item.maxPowerKw}</td>
-                                <td>{item.portsCount}</td>
+                                <td className="hidden md:table-cell">{item.maxPowerKw}</td>
+                                <td className="hidden lg:table-cell text-center">{item.portsCount}</td>
                             </tr>
                         )
                     )}
@@ -84,4 +84,4 @@ const WelcomeTable = () => {
     );
 }
 
-export default WelcomeTable;
+export default GuestStationsTable;

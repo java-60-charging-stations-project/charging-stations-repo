@@ -27,7 +27,7 @@ interface HealthCheckerProps {
 type HealthStatus = "healthy" | "unhealthy" | "unknown";
 
 const HealthChecker: FC<HealthCheckerProps> = ({
-  defaultInfo, endpoint, caption, checkerName, buttonColor="primary", buttonSize="small"
+  defaultInfo, endpoint, caption, checkerName, buttonColor="primary", buttonSize="xs"
 }) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isHealthy, setIsHealthy] = useState<HealthStatus>("unknown");
@@ -57,9 +57,11 @@ const HealthChecker: FC<HealthCheckerProps> = ({
   
   return (
     <div className="w-full border-2 border-gray-950 p-4 rounded-md">
-      <p className="text-lg font-bold">{checkerName ?? `Health checker for ${endpoint}`}</p>
-      <SimpleButton handleClick={handleClick} caption={buttonCaption} isLoading={isLoading} color={buttonColor} size={buttonSize} />
-      <p className={`${isHealthy === "healthy" ? "text-success-600" : isHealthy === "unhealthy" ? "text-error-600" : "text-gray-500"}`}>{checkInfo}</p>
+      <p className="text-lg font-bold text-center mx-auto">{checkerName ?? `Health checker for ${endpoint}`}</p>
+      <div className="flex justify-center">
+        <SimpleButton handleClick={handleClick} caption={buttonCaption} isLoading={isLoading} color={buttonColor} size={buttonSize} />
+        <p className={`${isHealthy === "healthy" ? "text-success-600" : isHealthy === "unhealthy" ? "text-error-600" : "text-gray-500"}`}>{checkInfo}</p>
+      </div>
     </div>
   )
 }

@@ -58,6 +58,7 @@ export type StationBase = {
     ratePlan?: RatePlan;
     createdAt: string;
     updatedAt: string;
+    hasFreePorts?: boolean;
     ports?: StationPort[];
 };
 
