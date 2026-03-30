@@ -4,10 +4,12 @@ This document describes the JSON **shape** of the payloads sent to (and returned
 
 ## Naming convention (frontend / backend ↔ Lambdas)
 
-| Direction | JSON keys |
-|-----------|-----------|
-| **Requests** (from frontend or backend into Lambdas) | **camelCase** (e.g. `callerId`, `stationId`, `userId`, `siteTechnician`, `ratePlan`) |
-| **Successful responses** (`data`, and nested objects from RDS/Dynamo) | **snake_case** (e.g. `station_id`, `created_at`, `rate_plan`, `max_power_kw`) |
+
+| Direction                                                             | JSON keys                                                                            |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| **Requests** (from frontend or backend into Lambdas)                  | **camelCase** (e.g. `callerId`, `stationId`, `userId`, `siteTechnician`, `ratePlan`) |
+| **Successful responses** (`data`, and nested objects from RDS/Dynamo) | **snake_case** (e.g. `station_id`, `created_at`, `rate_plan`, `max_power_kw`)        |
+
 
 Nested JSON stored as-is in the DB (e.g. inside `rate_plan`) may still contain camelCase **keys** inside the blob depending on how it was written; **top-level response fields** follow **snake_case** as returned by the handlers.
 
@@ -175,7 +177,7 @@ Response (error):
 
 ### Get all stations
 
-Optional filters and pagination are passed in **`meta`** (camelCase keys).
+Optional filters and pagination are passed in `**meta**` (camelCase keys).
 
 Request:
 
@@ -382,8 +384,8 @@ Inserts one or more ports using **DynamoDB `TransactWriteItems`**: either **all*
 
 **Validation:**
 
-- Each port object must include **`code`**.
-- The same **`code`** twice in one `ports` array → **`INVALID_REQUEST`**, error message includes `duplicate port code in request: <code>`.
+- Each port object must include `**code`**.
+- The same `**code**` twice in one `ports` array → `**INVALID_REQUEST**`, error message includes `duplicate port code in request: <code>`.
 - Empty `ports` → success with `created_ports: []`.
 
 Request:
@@ -422,15 +424,17 @@ Response (success):
 }
 ```
 
-Each element in `created_ports` corresponds to one inserted port (same order as deduplicated input). Dynamo **`entity_key`** values are `PORT#<code>`; clients can derive them from `code` if needed.
+Each element in `created_ports` corresponds to one inserted port (same order as deduplicated input). Dynamo `**entity_key**` values are `PORT#<code>`; clients can derive them from `code` if needed.
 
 Response (error examples):
 
-| Situation | Typical `code` |
-|-----------|----------------|
-| Duplicate code in request | `INVALID_REQUEST` |
-| Transaction failed (e.g. sort key already exists) | `ALREADY_EXISTS` |
-| Other Dynamo / config errors | `DATABASE_ERROR`, `UNHANDLED_ERROR` |
+
+| Situation                                         | Typical `code`                      |
+| ------------------------------------------------- | ----------------------------------- |
+| Duplicate code in request                         | `INVALID_REQUEST`                   |
+| Transaction failed (e.g. sort key already exists) | `ALREADY_EXISTS`                    |
+| Other Dynamo / config errors                      | `DATABASE_ERROR`, `UNHANDLED_ERROR` |
+
 
 ---
 
@@ -452,7 +456,7 @@ Request:
 }
 ```
 
-Use **`userUpdateStationPorts`** with the same `data` shape and include `data.userId`:
+Use `**userUpdateStationPorts**` with the same `data` shape and include `data.userId`:
 
 ```json
 {
@@ -484,6 +488,7 @@ Response (success):
 ```
 
 For user booking flow (`userUpdateStationPorts` with `newState = "BOOKED"`), response may also include:
+
 - `time_booked_at`
 - `time_booked_before`
 
@@ -493,7 +498,7 @@ Response (error): `INVALID_REQUEST` (bad states, wrong number of keys for user p
 
 ### `deleteStationPorts`
 
-**Current rule:** exactly **one** sort key per request (`portKeys` length must be `1`). Port must **exist** and `state` must be **`DISABLED`**.
+**Current rule:** exactly **one** sort key per request (`portKeys` length must be `1`). Port must **exist** and `state` must be `**DISABLED`**.
 
 Request:
 
@@ -583,7 +588,7 @@ Response (success):
 
 ### `getSessionByUser`
 
-Requires DynamoDB GSI **`user_id-index`** on `user_id`.
+Requires DynamoDB GSI `**user_id-index**` on `user_id`.
 
 Request:
 
@@ -626,9 +631,9 @@ Triggered by the **DynamoDB stream** on the station entities table (after insert
 
 **Port detection:** `entity_key` split by `#` has **exactly two** segments (`PORT#<code>`) — excludes session rows.
 
-**`MODIFY` (port row):** if `state` changes to **`BOOKED`** or **`OCCUPIED`** and **`user_id`** is present on the new image → enqueue **session** creation. Invokes **`charging-stations-write-station-ports-dynamo`** with `create_session` and `data` = list of ops (`event_id`, `station_id`, `entity_key`, `user_id`, `port_booked`, `operation: "PORT_BOOKED_OR_OCCUPIED"`).
+`**MODIFY` (port row):** if `state` changes to `**BOOKED`** or `**OCCUPIED**` and `**user_id**` is present on the new image → enqueue **session** creation. Invokes `**charging-stations-write-station-ports-dynamo`** with `create_session` and `data` = list of ops (`event_id`, `station_id`, `entity_key`, `user_id`, `port_booked`, `operation: "PORT_BOOKED_OR_OCCUPIED"`).
 
-**`INSERT` / `REMOVE` (port row):** forwards to **`charging-stations-write-station-rds`** action **`update_station_ports`** to adjust RDS `ports` count.
+`**INSERT` / `REMOVE` (port row):** forwards to `**charging-stations-write-station-rds`** action `**update_station_ports**` to adjust RDS `ports` count.
 
 Internal payload to RDS (insert/remove):
 
@@ -647,7 +652,7 @@ Internal payload to RDS (insert/remove):
 }
 ```
 
-`delta` is **`1`** on insert, **`-1`** on remove.
+`delta` is `**1**` on insert, `**-1**` on remove.
 
 Internal payload to write-ports Lambda (`create_session`):
 
@@ -667,6 +672,6 @@ Internal payload to write-ports Lambda (`create_session`):
 }
 ```
 
-The consumer treats **Lambda invoke errors** as failures: it checks **`FunctionError`** on the invoke response and the JSON **`error`** field in the payload.
+The consumer treats **Lambda invoke errors** as failures: it checks `**FunctionError`** on the invoke response and the JSON `**error**` field in the payload.
 
-After a successful **port insert/remove** in Dynamo, the stream consumer runs as above so RDS **`ports`** stays in sync.
+After a successful **port insert/remove** in Dynamo, the stream consumer runs as above so RDS `**ports`** stays in sync.

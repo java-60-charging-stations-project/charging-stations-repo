@@ -1,12 +1,14 @@
 import { Router } from 'express';
 import { verifyCognitoJwt, requireGroups } from '../../middlewares/auth';
 import { ADMIN_GROUP, SUPPORT_GROUP } from '../../common/authRoles';
+import { requireUserId } from '../../middlewares/requireParam';
 import { SessionsController } from './sessions.controller';
 import { buildSessionsService } from './sessions.service';
+import { buildUserSessionsService } from './users/userSessions.service';
 
 export function sessionsRouter(): Router {
   const router = Router();
-  const controller = new SessionsController(buildSessionsService());
+  const controller = new SessionsController(buildSessionsService(), buildUserSessionsService());
 
   // Register static paths before /:sessionId
   router.get(
@@ -21,6 +23,9 @@ export function sessionsRouter(): Router {
   router.post('/sessions/:sessionId/stop', verifyCognitoJwt, controller.stopSession);
 
   router.get('/sessions/:sessionId', verifyCognitoJwt, controller.getById);
+
+  // User sessions routes
+  router.get('/sessions/user/:userId', verifyCognitoJwt, requireUserId, controller.getUserSessions);
 
   return router;
 }

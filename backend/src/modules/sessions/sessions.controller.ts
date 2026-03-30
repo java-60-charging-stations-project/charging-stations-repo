@@ -1,7 +1,9 @@
 import type { Request, Response } from 'express';
 import { z } from 'zod';
+import { wrapResponse } from '../../common/wrappers';
 import type { SessionsService } from './sessions.service';
 import { projectSession, resolveViewerRole, type ViewerRole } from './sessions.types';
+import type { UserSessionsIService } from './users/userSessions.service.interface';
 
 const sessionIdParam = z.string().min(1);
 
@@ -11,7 +13,19 @@ const startSessionSchema = z.object({
 });
 
 export class SessionsController {
-  constructor(private readonly service: SessionsService) {}
+  constructor(
+    private readonly service: SessionsService,
+    private readonly userSessionsService: UserSessionsIService,
+  ) {}
+  // User Sessions routes
+  getUserSessions = async (req: Request, res: Response) => {
+    const callerId = req.user!.sub!;
+    const userId = req.params.userId;
+    const sessions = await this.userSessionsService.getUserSessions(userId, callerId);
+
+    res.status(200).json(wrapResponse({ sessions }));
+  };
+
 
   /**
    * GET /sessions/all — ADMIN or SUPPORT only; all sessions with role-shaped items.
@@ -51,7 +65,6 @@ export class SessionsController {
     const data = rows.map((r) => projectSession(r, viewer));
     res.status(200).json({ code: 200, data, meta: { count: data.length, role: viewer } });
   };
-
   /**
    * GET /sessions/:sessionId — one session; USER only if owner; SUPPORT/ADMIN any.
    */
