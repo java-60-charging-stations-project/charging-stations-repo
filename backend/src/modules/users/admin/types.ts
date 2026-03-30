@@ -17,6 +17,7 @@ export type UserShort = Omit<UserFull, "role">;
 export type UsersListResponse = {
     users: UserShort[];
     paginationToken: string | undefined;
+    attemptsMade?: number;
 }
 
 export type FilterKey = "email" | "name";
