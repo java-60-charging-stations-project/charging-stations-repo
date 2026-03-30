@@ -307,7 +307,7 @@ export class StationsServiceLambda implements StationsService {
       env.stationsPortsWriteLambdaFunctionName,
       wrapLambdaRequest<LambdaDeleteStationPortsData, Record<string, never>>('deleteStationPorts', callerId, {
         stationId,
-        portKeys: [portKey],
+        portKey,
       })
     );
     if (isLambdaErrorPayload(result)) {
