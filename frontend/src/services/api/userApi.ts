@@ -5,7 +5,12 @@ import type {
   UserSessionPortUpdateResponse,
   UserSessionsResponse,
 } from "@/types/sessions";
-import type { StationBase, StationsListParams } from "@/types/stations";
+import type {
+  StationBase,
+  StationPort,
+  StationPortsListResponse,
+  StationsListParams,
+} from "@/types/stations";
 import { apiClient } from "./api";
 
 const USER_REQUIRED_PARAMS: StationsListParams = { state: "ACTIVE" };
@@ -25,6 +30,14 @@ export async function fetchStationById(stationId: string): Promise<StationBase> 
   );
 
   return response.data;
+}
+
+export async function fetchStationPorts(stationId: string): Promise<StationPort[]> {
+  const response = await apiClient.get<ApiResponse<StationPortsListResponse>>(
+    `/user/stations/${stationId}/ports`,
+  );
+
+  return response.data.ports;
 }
 
 export async function fetchUserSessions(): Promise<Session[]> {
