@@ -84,7 +84,9 @@ const AdminUsersPage = () => {
 
   return (
     <div>
-      <h1>Users</h1>
+      <div>
+        <h1 className="text-2xl font-bold text-center">Administrator users management</h1>
+      </div>
       <div className="mb-4 flex items-center gap-3">
         <button
           onClick={applyDraftFilters}

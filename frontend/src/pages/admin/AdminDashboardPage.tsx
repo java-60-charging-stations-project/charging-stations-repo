@@ -1,14 +1,8 @@
-import { useNavigate } from "react-router";
-import MeChecker from "@/components/MeChecker";
 
 const AdminDashboardPage = () => {
-  const navigate = useNavigate();
-
   return (
     <div>
-      <h1>ADMIN DASHBOARD PAGE</h1>
-      <MeChecker />
-      <button onClick={() => navigate("/admin/users")}>Manage Users</button>
+      <h1 className="text-2xl font-bold text-center">Administrator dashboard</h1>
     </div>
   );
 };

@@ -4,6 +4,10 @@ import { fetchStations } from "@/services/api/adminApi";
 
 const AdminStationsPage = () => {
     return (
+        <>
+        <div>
+            <h1 className="text-2xl font-bold text-center">Administrator stations management</h1>
+        </div>
         <div className="text-xs">
             <h1>Stations</h1>
             <StationsTable
@@ -19,6 +23,7 @@ const AdminStationsPage = () => {
                 />
             </div>
         </div>
+        </>
     );
 };
 
