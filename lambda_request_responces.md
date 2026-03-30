@@ -406,16 +406,16 @@ Response (success):
 ```json
 {
   "data": {
-    "created_ports": [ 
+    "created_ports": [
       {
-      "station_id": <uuid>, 
-      "entity_key": "PORT#<code>,
-      "port_id": <uuid>,
-      "state": "DISABLED",
-      "last_meter_kw": float,
-      "created_at": timestamp,
-      "updated_at": timestamp,
-      },
+        "station_id": "station-uuid",
+        "entity_key": "A1",
+        "port_id": "port-uuid",
+        "state": "DISABLED",
+        "last_meter_kw": 0.0,
+        "created_at": "ISO timestamp",
+        "updated_at": "ISO timestamp"
+      }
     ]
   },
   "meta": {}
@@ -445,32 +445,47 @@ Request:
   "service": { "action": "supportUpdateStationPorts", "callerId": "string" },
   "data": {
     "stationId": "station-uuid",
-    "ports": ["PORT#<code>"],
+    "portCode": "A1",
     "oldState": "FREE|OCCUPIED|ERROR|DISABLED|BOOKED",
     "newState": "FREE|OCCUPIED|ERROR|DISABLED|BOOKED"
   }
 }
 ```
 
-Use **`userUpdateStationPorts`** with the same `data` shape; `callerId` is applied as `user_id` on the port item. Allowed transitions are enforced per action in code.
+Use **`userUpdateStationPorts`** with the same `data` shape and include `data.userId`:
+
+```json
+{
+  "service": { "action": "userUpdateStationPorts", "callerId": "string" },
+  "data": {
+    "stationId": "station-uuid",
+    "portCode": "A1",
+    "oldState": "FREE|BOOKED",
+    "newState": "FREE|BOOKED|OCCUPIED",
+    "userId": "user-uuid"
+  }
+}
+```
+
+`userId` is applied as `user_id` on the port item when relevant.
 
 Response (success):
 
 ```json
 {
   "data": {
-    "updated_port_keys": [
-      {
-        "station_id": "station-uuid",
-        "port_key": "PORT#<code>",
-        "new_state": "FREE",
-        "updated_at": "ISO timestamp"
-      }
-    ]
+    "station_id": "station-uuid",
+    "entity_key": "A1",
+    "new_state": "FREE",
+    "updated_at": "ISO timestamp"
   },
   "meta": {}
 }
 ```
+
+For user booking flow (`userUpdateStationPorts` with `newState = "BOOKED"`), response may also include:
+- `time_booked_at`
+- `time_booked_before`
 
 Response (error): `INVALID_REQUEST` (bad states, wrong number of keys for user path, condition failed), `DATABASE_ERROR`, etc.
 
@@ -486,8 +501,8 @@ Request:
 {
   "service": { "action": "deleteStationPorts", "callerId": "string" },
   "data": {
-    "stationId": "station uuid",
-    "portKeys": ["PORT#<code>"]
+    "stationId": "station-uuid",
+    "portKeys": ["A1"]
   }
 }
 ```
@@ -499,9 +514,9 @@ Response (success):
   "data": {
     "deleted_ports": [
       {
-        "station_id": "station uuid",
-        "port_key": "PORT#<code>",
-        "deleted_at": "ISO timestamp",
+        "station_id": "station-uuid",
+        "port_key": "A1",
+        "deleted_at": "ISO timestamp"
       }
     ]
   },
@@ -534,7 +549,7 @@ Session sort keys are `PORT#<code>#SESSION#<session_id>`. The write path uses a 
 
 ## Read — `get_ports_sessions_dynamo.handler`
 
-Reads **port** rows for one station. **Query** uses `Key("station_id").eq(stationId)` and a **`FilterExpression`** so items whose `entity_key` **contains** `#SESSION#` are excluded (session rows are not returned as ports).
+Reads **port** rows for one station. Query uses `Key("station_id").eq(stationId)` and keeps only items where `entity_key` has exactly one `#` separator (`PORT#<code>`), so session rows (`PORT#<code>#SESSION#...`) are excluded.
 
 Request:
 
@@ -553,17 +568,57 @@ Response (success):
     "ports": [
       {
         "station_id": "station-uuid",
-        "entity_key": "PORT#<code>",
+        "entity_key": "<code>",
+        "port_id": "port-uuid",
         "state": "FREE|OCCUPIED|ERROR|DISABLED|BOOKED",
         "last_meter_kw": 0.0,
         "created_at": "ISO timestamp",
-        "updated_at": "ISO timestamp",
+        "updated_at": "ISO timestamp"
       }
     ]
   },
   "meta": {}
 }
 ```
+
+---
+
+### `getSessionByUser`
+
+Requires DynamoDB GSI **`user_id-index`** on `user_id`.
+
+Request:
+
+```json
+{
+  "service": { "action": "getSessionByUser", "callerId": "string" },
+  "data": { "userId": "user-uuid" }
+}
+```
+
+Response (success):
+
+```json
+{
+  "data": {
+    "session": [
+      {
+        "session_id": "session-uuid",
+        "station_id": "station-uuid",
+        "entity_key": "PORT#A1#SESSION#session-uuid",
+        "port_code": "A1",
+        "state": "BOOKED|ACTIVE|UNPAID",
+        "user_id": "user-uuid",
+        "created_at": "ISO timestamp",
+        "updated_at": "ISO timestamp"
+      }
+    ]
+  },
+  "meta": {}
+}
+```
+
+Current implementation queries `user_id-index` and filters by session state `BOOKED|ACTIVE|UNPAID`.
 
 ---
 
