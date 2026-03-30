@@ -31,6 +31,7 @@ def get_dynamo_client():
     if _dynamo_client is None:
         _dynamo_client = boto3.client("dynamodb", region_name=AWS_REGION)
     return _dynamo_client
+
 def build_port_item(station_id: str, port: dict) -> PortInstance:
     try:
         port_id = str(uuid.uuid4())
@@ -184,10 +185,6 @@ def update_station_ports(action: str, port_data: dict, user_id: str| None = None
         }
         update_expression = "SET updated_at = :updated_at, #s = :new_state"
         attr_names = {"#s": "state"}
-        if user_id:
-            update_expression += ", #u = :user_id"
-            attr_values[":user_id"] = {"S": user_id}
-            attr_names["#u"] = "user_id"
         entity_key = f"PORT#{port_key}"
         transact_items.append({
             "Update": {
@@ -209,14 +206,32 @@ def update_station_ports(action: str, port_data: dict, user_id: str| None = None
             "updated_at": updated_at,
         }
         now = datetime.now()
-        if user_id and new_state == "BOOKED":
-            booked_by = now - timedelta(minutes=BOOKING_TIMEOUT_MINUTES)
-            update_info["time_booked_at"] = now.isoformat()
-            update_info["time_booked_before"] = booked_by.isoformat()
-        if user_id and new_state == "OCCUPIED":
-            update_info["time_started_at"] = now.isoformat()
+        if user_id:
+            update_info["port_booked"] = False
+            update_info["user_id"] = user_id
+            if  new_state == "BOOKED":
+                booked_by = now - timedelta(minutes=BOOKING_TIMEOUT_MINUTES)
+                update_info["time_booked_at"] = now.isoformat()
+                update_info["time_booked_before"] = booked_by.isoformat()
+                update_info["port_booked"] = True
+            elif new_state == "OCCUPIED":
+                update_info["time_started_at"] = now.isoformat()
+            elif new_state == "FREE":
+                pass
+            session_object = build_session_object(update_info)
+            transact_items.append({"Put": {
+                    "TableName": STATIONS_DYNAMO_TABLE,
+                    "Key": {
+                        "station_id": {"S": update_info["station_id"]},
+                        "entity_key": {"S": update_info["entity_key"]},
+                        },
+                    "Item": to_av_map(session_object),
+                    "ConditionExpression": "attribute_not_exists(station_id) AND attribute_not_exists(entity_key)",
+                    }})
+            update_info["session_id"] = session_object["session_id"]
         response = client.transact_write_items(TransactItems=transact_items)
         logger.info(f"transaction response: {response}")
+        update_info["entity_key"] = entity_key.split("#")[1]
         return update_info
     except ClientError as e:
         err_code = e.response.get("Error", {}).get("Code", "")
@@ -264,7 +279,7 @@ def delete_station_ports(station_id: str, port_key: str) -> list[dict]:
         logger.error(f"error deleting station ports from dynamo: {e}")
         raise LambdaResponseError({"error": f"error deleting station ports: {e}", "code": "UNHANDLED_ERROR"})
 
-def get_tariff(station_id: str) -> float:
+def get_tariff(station_id: str) -> Decimal:
     client = boto3.client("lambda", region_name=AWS_REGION)
     payload = {
         "service": {
@@ -285,42 +300,38 @@ def get_tariff(station_id: str) -> float:
     if response_json.get("error"):
         logger.error(f"error getting station info: {response_json.get('error')}")
         raise LambdaResponseError({"error": f"error getting station info: {response_json.get('error')}", "code": "DATABASE_ERROR"})
-    tariff = response_json.get("data", {}).get("rate_plan", {}).get("offPeakRate", 0.0)
+    tariff = Decimal(response_json.get("data", {}).get("rate_plan", {}).get("offPeakRate", 0.0))
     return tariff
 
-def build_session_object(session_data: dict) -> PortSessionInstance:
+def build_session_object(session_data: dict) -> dict:
     try:
         session_id = str(uuid.uuid4())
-        timestamp = datetime.now()
-        iso_timestamp = timestamp.isoformat()
+        timestamp = datetime.now().isoformat()
         tariff = get_tariff(session_data["station_id"])
-        port_booked = session_data["port_booked"]
-        time_booked_at = timestamp.isoformat() if port_booked else None
-        time_booked_before = (timestamp - timedelta(minutes=BOOKING_TIMEOUT_MINUTES)).isoformat() if port_booked else None
+        port_booked = session_data.get("port_booked")
         session_object: PortSessionInstance = {
             "session_id": session_id,
             "station_id": session_data["station_id"],
             "entity_key": f"{session_data['entity_key']}#SESSION#{session_id}",
-            "port_code": session_data["entity_key"].split("#")[1],
             "state": "BOOKED" if port_booked else "ACTIVE",
             "user_id": session_data["user_id"],
-            "energy_consumed_kwh": 0.0,
+            "energy_consumed_kwh": Decimal(0.0),
             "tariff": tariff,
-            "current_cost": 0.0,
+            "current_cost": Decimal(0.0),
             "estimated_minutes_remaining": None,
             "duration_minutes": None,
             "charge_level_percent": None,
-            "created_at": iso_timestamp,
-            "updated_at": iso_timestamp,
-            "booked_at": time_booked_at,
-            "time_booked_before": time_booked_before,
+            "created_at": timestamp,
+            "updated_at": timestamp,
+            "time_booked_at": session_data.get("time_booked_at"),
+            "time_booked_before": session_data.get("time_booked_before"),
             "booking_duration_minutes": None,
-            "started_at": timestamp.isoformat() if not port_booked else None,
+            "started_at": timestamp if not port_booked else None,
+            "stopped_at": None,
             "ended_at": None,
-            "event_id": session_data["event_id"],
         }
         logger.info(f"Session object built successfully: {session_object}")
-        return session_object, session_data["entity_key"]
+        return session_object
     except KeyError as e:
         logger.error(f"missing key: {e}")
         raise LambdaResponseError({"error": f"missing key: {e}", "code": "INVALID_REQUEST"})
@@ -329,63 +340,6 @@ def build_session_object(session_data: dict) -> PortSessionInstance:
     except Exception as e:
         logger.error(f"error building session object: {e}")
         raise LambdaResponseError({"error": f"error building session object: {e}", "code": "UNHANDLED_ERROR"})
-
-def create_session(session_data: list[dict]) -> list[str]:
-    try:
-        client = get_dynamo_client()
-    except Exception as e:
-        logger.error(f"error getting dynamo client: {e}")
-        raise LambdaResponseError({"error": f"error getting dynamo client: {e}", "code": "DATABASE_ERROR"})
-    session_ids: list[str] = []
-    for session in session_data:
-        session_object, port_key = build_session_object(session)
-        station_id = session_object["station_id"]
-        event_id = session_object["event_id"]
-        new_state = "BOOKED" if session["port_booked"] else "OCCUPIED"
-        now = datetime.now().isoformat()
-        logger.info(f"Session object built successfully: {session_object}")
-        try:
-            client.transact_write_items(
-                TransactItems=[
-                    {"ConditionCheck": {"TableName": STATIONS_DYNAMO_TABLE, "Key": 
-                    {"station_id": {"S": station_id}, "entity_key": {"S": port_key}},
-                            "ConditionExpression": (
-                                "attribute_exists(entity_key) "
-                                "AND #s = :expected_state "
-                                "AND (attribute_not_exists(last_event_id) OR last_event_id <> :event_id)"
-                            ),
-                            "ExpressionAttributeNames": {"#s": "state"},
-                            "ExpressionAttributeValues": {":expected_state": {"S": new_state}, ":event_id": {"S": event_id}},
-                        }
-                    },
-                    {"Update": {"TableName": STATIONS_DYNAMO_TABLE, "Key": {"station_id": {"S": station_id}, "entity_key": {"S": port_key}},
-                            "UpdateExpression": "SET updated_at = :updated_at, last_event_id = :event_id",
-                            "ExpressionAttributeValues": {
-                                ":updated_at": {"S": now},
-                                ":event_id": {"S": event_id},
-                            },
-                        }
-                    },
-                    {
-                    "Put": {
-                        "TableName": STATIONS_DYNAMO_TABLE,
-                        "Item": to_av_map(session_object),
-                        "ConditionExpression": "attribute_not_exists(station_id) AND attribute_not_exists(entity_key)",
-                        }
-                    },
-                ]
-            )
-            logger.info(f"Session object put successfully: {session_object}")
-            session_ids.append(session_object["session_id"])
-        except ClientError as e:
-            code = e.response.get("Error", {}).get("Code")
-            if code == "TransactionCanceledException":
-                raise LambdaResponseError({"error": f"session not created (duplicate event or port not {new_state}): {e}", "code": "INVALID_REQUEST"})
-            raise LambdaResponseError({"error": f"error putting session object: {e}", "code": "UNHANDLED_ERROR"})
-        except Exception as e:
-            logger.error(f"error putting session object: {e}")
-            raise LambdaResponseError({"error": f"error putting session object: {e}", "code": "UNHANDLED_ERROR"})
-    return session_ids
 
 def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponsePayload:
     logger.info(f"Handler called with event: {event}")
@@ -430,10 +384,6 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                 deleted_port = delete_station_ports(station_id, port_key)
                 log_audit("INFO", message="station ports deleted successfully", status="SUCCESS", **audit_base)
                 return SuccessResponsePayload(data=deleted_port, meta={})
-            case "create_session":
-                session_ids = create_session(event["data"])
-                log_audit("INFO", message="session created successfully", status="SUCCESS", **audit_base)
-                return SuccessResponsePayload(data={"session_ids": session_ids}, meta={})
             case _:
                 log_audit("ERROR", message=f"invalid action {action}", status="ERROR", errorMessage=f"invalid action {action}", **audit_base)
                 return ErrorResponsePayload(error=f"invalid action {action}", code="INVALID_REQUEST")
