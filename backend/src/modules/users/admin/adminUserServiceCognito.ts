@@ -7,6 +7,8 @@ import { InvalidParameterException, NotAuthorizedException, TooManyRequestsExcep
 import { BadRequestError, ConflictError, InternalServerError, ResourceNotFoundError, TooManyRequestsError } from "../../../common/serviceErrors";
 import { unpackAdminGetUserResponse, unpackListUsersResponse } from "./utils";
 
+const MAX_LIST_USERS_REQUEST_ATTEMPTS = 10;
+
 const logger = createLogger("AdminUserService");
 
 function mapCognitoError(error: unknown, options?: {userId: string}) {
@@ -68,22 +70,45 @@ export class AdminUserServiceCognito implements AdminUserService {
         }
     }
 
-    async listUsers(parameters: ListUserParameters): Promise<UsersListResponse> {
-        try {
-            logger.debug('Listing users: ', { parameters });
-            const cognitoResponse = await cognitoApiClient.listUsers(parameters);
-            logger.debug('Cognito response: ', { cognitoResponse });
-            const paginationToken = cognitoResponse.PaginationToken;
-            const users: UserShort[] = unpackListUsersResponse(cognitoResponse);
-            return { users, paginationToken };
-        }
-        catch (error) {
-            const mappedError = mapCognitoError(error);
-            if (mappedError) {
-                throw mappedError;
+    async listUsers(listUserParameters: ListUserParameters): Promise<UsersListResponse> {
+        const { limit, filter } = listUserParameters;
+
+        let paginationToken = listUserParameters.paginationToken;
+        let users: UserShort[] = [];
+        let attemptsMade: number = 0;
+        let isFetchedAll: boolean = false;
+        while (
+            (isFetchedAll === false) &&
+            (users.length < limit) &&
+            (attemptsMade < MAX_LIST_USERS_REQUEST_ATTEMPTS)
+            
+        ) {
+            const nextFetchLimit = limit - users.length;
+            const parameters = {limit: nextFetchLimit, paginationToken, filter}
+            try {
+                attemptsMade += 1;
+                logger.debug(`Listing users attempt number ${attemptsMade}. Parameters: `, { parameters });
+                
+                const cognitoResponse = await cognitoApiClient.listUsers(parameters);
+                
+                const fetchCount = cognitoResponse.Users?.length ?? 0;
+                paginationToken = cognitoResponse.PaginationToken;
+                logger.debug('Cognito response parameters: ', { fetchCount, paginationToken });
+            
+                const fetchedUsers: UserShort[] = unpackListUsersResponse(cognitoResponse);
+                users = [...users, ...fetchedUsers];
+                isFetchedAll = !paginationToken;
+                logger.debug(`Total fetched=${users.length} in ${attemptsMade} attempts, isFetchedAll = ${isFetchedAll}`);
             }
-            throw new InternalServerError();
+            catch (error) {
+                const mappedError = mapCognitoError(error);
+                if (mappedError) {
+                    throw mappedError;
+                }
+                throw new InternalServerError();
+            }
         }
+        return { users, paginationToken, attemptsMade };
     };
 
     async addUserToGroup(userId: string, group: string): Promise<void> {
