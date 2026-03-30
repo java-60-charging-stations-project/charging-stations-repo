@@ -493,7 +493,7 @@ Response (error): `INVALID_REQUEST` (bad states, wrong number of keys for user p
 
 ### `deleteStationPorts`
 
-**Current rule:** exactly **one** sort key per request (`portKeys` length must be `1`). Port must **exist** and `state` must be **`DISABLED`**.
+**Current rule:** exactly **one** sort key per request (`portKey` length must be `1`). Port must **exist** and `state` must be **`DISABLED`**.
 
 Request:
 
@@ -545,7 +545,7 @@ Session sort keys are `PORT#<code>#SESSION#<session_id>`. The write path uses a 
 
 ---
 
-## Read — `get_ports_sessions_dynamo.handler`
+## Read — `charging-stations-get-ports-sessions-dynamo`
 
 Reads **port** rows for one station. Query uses `Key("station_id").eq(stationId)` and keeps only items where `entity_key` has exactly one `#` separator (`PORT#<code>`), so session rows (`PORT#<code>#SESSION#...`) are excluded.
 
