@@ -57,7 +57,7 @@ class PortSessionInstance(TypedDict):
     station_id: str
     entity_key: str
     session_id: str
-    state: Literal["BOOKED", "ACTIVE", "COMPLETED", "CANCELLED", "FAILED", "UNPAID", "PAID"]
+    state: Literal["BOOKED", "ACTIVE", "COMPLETED", "FAILED", "UNPAID", "PAID"]
     energy_consumed_kwh: float | Decimal
     tariff: float | Decimal
     current_cost: float | Decimal

@@ -9,7 +9,6 @@ from utils.error_handlers import LambdaResponseError
 REGION = os.environ["AWS_REGION"]
 AWS_LAMBDA_HOST_ACCOUNT = os.environ["AWS_LAMBDA_HOST_ACCOUNT"]
 WRITE_STATION_FUNCTION_NAME = os.environ["WRITE_STATION_FUNCTION_NAME"]
-WRITE_SESSION_FUNCTION_NAME = os.environ["WRITE_SESSION_FUNCTION_NAME"]
 
 _deserializer = TypeDeserializer()
 
@@ -30,7 +29,6 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     records = event.get("Records", [])
     logger.info(f"Received {len(records)} records")
     operations = 0
-    start_session_ops = []
     insert_delete_port_ops = []
     for record in records:
         logger.info(f"Processing record: {record}")
@@ -38,22 +36,6 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         old_image = _deserialize_image(ddb.get("OldImage"))
         new_image = _deserialize_image(ddb.get("NewImage"))
         event_name = record.get("eventName")
-        if event_name == "MODIFY":
-            if not new_image or not _is_port_entity(new_image):
-                continue
-            old_state = old_image.get("state") if old_image else None
-            new_state = new_image.get("state")
-            if old_state != new_state:
-                if new_state in {"BOOKED", "OCCUPIED"} and new_image.get("user_id"):
-                    op = {
-                        "event_id": record["eventID"],
-                        "station_id": new_image["station_id"],
-                        "entity_key": new_image["entity_key"],
-                        "operation": "PORT_BOOKED_OR_OCCUPIED",
-                        "user_id": new_image["user_id"],
-                        "port_booked": True if new_state == "BOOKED" else False,
-                    }
-                    start_session_ops.append(op)
         if event_name in {"INSERT", "REMOVE"}:
             image = new_image if event_name == "INSERT" else old_image
             if not _is_port_entity(image):
@@ -66,7 +48,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 "delta": 1 if event_name == "INSERT" else -1,
             }
             insert_delete_port_ops.append(op)
-    operations = len(start_session_ops) + len(insert_delete_port_ops)
+    operations = len(insert_delete_port_ops)
     logger.info(f"Found {operations} operations")
     if not operations:
         return {"data": {"operations": operations, "received": len(records)}}
@@ -76,29 +58,6 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         "trigger": "dynamodb_stream",
     }
     try:
-        if start_session_ops:
-            audit_base["event"] = "PORT_BOOKED_OR_OCCUPIED"
-            logger.info(f"Forwarding {len(start_session_ops)} operations to {WRITE_SESSION_FUNCTION_NAME}")
-            client = boto3.client("lambda", region_name=REGION)
-            payload = {
-                "service": { "action": "create_session", "callerId": "script" },
-                "data": start_session_ops,
-            }
-            response = client.invoke(
-                InvocationType="RequestResponse",
-                FunctionName=f"arn:aws:lambda:{REGION}:{AWS_LAMBDA_HOST_ACCOUNT}:function:{WRITE_SESSION_FUNCTION_NAME}",
-                Payload=json.dumps(payload).encode("utf-8"),
-            )
-            raw = response["Payload"].read().decode("utf-8") or "{}"
-            response_json = json.loads(raw)
-            if response.get("FunctionError"):
-                log_audit("ERROR", message=f"Operations to start sessions failed", status="ERROR", errorMessage=response.get('FunctionError'), **audit_base)
-                raise LambdaResponseError({"error": f"Operations to start sessions failed: {response.get('FunctionError')}", "code": "UNHANDLED_ERROR"})
-            if response_json.get("error"):
-                log_audit("ERROR", message=f"Operations to start sessions failed", status="ERROR", errorMessage=response_json.get('error'), **audit_base)
-                raise LambdaResponseError({"error": f"Operations to start sessions failed: {response_json.get('error')}", "code": "UNHANDLED_ERROR"})
-            logger.info(f"Forwarded {len(start_session_ops)} operations to start sessions successfully")
-            log_audit("INFO", message=f"Forwarded {len(start_session_ops)} operations to start sessions successfully", status="SUCCESS", **audit_base)
         if insert_delete_port_ops:
             audit_base["event"] = "PORT_INSERTED_OR_REMOVED"
             logger.info(f"Forwarding {len(insert_delete_port_ops)} operations to {WRITE_STATION_FUNCTION_NAME}")
