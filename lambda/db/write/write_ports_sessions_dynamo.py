@@ -231,7 +231,7 @@ def update_station_ports(action: str, port_data: dict, user_id: str| None = None
         logger.error(f"error updating station ports: {e}")
         raise LambdaResponseError({"error": f"error updating station ports: {e}", "code": "UNHANDLED_ERROR"})
 
-def delete_station_ports(station_id: str, port_keys: list[str]) -> list[dict]:
+def delete_station_ports(station_id: str, port_key: str) -> list[dict]:
     try:
         client = get_dynamo_client()
     except Exception as e:
@@ -239,26 +239,20 @@ def delete_station_ports(station_id: str, port_keys: list[str]) -> list[dict]:
         raise LambdaResponseError(
             {"error": f"error getting dynamo client: {e}", "code": "DATABASE_ERROR"}
         )
-    if len(port_keys) != 1:
-        logger.error(f"Only one port can be deleted at a time: {len(port_keys)}")
-        raise LambdaResponseError({"error": f"Only one port can be deleted at a time: {len(port_keys)}", "code": "INVALID_REQUEST"})
     deleted_at = datetime.now().isoformat()
-    deleted_ports: list[dict] = []
     try:
-        for port_key in port_keys:
-            entity_key = f"PORT#{port_key}"
-            client.delete_item(
-                TableName=STATIONS_DYNAMO_TABLE,
-                Key={
-                    "station_id": {"S": station_id},
-                    "entity_key": {"S": entity_key},
-                },
-                ConditionExpression="attribute_exists(entity_key) AND #s = :disabled",
-                ExpressionAttributeNames={"#s": "state"},
-                ExpressionAttributeValues={":disabled": {"S": "DISABLED"}},
-            )
-            deleted_ports.append({"station_id": station_id, "port_key": port_key, "deleted_at": deleted_at})
-        return deleted_ports
+        entity_key = f"PORT#{port_key}"
+        client.delete_item(
+            TableName=STATIONS_DYNAMO_TABLE,
+            Key={
+                "station_id": {"S": station_id},
+                "entity_key": {"S": entity_key},
+            },
+            ConditionExpression="attribute_exists(entity_key) AND #s = :disabled",
+            ExpressionAttributeNames={"#s": "state"},
+            ExpressionAttributeValues={":disabled": {"S": "DISABLED"}},
+        )
+        return {"station_id": station_id, "port_key": port_key, "deleted_at": deleted_at}
     except ClientError as e:
         if e.response.get("Error", {}).get("Code") == "ConditionalCheckFailedException":
             raise LambdaResponseError({"error": f"port not found or state is not DISABLED: {e}", "code": "INVALID_REQUEST"})
@@ -432,10 +426,10 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                 return SuccessResponsePayload(data=updated_port_data, meta={})
             case "deleteStationPorts":
                 station_id = event["data"]["stationId"]
-                port_keys = event["data"]["portKeys"]
-                deleted_ports = delete_station_ports(station_id, port_keys)
+                port_key = event["data"]["portKey"]
+                deleted_port = delete_station_ports(station_id, port_key)
                 log_audit("INFO", message="station ports deleted successfully", status="SUCCESS", **audit_base)
-                return SuccessResponsePayload(data={"deleted_ports": deleted_ports}, meta={})
+                return SuccessResponsePayload(data=deleted_port, meta={})
             case "create_session":
                 session_ids = create_session(event["data"])
                 log_audit("INFO", message="session created successfully", status="SUCCESS", **audit_base)

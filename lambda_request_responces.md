@@ -502,7 +502,7 @@ Request:
   "service": { "action": "deleteStationPorts", "callerId": "string" },
   "data": {
     "stationId": "station-uuid",
-    "portKeys": ["A1"]
+    "portKey": "A1"
   }
 }
 ```
@@ -512,13 +512,11 @@ Response (success):
 ```json
 {
   "data": {
-    "deleted_ports": [
       {
         "station_id": "station-uuid",
         "port_key": "A1",
         "deleted_at": "ISO timestamp"
       }
-    ]
   },
   "meta": {}
 }
