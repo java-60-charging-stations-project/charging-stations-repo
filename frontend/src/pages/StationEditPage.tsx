@@ -208,14 +208,14 @@ const StationEditPage = () => {
                 <FieldRow label="Max (kW)" error={errors.maxPowerKw?.message}>
                     <input
                         type="number"
-                        step="0.01"
-                        min={0}
+                        step="1"
+                        min={1}
                         className="w-full"
                         disabled={isLocked}
                         {...register("maxPowerKw", {
                             valueAsNumber: true,
                             required: "Max power is required",
-                            min: { value: 0, message: "Max power must be non-negative" },
+                            min: { value: 1, message: "Max power must be positive" },
                         })}
                     />
                 </FieldRow>
