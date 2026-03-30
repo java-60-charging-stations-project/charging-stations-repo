@@ -1,5 +1,10 @@
 import type { ApiArrayResponse, ApiResponse } from "@/types/apiTypes";
-import type { UserSessionsResponse, Session } from "@/types/sessions";
+import type {
+  Session,
+  UserSessionPortUpdateRequest,
+  UserSessionPortUpdateResponse,
+  UserSessionsResponse,
+} from "@/types/sessions";
 import type { StationBase, StationsListParams } from "@/types/stations";
 import { apiClient } from "./api";
 
@@ -28,4 +33,26 @@ export async function fetchUserSessions(): Promise<Session[]> {
   );
 
   return response.data.sessions;
+}
+
+export async function createBooking(
+  payload: UserSessionPortUpdateRequest,
+): Promise<UserSessionPortUpdateResponse> {
+  const response = await apiClient.post<ApiResponse<UserSessionPortUpdateResponse>>(
+    "/sessions/user/booking",
+    payload,
+  );
+
+  return response.data;
+}
+
+export async function startChargingSession(
+  payload: UserSessionPortUpdateRequest,
+): Promise<UserSessionPortUpdateResponse> {
+  const response = await apiClient.post<ApiResponse<UserSessionPortUpdateResponse>>(
+    "/sessions/user/charging",
+    payload,
+  );
+
+  return response.data;
 }
