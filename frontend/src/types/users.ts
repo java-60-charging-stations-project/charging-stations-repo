@@ -17,6 +17,7 @@ export type UserShortType = Omit<UserFullType, "role">;
 export type UserShortListResponseType = {
     users: UserShortType[];
     paginationToken: string | undefined;
+    attemptsMade?: number;
 };
 
 

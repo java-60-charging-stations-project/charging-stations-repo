@@ -21,11 +21,12 @@ export function useUsersListQuery() {
         setError(null);
         try {
             logger.debug("Fetching users", { filters: requestFilters, token, isReplacing, requestId });
-            const { users: fetchedUsers, paginationToken } = await fetchAdminUsers({
+            const { users: fetchedUsers, paginationToken, attemptsMade } = await fetchAdminUsers({
                 limit: FETCH_LIMIT,
                 ...(requestFilters ? { filter: requestFilters } : {}),
                 ...(token ? { paginationToken: token } : {}),
             });
+            logger.debug(`Users count: ${fetchedUsers.length}, attempts: ${attemptsMade}`);
 
             if (requestId !== latestRequestIdRef.current) {
                 logger.debug("Ignoring stale users response", { requestId, latestRequestId: latestRequestIdRef.current });
