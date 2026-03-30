@@ -307,11 +307,6 @@ export interface LambdaDeleteDynamoPortSuccessItem {
   port_key: string;
   deleted_at: string;
 }
-
-export interface LambdaDeleteStationPortsSuccessData {
-  deleted_ports: LambdaDeleteDynamoPortSuccessItem[];
-}
-
 // Special cases
 
 /** Health Lambda не использует общий service envelope. */
