@@ -20,8 +20,7 @@ export class SessionsController {
   // User Sessions routes
   getUserSessions = async (req: Request, res: Response) => {
     const callerId = req.user!.sub!;
-    const userId = req.params.userId;
-    const sessions = await this.userSessionsService.getUserSessions(userId, callerId);
+    const sessions = await this.userSessionsService.getUserSessions(callerId);
 
     res.status(200).json(wrapResponse({ sessions }));
   };

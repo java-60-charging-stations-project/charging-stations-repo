@@ -35,14 +35,14 @@ function throwFromUserSessionsLambdaError(result: LambdaErrorResponse): never {
 }
 
 export class UserSessionsServiceLambda implements UserSessionsIService {
-  async getUserSessions(userId: string, callerId: string): Promise<UserSession[]> {
-    logger.debug('Invoking ports read lambda: getSessionByUser', { userId, callerId });
+  async getUserSessions(userId: string): Promise<UserSession[]> {
+    logger.debug('Invoking ports read lambda: getSessionByUser', { userId });
 
     const result = await LAMBDA_INVOKER.invokeJson<
       { data: LambdaGetUserSessionsSuccessData } | LambdaErrorResponse
     >(
       env.stationsPortsReadLambdaFunctionName,
-      wrapLambdaRequest('getSessionByUser', callerId, { userId })
+      wrapLambdaRequest('getSessionByUser', userId, { userId })
     );
 
     if (isLambdaErrorPayload(result)) {

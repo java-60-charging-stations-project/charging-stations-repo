@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { verifyCognitoJwt, requireGroups } from '../../middlewares/auth';
 import { ADMIN_GROUP, SUPPORT_GROUP } from '../../common/authRoles';
-import { requireUserId } from '../../middlewares/requireParam';
 import { SessionsController } from './sessions.controller';
 import { buildSessionsService } from './sessions.service';
 import { buildUserSessionsService } from './users/userSessions.service';
@@ -25,7 +24,7 @@ export function sessionsRouter(): Router {
   router.get('/sessions/:sessionId', verifyCognitoJwt, controller.getById);
 
   // User sessions routes
-  router.get('/sessions/user/:userId', verifyCognitoJwt, requireUserId, controller.getUserSessions);
+  router.get('/sessions/user', verifyCognitoJwt, controller.getUserSessions);
 
   return router;
 }
