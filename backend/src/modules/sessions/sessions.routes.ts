@@ -17,8 +17,10 @@ export function sessionsRouter(): Router {
     controller.listAll
   );
 
-    // User sessions routes
-    router.get('/sessions/user', verifyCognitoJwt, controller.getUserSessions);
+  // User sessions routes
+  router.get('/sessions/user', verifyCognitoJwt, controller.getUserSessions);
+  router.post('/sessions/user/booking', verifyCognitoJwt, controller.createBooking);
+  router.post('/sessions/user/charging', verifyCognitoJwt, controller.startChargingSession);
 
   router.get('/sessions', verifyCognitoJwt, controller.listByUser);
   router.post('/sessions', verifyCognitoJwt, controller.startSession);

@@ -4,7 +4,7 @@ import { wrapResponse } from '../../common/wrappers';
 import type { SessionsService } from './sessions.service';
 import { projectSession, resolveViewerRole, type ViewerRole } from './sessions.types';
 import type { UserSessionsIService } from './users/userSessions.service.interface';
-import {createLogger} from '../../utils/logger';
+import { createLogger } from '../../utils/logger';
 
 const sessionIdParam = z.string().min(1);
 
@@ -13,6 +13,18 @@ const logger = createLogger('SessionsController');
 const startSessionSchema = z.object({
   stationId: z.string().min(1),
   portId: z.string().min(1),
+});
+
+const createBookingSchema = z.object({
+  stationId: z.string().min(1),
+  portCode: z.string().min(1),
+  oldState: z.literal('FREE'),
+});
+
+const startChargingSessionSchema = z.object({
+  stationId: z.string().min(1),
+  portCode: z.string().min(1),
+  oldState: z.enum(['FREE', 'BOOKED']),
 });
 
 export class SessionsController {
@@ -27,6 +39,32 @@ export class SessionsController {
     const sessions = await this.userSessionsService.getUserSessions(callerId);
     logger.info('User sessions fetched successfully', { sessions });
     res.status(200).json(wrapResponse({ sessions }));
+  };
+
+  createBooking = async (req: Request, res: Response) => {
+    const userId = req.user!.sub!;
+    const payload = createBookingSchema.parse(req.body);
+    const data = await this.userSessionsService.createBooking(
+      userId,
+      payload.stationId,
+      payload.portCode,
+      payload.oldState,
+    );
+
+    res.status(200).json(wrapResponse(data));
+  };
+
+  startChargingSession = async (req: Request, res: Response) => {
+    const userId = req.user!.sub!;
+    const payload = startChargingSessionSchema.parse(req.body);
+    const data = await this.userSessionsService.startChargingSession(
+      userId,
+      payload.stationId,
+      payload.portCode,
+      payload.oldState,
+    );
+
+    res.status(200).json(wrapResponse(data));
   };
 
 
