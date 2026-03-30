@@ -51,8 +51,7 @@ const GuestStationsTable = () => {
             {error && <p>Error while loading data: {error}</p>}
             {stationsToDisplay && (
                 <table>
-                    <caption>List of charging stations</caption>
-                        <thead>
+                    <thead>
                         <tr>
                             <th className="hidden xl:table-cell">Name</th>
                             <th>City</th>
