@@ -1,6 +1,8 @@
 import type {
   LambdaGetUserSessionsSuccessData,
+  LambdaUserUpdateStationPortsSuccessData,
   LambdaUserSessionRow,
+  UserSessionPortUpdateResponse,
   UserSession,
 } from './userSessions.types';
 
@@ -19,4 +21,18 @@ export function mapLambdaUserSession(row: LambdaUserSessionRow): UserSession {
 
 export function mapLambdaUserSessions(data: LambdaGetUserSessionsSuccessData): UserSession[] {
   return data.session.map(mapLambdaUserSession);
+}
+
+export function mapLambdaUserStationPortUpdate(
+  data: LambdaUserUpdateStationPortsSuccessData
+): UserSessionPortUpdateResponse {
+  return {
+    stationId: data.station_id,
+    // The Lambda returns the port code in `entity_key` for this action.
+    portCode: data.entity_key,
+    newState: data.new_state,
+    updatedAt: data.updated_at,
+    timeBookedAt: data.time_booked_at,
+    timeBookedBefore: data.time_booked_before,
+  };
 }

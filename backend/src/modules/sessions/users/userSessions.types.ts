@@ -1,4 +1,5 @@
 export type UserSessionState = 'BOOKED' | 'ACTIVE' | 'UNPAID';
+export type UserSessionPortState = 'FREE' | 'BOOKED' | 'OCCUPIED' | 'ERROR' | 'DISABLED';
 
 export interface UserSession {
   sessionId: string;
@@ -24,4 +25,30 @@ export interface LambdaUserSessionRow {
 
 export interface LambdaGetUserSessionsSuccessData {
   session: LambdaUserSessionRow[];
+}
+
+export interface UserSessionPortUpdateResponse {
+  stationId: string;
+  portCode: string;
+  newState: string;
+  updatedAt: string;
+  timeBookedAt?: string;
+  timeBookedBefore?: string;
+}
+
+export interface LambdaUserUpdateStationPortsData {
+  stationId: string;
+  portCode: string;
+  oldState: UserSessionPortState;
+  newState: 'BOOKED' | 'OCCUPIED';
+  userId: string;
+}
+
+export interface LambdaUserUpdateStationPortsSuccessData {
+  station_id: string;
+  entity_key: string;
+  new_state: string;
+  updated_at: string;
+  time_booked_at?: string;
+  time_booked_before?: string;
 }

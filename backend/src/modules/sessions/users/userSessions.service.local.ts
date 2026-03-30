@@ -1,5 +1,11 @@
+import { randomUUID } from 'node:crypto';
 import type { UserSessionsIService } from './userSessions.service.interface';
-import type { UserSession } from './userSessions.types';
+import type {
+  UserSession,
+  UserSessionPortState,
+  UserSessionPortUpdateResponse,
+  UserSessionState,
+} from './userSessions.types';
 
 const LOCAL_USER_SESSIONS: UserSession[] = [
   {
@@ -17,5 +23,66 @@ const LOCAL_USER_SESSIONS: UserSession[] = [
 export class UserSessionsServiceLocal implements UserSessionsIService {
   async getUserSessions(userId: string): Promise<UserSession[]> {
     return LOCAL_USER_SESSIONS.filter((session) => session.userId === userId);
+  }
+
+  async createBooking(
+    userId: string,
+    stationId: string,
+    portCode: string,
+    _oldState: UserSessionPortState,
+  ): Promise<UserSessionPortUpdateResponse> {
+    const now = new Date();
+    const updatedAt = now.toISOString();
+    const timeBookedBefore = new Date(now.getTime() + 15 * 60 * 1000).toISOString();
+
+    this.appendLocalSession(userId, stationId, portCode, 'BOOKED', updatedAt);
+
+    return {
+      stationId,
+      portCode,
+      newState: 'BOOKED',
+      updatedAt,
+      timeBookedAt: updatedAt,
+      timeBookedBefore,
+    };
+  }
+
+  async startChargingSession(
+    userId: string,
+    stationId: string,
+    portCode: string,
+    _oldState: UserSessionPortState,
+  ): Promise<UserSessionPortUpdateResponse> {
+    const updatedAt = new Date().toISOString();
+
+    this.appendLocalSession(userId, stationId, portCode, 'ACTIVE', updatedAt);
+
+    return {
+      stationId,
+      portCode,
+      newState: 'OCCUPIED',
+      updatedAt,
+    };
+  }
+
+  private appendLocalSession(
+    userId: string,
+    stationId: string,
+    portCode: string,
+    state: UserSessionState,
+    timestamp: string,
+  ): void {
+    const sessionId = randomUUID();
+
+    LOCAL_USER_SESSIONS.push({
+      sessionId,
+      stationId,
+      entityKey: `PORT#${portCode}#SESSION#${sessionId}`,
+      portCode,
+      state,
+      userId,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
   }
 }
