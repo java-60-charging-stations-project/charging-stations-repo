@@ -626,11 +626,20 @@ Resources:
           AttributeType: S
         - AttributeName: entity_key
           AttributeType: S
+        - AttributeName: user_id
+          AttributeType: S
       KeySchema:
         - AttributeName: station_id
           KeyType: HASH
         - AttributeName: entity_key
           KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: user_id-index
+          KeySchema:
+            - AttributeName: user_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
       SSESpecification:
         SSEEnabled: true
       StreamSpecification:
@@ -669,6 +678,7 @@ Resources:
           STATIONS_DYNAMO_TABLE: !Ref StationEntitiesTable
           AWS_LAMBDA_HOST_ACCOUNT: !Ref AWS::AccountId
           GET_STATION_FUNCTION_NAME: !Ref GetStationInfoFunction
+          BOOKING_TIMEOUT_MINUTES: "15"
       Policies:
         - Version: '2012-10-17'
           Statement:

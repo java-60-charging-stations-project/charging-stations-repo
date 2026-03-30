@@ -3,7 +3,7 @@ import uuid
 import boto3
 import json
 from decimal import Decimal
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 from utils.logger import logger, log_audit
 from utils.error_handlers import LambdaResponseError
@@ -17,6 +17,7 @@ STATIONS_DYNAMO_TABLE = os.environ["STATIONS_DYNAMO_TABLE"]
 AWS_LAMBDA_HOST_ACCOUNT = os.environ["AWS_LAMBDA_HOST_ACCOUNT"]
 GET_STATION_FUNCTION_NAME = os.environ["GET_STATION_FUNCTION_NAME"]
 PORT_STATES = ["FREE", "OCCUPIED", "ERROR", "DISABLED", "BOOKED"]
+BOOKING_TIMEOUT_MINUTES = int(os.environ["BOOKING_TIMEOUT_MINUTES"])
 
 _dynamo = None
 _dynamo_client = None
@@ -39,7 +40,7 @@ def build_port_item(station_id: str, port: dict) -> PortInstance:
             "entity_key": f"PORT#{port["code"]}",
             "port_id": port_id,
             "state": "DISABLED",
-            "last_meter_kw": Decimal(str(port["lastMeterKw"])),
+            "last_meter_kw": Decimal(0.0),
             "created_at": timestamp,
             "updated_at": timestamp,
         }
@@ -103,7 +104,7 @@ def get_update_data_from_event(event: dict) -> dict:
     try:
         data = event["data"]
         station_id = data["stationId"]
-        port_keys = data["ports"]
+        port_key = data["portCode"]
         old_state = data["oldState"]
         new_state = data["newState"]
         if not old_state in PORT_STATES:
@@ -115,7 +116,13 @@ def get_update_data_from_event(event: dict) -> dict:
         if old_state == new_state:
             logger.error(f"old state and new state are the same: {old_state}")
             raise LambdaResponseError({"error": f"old state and new state are the same: {old_state}", "code": "INVALID_REQUEST"})
-        return {"station_id": station_id, "port_keys": port_keys, "old_state": old_state, "new_state": new_state}
+        port_data = {
+            "station_id": station_id,
+            "port_key": port_key,
+            "old_state": old_state,
+            "new_state": new_state,
+        }
+        return port_data
     except KeyError as e:
         logger.error(f"missing key: {e}")
         raise LambdaResponseError({"error": f"missing key: {e}", "code": "INVALID_REQUEST"})
@@ -125,17 +132,21 @@ def get_update_data_from_event(event: dict) -> dict:
         logger.error(f"error getting update data from event: {e}")
         raise LambdaResponseError({"error": f"error getting update data from event: {e}", "code": "UNHANDLED_ERROR"})
 
-def update_station_ports(action: str, station_id: str, port_keys: list[str], old_state: str, new_state: str, user: str| None = None) -> list[dict]:
-    if not port_keys:
-        logger.error(f"port keys are required for {action}")
-        raise LambdaResponseError({"error": f"port keys are required for {action}", "code": "INVALID_REQUEST"})
+def update_station_ports(action: str, port_data: dict, user_id: str| None = None) -> dict:
+    if not port_data["port_key"]:
+        logger.error(f"port key is required for {action}")
+        raise LambdaResponseError({"error": f"port key is required for {action}", "code": "INVALID_REQUEST"})
     try:
         client = get_dynamo_client()
     except Exception as e:
         logger.error(f"error getting dynamo client: {e}")
         raise LambdaResponseError({"error": f"error getting dynamo client: {e}", "code": "DATABASE_ERROR"})
+    old_state = port_data["old_state"]
+    new_state = port_data["new_state"]
+    station_id = port_data["station_id"]
+    port_key = port_data["port_key"]
     if action == "supportUpdateStationPorts":
-        old_support_states = ["FREE", "ERROR", "DISABLED", "BOOKED"]
+        old_support_states = ["FREE", "ERROR", "DISABLED", "BOOKED", "OCCUPIED"]
         new_support_states = ["FREE", "DISABLED"]
         if old_state not in old_support_states:
             logger.error(f"invalid old state: {old_state}")
@@ -146,11 +157,11 @@ def update_station_ports(action: str, station_id: str, port_keys: list[str], old
         if old_state == "BOOKED" and new_state == "FREE":
             logger.error(f"old state is BOOKED and new state is FREE")
             raise LambdaResponseError({"error": f"old state is BOOKED and new state is FREE", "code": "INVALID_REQUEST"})
+        if old_state == "OCCUPIED" and (new_state == "BOOKED" or new_state == "FREE"):
+            logger.error(f"old state is OCCUPIED and new state is BOOKED or FREE")
+            raise LambdaResponseError({"error": f"old state is OCCUPIED and new state is BOOKED or FREE", "code": "INVALID_REQUEST"})
     elif action == "userUpdateStationPorts":
-        if len(port_keys) != 1:
-            logger.error(f"invalid number of port keys: {len(port_keys)}")
-            raise LambdaResponseError({"error": f"invalid number of port keys: {len(port_keys)}", "code": "INVALID_REQUEST"})
-        if not user:
+        if not user_id:
             logger.error(f"user is required")
             raise LambdaResponseError({"error": f"user is required", "code": "INVALID_REQUEST"})
         old_user_states = ["FREE", "BOOKED"]
@@ -163,36 +174,50 @@ def update_station_ports(action: str, station_id: str, port_keys: list[str], old
             raise LambdaResponseError({"error": f"invalid new state: {new_state}", "code": "INVALID_REQUEST"})
     elif action == "lambda_update_station_ports":
         pass
-    updated_ports: list[dict] = []
     updated_at = datetime.now().isoformat()
     transact_items: list[dict] = []
     try:
-        for port_key in port_keys:
-            attr_values = {
-                ":updated_at": {"S": updated_at},
-                ":new_state": {"S": new_state},
-                ":old_state": {"S": old_state},
+        attr_values = {
+            ":updated_at": {"S": updated_at},
+            ":new_state": {"S": new_state},
+            ":old_state": {"S": old_state},
+        }
+        update_expression = "SET updated_at = :updated_at, #s = :new_state"
+        attr_names = {"#s": "state"}
+        if user_id:
+            update_expression += ", #u = :user_id"
+            attr_values[":user_id"] = {"S": user_id}
+            attr_names["#u"] = "user_id"
+        entity_key = f"PORT#{port_key}"
+        transact_items.append({
+            "Update": {
+                "TableName": STATIONS_DYNAMO_TABLE,
+                "Key": {
+                    "station_id": {"S": station_id},
+                    "entity_key": {"S": entity_key},
+                },
+                "UpdateExpression": update_expression,
+                "ConditionExpression": "attribute_exists(entity_key) AND #s = :old_state",
+                "ExpressionAttributeNames": attr_names,
+                "ExpressionAttributeValues": attr_values,
             }
-            update_expression = "SET updated_at = :updated_at, state = :new_state"
-            if user:
-                update_expression += ", user_id = :user_id"
-                attr_values[":user_id"] = {"S": user}
-            transact_items.append({
-                "Update": {
-                    "TableName": STATIONS_DYNAMO_TABLE,
-                    "Key": {
-                        "station_id": {"S": station_id},
-                        "entity_key": {"S": port_key},
-                    },
-                    "UpdateExpression": update_expression,
-                    "ConditionExpression": "attribute_exists(entity_key) AND state = :old_state",
-                    "ExpressionAttributeValues": attr_values,
-                }
-            })
-            updated_ports.append({"station_id": station_id, "port_key": port_key, "new_state": new_state, "updated_at": updated_at})
+        })
+        update_info = {
+            "station_id": station_id,
+            "entity_key": entity_key,
+            "new_state": new_state,
+            "updated_at": updated_at,
+        }
+        if user_id and new_state == "BOOKED":
+            now = datetime.now()
+            booked_by = now - timedelta(minutes=BOOKING_TIMEOUT_MINUTES)
+            update_info["time_booked_at"] = now.isoformat()
+            update_info["time_booked_before"] = booked_by.isoformat()
+        if user_id and new_state == "ACTIVE":
+            update_info["time_started_at"] = now.isoformat()
         response = client.transact_write_items(TransactItems=transact_items)
         logger.info(f"transaction response: {response}")
-        return updated_ports
+        return update_info
     except ClientError as e:
         err_code = e.response.get("Error", {}).get("Code", "")
         if err_code == "ConditionalCheckFailedException":
@@ -272,25 +297,31 @@ def get_tariff(station_id: str) -> float:
 def build_session_object(session_data: dict) -> PortSessionInstance:
     try:
         session_id = str(uuid.uuid4())
-        timestamp = datetime.now().isoformat()
+        timestamp = datetime.now()
+        iso_timestamp = timestamp.isoformat()
         tariff = get_tariff(session_data["station_id"])
+        port_booked = session_data["port_booked"]
+        time_booked_at = timestamp.isoformat() if port_booked else None
+        time_booked_before = (timestamp - timedelta(minutes=BOOKING_TIMEOUT_MINUTES)).isoformat() if port_booked else None
         session_object: PortSessionInstance = {
             "session_id": session_id,
             "station_id": session_data["station_id"],
             "entity_key": f"{session_data['entity_key']}#SESSION#{session_id}",
-            "state": "BOOKED" if session_data["port_booked"] else "ACTIVE",
+            "port_code": session_data["entity_key"].split("#")[1],
+            "state": "BOOKED" if port_booked else "ACTIVE",
             "user_id": session_data["user_id"],
             "energy_consumed_kwh": 0.0,
             "tariff": tariff,
             "current_cost": 0.0,
             "estimated_minutes_remaining": None,
             "duration_minutes": None,
-            "booking_duration_minutes": None,
             "charge_level_percent": None,
-            "created_at": timestamp,
-            "updated_at": timestamp,
-            "booked_at": timestamp if session_data["port_booked"] else None,
-            "started_at": None,
+            "created_at": iso_timestamp,
+            "updated_at": iso_timestamp,
+            "booked_at": time_booked_at,
+            "time_booked_before": time_booked_before,
+            "booking_duration_minutes": None,
+            "started_at": timestamp.isoformat() if not port_booked else None,
             "ended_at": None,
             "event_id": session_data["event_id"],
         }
@@ -390,16 +421,15 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                 return SuccessResponsePayload(data={"created_ports": created_ports}, meta={})
             case "supportUpdateStationPorts":
                 update_data = get_update_data_from_event(event)
-                updated_port_keys = update_station_ports(action, update_data["station_id"], update_data["port_keys"], 
-                update_data["old_state"], update_data["new_state"])
+                updated_port_data = update_station_ports(action, update_data)
                 log_audit("INFO", message="station ports updated successfully", status="SUCCESS", **audit_base)
-                return SuccessResponsePayload(data={"updated_port_keys": updated_port_keys}, meta={})
+                return SuccessResponsePayload(data=updated_port_data, meta={})
             case "userUpdateStationPorts":
+                user_id = event["data"]["userId"]
                 update_data = get_update_data_from_event(event)
-                updated_port_keys = update_station_ports(action, update_data["station_id"], update_data["port_keys"], 
-                update_data["old_state"], update_data["new_state"], caller_id)
+                updated_port_data = update_station_ports(action, update_data, user_id)
                 log_audit("INFO", message="station ports updated successfully", status="SUCCESS", **audit_base)
-                return SuccessResponsePayload(data={"updated_port_keys": updated_port_keys}, meta={})
+                return SuccessResponsePayload(data=updated_port_data, meta={})
             case "deleteStationPorts":
                 station_id = event["data"]["stationId"]
                 port_keys = event["data"]["portKeys"]
