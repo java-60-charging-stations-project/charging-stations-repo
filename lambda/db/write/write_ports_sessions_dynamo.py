@@ -208,12 +208,12 @@ def update_station_ports(action: str, port_data: dict, user_id: str| None = None
             "new_state": new_state,
             "updated_at": updated_at,
         }
+        now = datetime.now()
         if user_id and new_state == "BOOKED":
-            now = datetime.now()
             booked_by = now - timedelta(minutes=BOOKING_TIMEOUT_MINUTES)
             update_info["time_booked_at"] = now.isoformat()
             update_info["time_booked_before"] = booked_by.isoformat()
-        if user_id and new_state == "ACTIVE":
+        if user_id and new_state == "OCCUPIED":
             update_info["time_started_at"] = now.isoformat()
         response = client.transact_write_items(TransactItems=transact_items)
         logger.info(f"transaction response: {response}")

@@ -781,7 +781,9 @@ Resources:
             - Effect: Allow
               Action:
                 - dynamodb:Query
-              Resource: !GetAtt StationEntitiesTable.Arn
+              Resource: 
+                - !GetAtt StationEntitiesTable.Arn
+                - !Sub "${StationEntitiesTable.Arn}/index/*"
 
   GetPortsSessionsInvokePermissionA:
     Type: AWS::Lambda::Permission
