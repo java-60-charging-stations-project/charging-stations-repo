@@ -11,7 +11,7 @@ export function usersRouter(): Router {
 
   const controller = new UsersController(buildUsersService(), buildAdminService());
 
-  router.use(verifyCognitoJwt);
+  router.use(['/me', '/users', '/admin/users'], verifyCognitoJwt);
 
   // Any authorized user operations
   router.get('/me', controller.getMe);
@@ -19,7 +19,7 @@ export function usersRouter(): Router {
   router.patch('/users/me/profile', controller.updateMyProfile);
 
   // Admin only operations
-  router.use("/admin", requireGroups([ADMIN_GROUP]));
+  router.use("/admin/users/", requireGroups([ADMIN_GROUP]));
   router.use("/admin/users/:userId", requireUserId);
 
   router.get('/admin/users', controller.listUsers);

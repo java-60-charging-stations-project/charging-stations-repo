@@ -46,6 +46,7 @@ function getJwks() {
 }
 
 export async function verifyCognitoJwt(req: Request, res: Response, next: NextFunction) {
+  logger.info('Verifying Cognito JWT', { path: req.path, method: req.method });
   if (env.authDisabled) {
     logger.warn('Authentication is disabled, injecting local user');
     req.user = { sub: 'local-user', username: 'local', raw: {} };

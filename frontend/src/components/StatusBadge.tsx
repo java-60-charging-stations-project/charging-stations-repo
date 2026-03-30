@@ -57,7 +57,7 @@ export function StationStatusBadgeInactive() {
             size="px-2 py-0.5"
         />
     );
-}
+};
 
 export function StationStatusBadgeActive() {
     return (
@@ -71,7 +71,7 @@ export function StationStatusBadgeActive() {
             size="px-2 py-0.5"
         />
     );
-}
+};
 
 export function StationStatusBadgeOutOfService() {
     return (
@@ -85,7 +85,7 @@ export function StationStatusBadgeOutOfService() {
             size="px-2 py-0.5"
         />
     );
-}
+};
 
 export function StationStatusBadgeDeleted() {
     return (
@@ -99,7 +99,7 @@ export function StationStatusBadgeDeleted() {
             size="px-2 py-0.5"
         />
     );
-}
+};
 
 export function StationStateBadge({ state }: { state: StationState }) {
     switch (state) {
@@ -113,7 +113,7 @@ export function StationStateBadge({ state }: { state: StationState }) {
             return <StationStatusBadgeDeleted />;
         }
     }
-}
+};
 
 const portBadgeShared = {
     textSize: "text-[10px]" as const,
@@ -131,7 +131,7 @@ export function PortStatusBadgeDisabled() {
             {...portBadgeShared}
         />
     );
-}
+};
 
 export function PortStatusBadgeFree() {
     return (
@@ -143,7 +143,7 @@ export function PortStatusBadgeFree() {
             {...portBadgeShared}
         />
     );
-}
+};
 
 export function PortStatusBadgeBooked() {
     return (
@@ -155,7 +155,7 @@ export function PortStatusBadgeBooked() {
             {...portBadgeShared}
         />
     );
-}
+};
 
 export function PortStatusBadgeOccupied() {
     return (
@@ -167,7 +167,7 @@ export function PortStatusBadgeOccupied() {
             {...portBadgeShared}
         />
     );
-}
+};
 
 export function PortStatusBadgeError() {
     return (
@@ -179,7 +179,7 @@ export function PortStatusBadgeError() {
             {...portBadgeShared}
         />
     );
-}
+};
 
 /** Maps a port state to the corresponding status badge element. */
 // Helper export (not a component) — allowed alongside badge components in this module.
@@ -197,11 +197,11 @@ export function mapPortStateToBadge(state: PortState) {
         case "ERROR":
             return <PortStatusBadgeError />;
     }
-}
+};
 
 export function PortStateBadge({ state }: { state: PortState }) {
     return mapPortStateToBadge(state);
-}
+};
 
 export function UserStatusBadgeDisabled() {
     return (
@@ -215,7 +215,7 @@ export function UserStatusBadgeDisabled() {
             size="px-2 py-0.5"
         />
     );
-}
+};
 
 export function UserStatusBadgeEnabled() {
     return (
@@ -229,11 +229,11 @@ export function UserStatusBadgeEnabled() {
             size="px-2 py-0.5"
         />
     );
-}
+};
 
 export function UserStatusBadge({ enabled }: { enabled: boolean }) {
     return enabled ? <UserStatusBadgeEnabled /> : <UserStatusBadgeDisabled />;
-}
+};
 
 export function UserRoleBadgeUser() {
     return (
@@ -247,7 +247,7 @@ export function UserRoleBadgeUser() {
             size="px-2 py-0.5"
         />
     );
-}
+};
 
 export function UserRoleBadgeSupport() {
     return (
@@ -261,7 +261,7 @@ export function UserRoleBadgeSupport() {
             size="px-2 py-0.5"
         />
     );
-}
+};
 
 export function UserRoleBadgeAdmin() {
     return (
@@ -275,7 +275,7 @@ export function UserRoleBadgeAdmin() {
             size="px-2 py-0.5"
         />
     );
-}
+};
 
 export function UserRoleBadge({ role }: { role: UserRole }) {
     switch (role) {
@@ -283,4 +283,32 @@ export function UserRoleBadge({ role }: { role: UserRole }) {
         case 'SUPPORT': return <UserRoleBadgeSupport />;
         default:        return <UserRoleBadgeUser />;
     }
+};
+
+export function StatusBadgeGreen({ labelText }: { labelText: string }) {
+    return (
+        <StatusBadge
+            labelText={labelText}
+            color="#bbf7d0"
+            textColor="#14532d"
+            borderColor="#15803d"
+            textSize="text-[10px]"
+            textWeight="font-medium"
+            size="px-2 py-0.5"
+        />
+    );
+}
+
+export function StatusBadgeError({ labelText }: { labelText: string }) {
+    return (
+        <StatusBadge
+            labelText={labelText}
+            color="#fecaca"
+            textColor="#991b1b"
+            borderColor="#dc2626"
+            textSize="text-[10px]"
+            textWeight="font-medium"
+            size="px-2 py-0.5"
+        />
+    );
 }
