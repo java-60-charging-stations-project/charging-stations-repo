@@ -9,7 +9,7 @@ export function stationsRouter(): Router {
   const controller = new StationsController(buildStationsService());
 
   // Public endpoints can be without auth. If you want auth, keep verifyCognitoJwt.
-  router.get('/stations', verifyCognitoJwt, controller.list);
+  router.get('/stations', controller.list);
   router.get('/stations/:stationId/ports', verifyCognitoJwt, controller.getPorts);
   router.get('/stations/:stationId', verifyCognitoJwt, controller.getById);
 

@@ -12,7 +12,7 @@ interface WelcomeData {
 };
     
 const WelcomeTable = () => {
-    const { isLoading, isError, error, data } = useFetchData<ApiArrayResponse<WelcomeData>>('/welcome');
+    const { isLoading, isError, error, data } = useFetchData<ApiArrayResponse<WelcomeData>>('/stations');
 
     console.log('WelcomeTable isLoading, isError, error, data', {isLoading, isError, error, data})
 
