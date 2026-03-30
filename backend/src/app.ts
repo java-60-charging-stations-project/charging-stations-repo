@@ -11,6 +11,9 @@ import { bookingsRouter } from './modules/bookings/bookings.routes';
 import { usersRouter } from './modules/users/users.routes';
 import { authRouter } from './modules/auth/auth.routes';
 import { sessionsRouter } from './modules/sessions/sessions.routes';
+import { createLogger } from './utils/logger';
+
+const logger = createLogger('App');
 
 export function createApp() {
   const app = express();
@@ -38,6 +41,7 @@ export function createApp() {
   }
 
   app.use((_req, res) => {
+    logger.info('Not found route');
     res.status(404).json({
       error: {
         code: 'NOT_FOUND',

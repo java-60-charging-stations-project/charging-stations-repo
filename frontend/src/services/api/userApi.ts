@@ -1,4 +1,5 @@
 import type { ApiArrayResponse, ApiResponse } from "@/types/apiTypes";
+import type { UserSessionsResponse, Session } from "@/types/sessions";
 import type { StationBase, StationsListParams } from "@/types/stations";
 import { apiClient } from "./api";
 
@@ -19,4 +20,12 @@ export async function fetchStationById(stationId: string): Promise<StationBase> 
   );
 
   return response.data;
+}
+
+export async function fetchUserSessions(): Promise<Session[]> {
+  const response = await apiClient.get<ApiResponse<UserSessionsResponse>>(
+    "/sessions/user",
+  );
+
+  return response.data.sessions;
 }

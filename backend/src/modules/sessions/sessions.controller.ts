@@ -4,8 +4,11 @@ import { wrapResponse } from '../../common/wrappers';
 import type { SessionsService } from './sessions.service';
 import { projectSession, resolveViewerRole, type ViewerRole } from './sessions.types';
 import type { UserSessionsIService } from './users/userSessions.service.interface';
+import {createLogger} from '../../utils/logger';
 
 const sessionIdParam = z.string().min(1);
+
+const logger = createLogger('SessionsController');
 
 const startSessionSchema = z.object({
   stationId: z.string().min(1),
@@ -19,9 +22,10 @@ export class SessionsController {
   ) {}
   // User Sessions routes
   getUserSessions = async (req: Request, res: Response) => {
+    logger.info('Getting user sessions');
     const callerId = req.user!.sub!;
     const sessions = await this.userSessionsService.getUserSessions(callerId);
-
+    logger.info('User sessions fetched successfully', { sessions });
     res.status(200).json(wrapResponse({ sessions }));
   };
 

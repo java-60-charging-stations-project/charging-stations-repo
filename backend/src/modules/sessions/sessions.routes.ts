@@ -17,14 +17,14 @@ export function sessionsRouter(): Router {
     controller.listAll
   );
 
+    // User sessions routes
+    router.get('/sessions/user', verifyCognitoJwt, controller.getUserSessions);
+
   router.get('/sessions', verifyCognitoJwt, controller.listByUser);
   router.post('/sessions', verifyCognitoJwt, controller.startSession);
   router.post('/sessions/:sessionId/stop', verifyCognitoJwt, controller.stopSession);
 
   router.get('/sessions/:sessionId', verifyCognitoJwt, controller.getById);
-
-  // User sessions routes
-  router.get('/sessions/user', verifyCognitoJwt, controller.getUserSessions);
 
   return router;
 }
