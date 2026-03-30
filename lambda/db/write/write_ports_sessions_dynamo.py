@@ -221,10 +221,6 @@ def update_station_ports(action: str, port_data: dict, user_id: str| None = None
             session_object = build_session_object(update_info)
             transact_items.append({"Put": {
                     "TableName": STATIONS_DYNAMO_TABLE,
-                    "Key": {
-                        "station_id": {"S": update_info["station_id"]},
-                        "entity_key": {"S": update_info["entity_key"]},
-                        },
                     "Item": to_av_map(session_object),
                     "ConditionExpression": "attribute_not_exists(station_id) AND attribute_not_exists(entity_key)",
                     }})

@@ -128,8 +128,8 @@ The template provisions **RDS** (PostgreSQL, IAM auth), **VPC endpoints** (RDS A
 | **charging-stations-confirm-console-created-admin** | Cognito auth (InitiateAuth, NEW_PASSWORD_REQUIRED with `name`). | Script or backend. |
 | **charging-stations-write-station-rds** | Write station to RDS; change state; delete (soft); update station `ports` count from stream-forwarded ops. | Admin, cross-account, or Dynamo stream consumer invoke. |
 | **charging-stations-get-station-info** | Read station(s) from RDS. | Backend or cross-account. |
-| **charging-stations-write-station-ports-dynamo** | Insert ports in DynamoDB single-table. | Support / backend. |
-| **charging-stations-station-entities-stream-consumer** | DynamoDB stream: forward port insert/remove to WriteStationRDS (`update_station_ports`); port BOOKED/OCCUPIED + `user_id` to WriteStationPortsDynamo (`create_session`). | DynamoDB stream trigger. |
+| **charging-stations-write-station-ports-dynamo** | Insert/update/delete ports in DynamoDB single-table; for user port updates it also creates a session item in the same transaction. | Support / backend. |
+| **charging-stations-station-entities-stream-consumer** | DynamoDB stream: forward port insert/remove to WriteStationRDS (`update_station_ports`). | DynamoDB stream trigger. |
 
 **WriteUserRDS** – Cognito triggers (e.g. PostConfirmation) **or** direct invoke with `service` + `data` (e.g. `changeUserStatus`). For Cognito: inserts the user into RDS from `request.userAttributes` and returns the **same event** back. For API invokes: `callerId` in `service`. **full_name**: if missing or Cognito sends `cognito:default_val`, stored as **"Console User"**.
 
@@ -142,10 +142,14 @@ The template provisions **RDS** (PostgreSQL, IAM auth), **VPC endpoints** (RDS A
 - `update_station_ports`: accepts `data` as list of operations (`station_id`, `event_id`, `delta`) from the stream consumer.
 
 **GetStationInfo** – Action-based (`callerId` in `service`):
-- `get_station_by_id`: `data.stationId`.
-- `get_all_stations`: optional `meta` — `city`, `owner`, `state`, `page`, `pageSize`. Response `data` is a list of station objects (**snake_case**); optional **`meta`** with totals/pages when implemented.
+- `getStationById`: `data.stationId`.
+- `getAllStations`: optional `meta` — `city`, `owner`, `state`, `page`, `pageSize`. Response `data` is a list of station objects (**snake_case**); optional **`meta`** with totals/pages when implemented.
 
-**WriteStationPortsDynamo** – `insertStationPorts`: `data.stationId`, `data.ports` (array of `code`, `lastMeterKw`). Atomic batch via DynamoDB `TransactWriteItems`; response `data.created_ports` (list of `{ last_meter_kw }` per inserted port). See **`lambda_request_responces.md`** for stream consumer, `create_session`, `getPortsByStation`, and other actions.
+**WriteStationPortsDynamo** – Action-based (`callerId` in `service`):
+- `insertStationPorts`: `data.stationId`, `data.ports` (array of `code`). Atomic batch via DynamoDB `TransactWriteItems`; response includes `data.created_ports`.
+- `supportUpdateStationPorts` / `userUpdateStationPorts`: optimistic state updates using `oldState`/`newState`; `userUpdateStationPorts` requires `userId` and creates a session item in the same transaction.
+- `deleteStationPorts`: delete one disabled port by `portKey`.
+See **`lambda_request_responces.md`** for exact request/response payloads.
 
 
 ### Request/response (plain JSON)
@@ -158,12 +162,15 @@ See **`lambda_request_responces.md`** for full shapes. Summary:
 - **ConfirmConsoleCreatedAdmin** – Payload: `username`, `password`, `new_password`, `name` (optional). Response tokens / message or error.
 - **WriteStationRDS** – Success `data` uses **snake_case**: `station_id`, `updated_at`, `deleted_at` (ISO strings where applicable).
 - **GetStationInfo** – Station objects in **snake_case**; `location` as GeoJSON when selected.
-- **WriteStationPortsDynamo** – `insertStationPorts`, port updates, `deleteStationPorts`, `create_session` (see **`lambda_request_responces.md`**).
-- **StationEntitiesStreamConsumer** – Dynamo stream: RDS `update_station_ports` on port insert/remove; `create_session` on port BOOKED/OCCUPIED with `user_id` (details in **`lambda_request_responces.md`**).
+- **WriteStationPortsDynamo** – `insertStationPorts`, port updates, `deleteStationPorts` (see **`lambda_request_responces.md`**).
+- **StationEntitiesStreamConsumer** – Dynamo stream: forwards port insert/remove to RDS `update_station_ports` (details in **`lambda_request_responces.md`**).
 
 ### Run scripts
 
-From **`lambda/db`** (or `lambda` with env set). Ensure `.env` has the right region, account, and function names (see `.env.example`).
+Run from **`lambda`** with `.env` loaded (see `lambda/.env.example`).
+
+For `python -m tests...` commands, run from `lambda/`.  
+For helper scripts in `lambda/db`, run from `lambda/db`.
 
 **Create RDS tables (run once after deploy):**
 
@@ -178,6 +185,28 @@ python run_confirm_console_created_admin.py <username> <password> <new_password>
 ```
 
 After successful confirmation, open the Cognito User Pool console and move that user to the **`ADMIN`** group manually. The confirmation flow sets password/name and signs in, but it does not assign admin group membership.
+
+**Ports and sessions integration helpers (from `lambda/`):**
+
+```bash
+# Insert ports for a station
+python -m tests.integration.write.write_ports_dynamo_invoker <station_id> <portsCount>
+
+# Update one port state (support mode)
+python -m tests.integration.write.change_port_status_lambda_inv <station_id> <port_code> <old_state> <new_state> support
+
+# Update one port state (user mode; creates session in current implementation)
+python -m tests.integration.write.change_port_status_lambda_inv <station_id> <port_code> <old_state> <new_state> user <user_id>
+
+# Delete one port (must be DISABLED)
+python -m tests.integration.write.delete_port_lambda_invoker <station_id> <port_code>
+
+# Read ports by station
+python -m tests.integration.read.get_ports_dynamo_invoker <station_id>
+
+# Read sessions by user
+python -m tests.integration.read.get_sessions_lambda_invoker <user_id>
+```
 
 ### Integration tests
 
@@ -220,15 +249,16 @@ Copy **`lambda/.env.example`** to **`lambda/.env`** and set values for local run
 | Variable | Use |
 |----------|-----|
 | **AWS_REGION** | AWS region (e.g. `il-central-1`). |
-| **AWS_LAMBDA_HOST_ACCOUNT** | Account where DB Lambdas are deployed (for scripts). |
-| **CREATE_RDS_TABLES_FUNCTION_NAME**, **CONFIRM_CONSOLE_CREATED_ADMIN_FUNCTION_NAME**| Function names for setting up RDS, confirming console-created admins|
-**HEALTH_FUNCTION_NAME** | Health function name |
-| **GET_USERS_FUNCTION_NAME**, **GET_STATIONS_FUNCTION_NAME** | Function names for read lambdas. |
-| **WRITE_STATION_FUNCTION_NAME** | Function name for writing stations to RDS. |
-| **RDS_DB_SECRET_NAME** | Name of your secret used by the SAM template for DB credentials creation Lambdas and (DB requests with IAM tokens). |
-| **STATIONS_DYNAMO_TABLE** | Optional for local invocation of `charging-stations-write-station-ports-dynamo` (single-table name/ARN). |
-| **WRITE_STATION_FUNCTION_NAME** | Required by stream consumer to invoke `charging-stations-write-station-rds`. |
-| **AWS_LAMBDA_HOST_ACCOUNT** | Required by stream consumer when invoking Lambda by ARN. |
+| **AWS_LAMBDA_HOST_ACCOUNT** | AWS account where these Lambdas are deployed (used by invoker scripts). |
+| **RDS_DB_SECRET_NAME** | Secret name used by SAM for initial RDS bootstrap credentials. |
+| **CREATE_RDS_TABLES_FUNCTION_NAME** | Function name for `charging-stations-create-rds-tables`. |
+| **CONFIRM_CONSOLE_CREATED_ADMIN_FUNCTION_NAME** | Function name for `charging-stations-confirm-console-created-admin`. |
+| **HEALTH_FUNCTION_NAME** | Function name for `charging-stations-health`. |
+| **GET_USERS_FUNCTION_NAME** | Function name for `charging-stations-get-user-info`. |
+| **GET_STATIONS_FUNCTION_NAME** | Function name for `charging-stations-get-station-info`. |
+| **WRITE_STATION_FUNCTION_NAME** | Function name for `charging-stations-write-station-rds`. |
+| **WRITE_PORTS_FUNCTION_NAME** | Function name for `charging-stations-write-station-ports-dynamo`. |
+| **GET_PORTS_SESSIONS_FUNCTION_NAME** | Function name for `charging-stations-get-ports-sessions-dynamo`. |
 
 
 ---
