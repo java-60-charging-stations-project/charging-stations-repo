@@ -7,12 +7,32 @@ import SimpleButton from '@/components/SimpleButton';
 import type { ButtonColor } from '@/components/SimpleButton';
 import { UserStatusBadge, UserRoleBadge } from '@/components/StatusBadge';
 import { getLogger } from '@/services/logging';
+import EasySpinner from './EasySpinner';
 
 const logger = getLogger('EditUserForm');
 
+// type ManageButtonProps = {
+//     text: string;
+//     hh: number;
+//     ww: number;
+//     onClick: () => void;
+// }
+// function ManageButton(props: ManageButtonProps):ReactNode {
+//     const { text, hh = 7, ww, onClick } = props;
+//     return (
+//         <button
+//             type="button"
+//             onClick={onClick}
+//             className={`h-${hh} w-${ww} rounded-md px-2.5 py-0.5 text-sm font-medium no-underline bg-slate-50 text-slate-800 hover:bg-slate-300 hover:text-black`}
+//         >
+//             { text }
+//         </button >
+//     );
+// };
+
 interface EditUserFormProps {
     userId: string;
-    onUserUpdated?: () => void;
+    onUserUpdated?: (user: UserFullType) => void;
 }
 
 type RoleAction = { label: string; newRole: UserRole; color: ButtonColor };
@@ -79,7 +99,7 @@ const EditUserForm: FC<EditUserFormProps> = ({ userId, onUserUpdated }) => {
                 await adminEnableUser(user.userId);
             }
             await loadUser();
-            onUserUpdated?.();
+            onUserUpdated?.({...user});
         } catch (e) {
             setLockError(e instanceof Error ? e.message : 'Action failed');
         } finally {
@@ -94,7 +114,7 @@ const EditUserForm: FC<EditUserFormProps> = ({ userId, onUserUpdated }) => {
         try {
             await changeUserRole(user.userId, { oldRole: user.role, newRole });
             await loadUser();
-            onUserUpdated?.();
+            onUserUpdated?.({...user});
         } catch (e) {
             setRoleError(e instanceof Error ? e.message : 'Failed to update role');
         } finally {
@@ -103,11 +123,15 @@ const EditUserForm: FC<EditUserFormProps> = ({ userId, onUserUpdated }) => {
     };
 
     if (isLoading && !user) {
-        return <p className="mt-4 text-slate-600">Loading...</p>;
+        return (
+            <div className="w-full flex justify-center">
+                <EasySpinner size="lg" />
+            </div>
+        );
     }
 
     if (loadError) {
-        return <p className="mt-4 text-red-600 text-sm">{loadError}</p>;
+        return <p className="mt-4 text-error-600 text-md">{loadError}</p>;
     }
 
     if (!user) return null;
