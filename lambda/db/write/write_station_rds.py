@@ -12,6 +12,9 @@ from data_types.db_instance_types import StationInstance
 from data_types.contract_types import SuccessResponsePayload, ErrorResponsePayload
 
 _conn = None
+AWS_REGION = os.environ["AWS_REGION"]
+AWS_LAMBDA_HOST_ACCOUNT = os.environ["AWS_LAMBDA_HOST_ACCOUNT"]
+GET_PORTS_SESSIONS_FUNCTION_NAME = os.environ["GET_PORTS_SESSIONS_FUNCTION_NAME"]
 
 def get_db_config() -> dict:
     return {
@@ -266,8 +269,8 @@ def update_station_ports(station_id: str, delta: int, event_id: str) -> datetime
             updated_at = datetime.now()
             cur.execute(
                 """
-                    UPDATE stations SET ports = ports + %s, updated_at = %s, event_id = %s WHERE id = %s 
-                    AND (event_id IS DISTINCT FROM %s) AND (ports + %s) >= 0
+                    UPDATE stations SET ports = ports + %s, updated_at = %s, ports_number_event_id = %s WHERE id = %s 
+                    AND (ports_number_event_id IS DISTINCT FROM %s) AND (ports + %s) >= 0
                     RETURNING ports
                 """,
                 (
@@ -289,6 +292,68 @@ def update_station_ports(station_id: str, delta: int, event_id: str) -> datetime
                 logger.info(f"duplicate event, no-op for station {station_id}")
                 conn.commit()
                 return None
+        conn.commit()
+        return updated_at
+    except psycopg2.IntegrityError as e:
+        conn.rollback()
+        logger.error(f"Constraint violation updating station state: {e}")
+        raise LambdaResponseError({"error": str(e), "code": "CONSTRAINT_VIOLATION"})
+    except psycopg2.DatabaseError as e:
+        conn.rollback()
+        logger.error(f"Database error updating station state: {e}")
+        raise LambdaResponseError({"error": str(e), "code": "DATABASE_ERROR"})
+    except LambdaResponseError:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Unhandled error updating station state: {e}")
+        raise LambdaResponseError({"error": str(e), "code": "UNHANDLED_ERROR"})
+
+def update_station_ports_state(station_id: str, event_id: str) -> datetime | None:
+    try:
+        client = boto3.client("lambda", region_name=AWS_REGION)
+        payload = {
+            "service": {"action": "get_has_free_ports_by_station", "callerId": "script"},
+            "data": {"stationId": station_id},
+        }
+        resp = client.invoke(
+            FunctionName=f"arn:aws:lambda:{AWS_REGION}:{AWS_LAMBDA_HOST_ACCOUNT}:function:{GET_PORTS_SESSIONS_FUNCTION_NAME}",
+            InvocationType="RequestResponse",
+            Payload=json.dumps(payload).encode("utf-8"),
+        )
+        raw = resp["Payload"].read().decode("utf-8") or "{}"
+        response_json = json.loads(raw)
+        if response_json.get("error"):
+            raise LambdaResponseError({"error": f"Business error: code={response_json.get('code')} error={response_json.get('error')}", "code": "DATABASE_ERROR"})
+        has_free_ports = response_json.get("data").get("has_free_ports")
+    except LambdaResponseError:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting ports by station: {e}")
+        raise LambdaResponseError({"error": f"Error getting ports by station: {e}", "code": "UNHANDLED_ERROR"})
+    try:
+        conn = get_connection()
+    except Exception as e:
+        logger.error(f"Error getting connection: {e}")
+        raise LambdaResponseError({"error": f"Error getting connection: {e}", "code": "DATABASE_ERROR"})
+    try:
+        with conn.cursor() as cur:
+            updated_at = datetime.now()
+            cur.execute(
+                """
+                    UPDATE stations SET has_free_ports = %s, updated_at = %s, ports_state_event_id = %s WHERE id = %s 
+                    AND (ports_state_event_id IS DISTINCT FROM %s) AND (has_free_ports IS DISTINCT FROM %s)
+                """,
+                (
+                    has_free_ports,
+                    updated_at,
+                    event_id,
+                    station_id,
+                    event_id,
+                    has_free_ports,
+                ),
+            )
         conn.commit()
         return updated_at
     except psycopg2.IntegrityError as e:
@@ -354,6 +419,15 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                     update_station_ports(station_id, ports_delta, event_id)
                     logger.info(f"ports count updated with delta {ports_delta} for station {station_id} with event {event_id}")
                 log_audit("INFO", message=f"ports count updated for {len(operations)} stations", status="SUCCESS", **audit_base)
+                return SuccessResponsePayload(data={"operations": operations}, meta={})
+            case "update_station_ports_state":
+                operations = event["data"]
+                for operation in operations:
+                    station_id = operation["station_id"]
+                    event_id = operation["event_id"]
+                    update_station_ports_state(station_id, event_id)
+                    logger.info(f"ports state updated for station {station_id} with operation {operation} and event {event_id}")
+                log_audit("INFO", message=f"ports state updated for {len(operations)} stations", status="SUCCESS", **audit_base)
                 return SuccessResponsePayload(data={"operations": operations}, meta={})
             case _:
                 log_audit("ERROR", message=f"invalid action {action}", status="ERROR", errorMessage=f"invalid action {action}", **audit_base)

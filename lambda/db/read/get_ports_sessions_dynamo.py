@@ -79,6 +79,24 @@ def get_session_by_user(user_id: str) -> list[dict]:
         logger.error(f"error getting session by user: {e}")
         raise LambdaResponseError({"error": f"error getting session by user: {e}", "code": "DATABASE_ERROR"})
 
+def get_has_free_ports_by_station(station_id: str) -> bool:
+    try:
+        table = get_dynamo_stations_table()
+    except Exception as e:
+        logger.error(f"error getting dynamo stations table: {e}")
+        raise LambdaResponseError({"error": f"error getting dynamo stations table: {e}", "code": "DATABASE_ERROR"})
+    try:
+        resp = table.query(
+            IndexName="state-station-index",
+            KeyConditionExpression=Key("state").eq("FREE") & Key("station_id").eq(station_id),
+            ProjectionExpression="station_id",
+            Limit=1,
+        )
+        return resp.get("Count", 0) > 0
+    except Exception as e:
+        logger.error(f"error checking free ports by station: {e}")
+        raise LambdaResponseError({"error": f"error checking free ports by station: {e}", "code": "DATABASE_ERROR"})
+
 def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponsePayload:
     logger.info(f"Handler called with event: {event}")
     try:
@@ -104,6 +122,11 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                 ports = get_ports_by_station(station_id)
                 log_audit("INFO", message="station ports retrieved successfully", status="SUCCESS", **audit_base)
                 return SuccessResponsePayload(data={"ports": ports}, meta={})
+            case "get_has_free_ports_by_station":
+                station_id = event["data"]["stationId"]
+                has_free_ports = get_has_free_ports_by_station(station_id)
+                log_audit("INFO", message="free ports retrieved successfully", status="SUCCESS", **audit_base)
+                return SuccessResponsePayload(data={"has_free_ports": has_free_ports}, meta={})
             case "getSessionByUser":
                 user_id = event["data"]["userId"]
                 session = get_session_by_user(user_id)
