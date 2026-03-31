@@ -550,6 +550,10 @@ Resources:
                 - "arn:aws:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:${DBResourceId}/${DBUser}"
                 - DBResourceId: !GetAtt ChargingStationsRDSPostgresDB.DbiResourceId
                   DBUser: !Sub "{{resolve:secretsmanager:${DBSecretArn}:SecretString:username}}"
+            - Effect: Allow
+              Action:
+                - lambda:InvokeFunction
+              Resource: !GetAtt GetPortsSessionsFunction.Arn
   
   WriteStationRDSInvokePermissionA:
     Type: AWS::Lambda::Permission
@@ -867,6 +871,7 @@ Resources:
       Events:
         ReconcileFreePortsSchedule:
           Type: Schedule
+          Properties:
             Schedule: rate(1 hour)
             Enabled: true
   
