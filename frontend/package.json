@@ -13,7 +13,7 @@
     "@aws-sdk/client-cognito-identity-provider": "^3.1005.0",
     "@reduxjs/toolkit": "^2.11.2",
     "@tailwindcss/vite": "^4.2.1",
-    "axios": "^1.13.5",
+    "axios": "~1.13.5",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-hook-form": "^7.71.2",
