@@ -1,4 +1,5 @@
 import type { ReactNode, FC } from "react";
+import EasyButton from "./EasyButton";
 
 type ModalProps = {
     isOpen: boolean;
@@ -31,10 +32,14 @@ const Modal: FC<ModalProps> = ({ isOpen, onClose, showCloseButton, title, childr
                 )}
                 {children}
                 { showCloseButton && (
-                    <div className="mt-4 flex justify-end">
-                        <button onClick={onClose} className="px-4 py-2 bg-red-500 text-white rounded">
+                    <div className="mt-4 flex justify-center">
+                        <EasyButton
+                            onClick={onClose}
+                            pHeight={10}
+                            pWidth={45}
+                        >
                             Close
-                        </button>
+                        </EasyButton>
                     </div>
                 )}
             </div>

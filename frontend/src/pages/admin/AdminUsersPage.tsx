@@ -7,6 +7,7 @@ import Modal from '@/components/Modal';
 import { UserStatusBadge } from '@/components/StatusBadge';
 import type { ListUsersFilterKeyType, ListUsersFilterType, UserFullType } from '@/types/users';
 import { userStatusTransform } from '@/services/utils';
+import EasyButton from '@/components/EasyButton';
 
 const logger = getLogger("AdminUsersPage");
 
@@ -93,16 +94,12 @@ const AdminUsersPage = () => {
           onChange={handleSearchValueInputOnChange}
           onKeyDown={handleSearchValueInputKeyDown}
         />
-        <button
-          type="button"
-          onClick={handleSearchRequest}
-          className="h-7 w-27 rounded-md px-2.5 py-0.5 text-sm font-medium no-underline bg-slate-50 text-slate-800 hover:bg-slate-300 hover:text-black"
-        >Search</button>
-        <button
-          type="button"
-          onClick={handleClearFilters}
-          className="h-7 w-27 rounded-md px-2.5 py-0.5 text-sm font-medium no-underline bg-slate-50 text-slate-800 hover:bg-slate-300 hover:text-black"
-        >Clear filters</button>
+        <EasyButton pHeight={7} pWidth={27} onClick={handleSearchRequest}>
+          Search
+        </EasyButton>
+        <EasyButton pHeight={7} pWidth={27} onClick={handleClearFilters}>
+          Clear filters
+        </EasyButton>
       </div>
       <table className="w-full">
         <caption className="p-1 text-lg font-medium text-left">{`Results shown for: ${resultsLabel}`} </caption>
@@ -145,13 +142,12 @@ const AdminUsersPage = () => {
       {isLoading && <div>Loading...</div>}
       {error && <div>Error: {error}</div>}
       {hasMore && (
-        <button
+        <EasyButton
           onClick={fetchMore}
           disabled={isLoading}
-          className="bg-blue-500 text-white px-4 py-2 rounded-md disabled:bg-slate-300"
         >
-          Load more
-        </button>
+            Load more
+        </EasyButton>
       )}
       <Modal
         isOpen={editUserIndex !== null}

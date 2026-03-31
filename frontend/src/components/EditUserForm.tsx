@@ -3,12 +3,12 @@ import type { FC } from 'react';
 import type { UserFullType } from '@/types/users';
 import type { UserRole } from '@/types';
 import { adminDisableUser, adminEnableUser, changeUserRole, fetchAdminUserById } from '@/services/api/adminApi';
-import SimpleButton from '@/components/SimpleButton';
 import type { ButtonColor } from '@/components/SimpleButton';
 import { UserStatusBadge, UserRoleBadge } from '@/components/StatusBadge';
 import { getLogger } from '@/services/logging';
 import EasySpinner from './EasySpinner';
 import { userStatusTransform } from '@/services/utils';
+import EasyButton from './EasyButton';
 
 const logger = getLogger('EditUserForm');
 
@@ -166,14 +166,10 @@ const EditUserForm: FC<EditUserFormProps> = ({ userId, onUserUpdated }) => {
                     <td className="py-2">
                         <div className="flex items-center gap-3 flex-wrap">
                             <UserStatusBadge enabled={user.enabled} />
-                            <SimpleButton
-                                size="xs"
-                                caption={user.enabled ? 'Disable user' : 'Enable user'}
-                                isLoading={lockLoading}
-                                loadingCaption="Processing..."
-                                color={user.enabled ? 'secondary' : 'primary'}
-                                handleClick={handleToggleLock}
-                            />
+                            <span> : </span>
+                            <EasyButton pHeight={7} disabled={lockLoading} onClick={handleToggleLock}>
+                                {user.enabled ? 'Disable user' : 'Enable user'}
+                            </EasyButton>
                             {lockError && (
                                 <span className="text-red-500 text-xs">{lockError}</span>
                             )}
@@ -185,16 +181,16 @@ const EditUserForm: FC<EditUserFormProps> = ({ userId, onUserUpdated }) => {
                     <td className="py-2">
                         <div className="flex items-center gap-3 flex-wrap">
                             <UserRoleBadge role={user.role} />
-                            {getRoleActions(user.role).map(({ label, newRole, color }) => (
-                                <SimpleButton
+                            <span> : </span>
+                            {getRoleActions(user.role).map(({ label, newRole }) => (
+                                <EasyButton
+                                    pHeight={7}
                                     key={`${user.role}=${newRole}`}
-                                    size="xs"
-                                    caption={label}
-                                    isLoading={roleLoading}
-                                    loadingCaption="Updating..."
-                                    color={color}
-                                    handleClick={() => { void handleChangeRole(newRole); }}
-                                />
+                                    disabled={roleLoading}
+                                    onClick={()=>handleChangeRole(newRole)}
+                                >
+                                    {label}
+                                </EasyButton>
                             ))}
                             {roleError && (
                                 <span className="text-red-500 text-xs">{roleError}</span>
