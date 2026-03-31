@@ -74,7 +74,7 @@ def create_tables() -> None:
                     has_free_ports BOOLEAN NOT NULL,
                     created_at TIMESTAMPTZ NOT NULL,
                     updated_at TIMESTAMPTZ NOT NULL,
-                    ports_number_event_id TEXT
+                    ports_number_event_id TEXT,
                     ports_state_event_id TEXT
                 );
             """)

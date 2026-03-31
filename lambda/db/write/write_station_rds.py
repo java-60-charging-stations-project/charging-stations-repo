@@ -52,7 +52,6 @@ def extract_full_station_instance_from_event(event: dict) -> StationInstance:
         data = event["data"]
         location = data["location"] if data.get("location") else {"longitude": 0.0, "latitude": 0.0}
         timestamp = datetime.now()
-        event_id = str(uuid.uuid4())
         station_instance: StationInstance = {
             "id": str(uuid.uuid4()),
             "code": data["code"],
@@ -72,7 +71,8 @@ def extract_full_station_instance_from_event(event: dict) -> StationInstance:
             "has_free_ports": False,
             "created_at": timestamp,
             "updated_at": timestamp,
-            "event_id": event_id,
+            "ports_number_event_id": None,
+            "ports_state_event_id": None,
         }
         logger.info(f"Station instance extracted successfully: {station_instance}")
         return station_instance
@@ -123,11 +123,11 @@ def insert_station_to_rds(station: StationInstance) -> None:
                     INSERT INTO stations (
                         id, code, name, owner, city, address, email, 
                         site_technician, max_power_kw, location, ports, 
-                        rate_plan, state, has_free_ports, created_at, updated_at, event_id
+                        rate_plan, state, has_free_ports, created_at, updated_at, ports_number_event_id, ports_state_event_id
                     ) VALUES (
                         %s, %s, %s, %s, %s, %s, %s, %s, %s, 
                         ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography, 
-                        %s, %s, %s, %s, %s, %s, %s
+                        %s, %s, %s, %s, %s, %s, %s, %s
                     )
                 """,
                 (
@@ -148,7 +148,8 @@ def insert_station_to_rds(station: StationInstance) -> None:
                     station["has_free_ports"],
                     station["created_at"],
                     station["updated_at"],
-                    station["event_id"],
+                    station["ports_number_event_id"],
+                    station["ports_state_event_id"],
                 ),
             )
         conn.commit()

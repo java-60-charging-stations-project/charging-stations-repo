@@ -164,7 +164,7 @@ def update_station_ports(action: str, port_data: dict, user_id: str| None = None
         if not user_id:
             logger.error(f"user is required")
             raise LambdaResponseError({"error": f"user is required", "code": "INVALID_REQUEST"})
-        old_user_states = ["FREE", "BOOKED"]
+        old_user_states = ["FREE", "BOOKED", "OCCUPIED"]
         new_user_states = ["FREE", "BOOKED", "OCCUPIED"]
         if old_state not in old_user_states:
             logger.error(f"invalid old state: {old_state}")
@@ -295,7 +295,7 @@ def get_tariff(station_id: str) -> Decimal:
     if response_json.get("error"):
         logger.error(f"error getting station info: {response_json.get('error')}")
         raise LambdaResponseError({"error": f"error getting station info: {response_json.get('error')}", "code": "DATABASE_ERROR"})
-    tariff = Decimal(response_json.get("data", {}).get("rate_plan", {}).get("offPeakRate", 0.0))
+    tariff = str((response_json.get("data", {}).get("rate_plan", {}).get("offPeakRate", 0.0)))
     return tariff
 
 def build_session_object(session_data: dict) -> dict:

@@ -10,7 +10,7 @@ dotenv.load_dotenv()
 AWS_REGION = os.getenv("AWS_REGION", "il-central-1")
 AWS_LAMBDA_HOST_ACCOUNT = os.getenv("AWS_LAMBDA_HOST_ACCOUNT", "852215679994")
 WRITE_STATION_FUNCTION_NAME = os.getenv("WRITE_STATION_FUNCTION_NAME", "charging-stations-write-station-rds")
-TOTAL_STATIONS = 100
+TOTAL_STATIONS = 10
 
 
 def random_phone() -> str:
