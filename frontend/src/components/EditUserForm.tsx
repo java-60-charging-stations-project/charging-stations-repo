@@ -8,6 +8,7 @@ import type { ButtonColor } from '@/components/SimpleButton';
 import { UserStatusBadge, UserRoleBadge } from '@/components/StatusBadge';
 import { getLogger } from '@/services/logging';
 import EasySpinner from './EasySpinner';
+import { userStatusTransform } from '@/services/utils';
 
 const logger = getLogger('EditUserForm');
 
@@ -203,7 +204,7 @@ const EditUserForm: FC<EditUserFormProps> = ({ userId, onUserUpdated }) => {
                 </tr>
                 <tr>
                     <td className="pr-6 py-2 font-semibold align-top">Status</td>
-                    <td className="py-2">{user.status}</td>
+                    <td className="py-2">{ userStatusTransform(user.status) }</td>
                 </tr>
             </tbody>
         </table>

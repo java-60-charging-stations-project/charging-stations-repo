@@ -6,6 +6,7 @@ import EditUserForm from '@/components/EditUserForm';
 import Modal from '@/components/Modal';
 import { UserStatusBadge } from '@/components/StatusBadge';
 import type { ListUsersFilterKeyType, ListUsersFilterType, UserFullType } from '@/types/users';
+import { userStatusTransform } from '@/services/utils';
 
 const logger = getLogger("AdminUsersPage");
 
@@ -15,7 +16,7 @@ function getResultsLabel(filter: ListUsersFilterType | null) {
   if (!filter) {
     return NO_FILTER_RESULTS_LABEL;
   }
-  return `Users with ${filter.filterKey} beginning like "${filter.filterValue}"`;
+  return `users with ${filter.filterKey}s beginning with "${filter.filterValue}"`;
 }
 
 const AdminUsersPage = () => {
@@ -24,13 +25,15 @@ const AdminUsersPage = () => {
   const [searchKey, setSearchKey] = useState<ListUsersFilterKeyType>("email");
   const [searchValue, setSearchValue] = useState<string>("");
 
+  const resultsLabel = getResultsLabel(appliedFilters);
+
   const onModalClose = () => {
     setEditUserIndex(null);
   };
 
   const onUserUpdate = (userFull: UserFullType) => {
     logger.debug("onUserUpdate triggers, userIndex = ", editUserIndex);
-    if (!editUserIndex) {
+    if (editUserIndex === null) {
       return;
     }
     const { enabled } = userFull;
@@ -65,8 +68,6 @@ const AdminUsersPage = () => {
     setSearchValue("");
     applyFilters(searchKey, "");
   }
-
-  const resultsLabel = getResultsLabel(appliedFilters);
   
   return (
     <div>
@@ -136,7 +137,7 @@ const AdminUsersPage = () => {
               </td>
               <td>{user.name}</td>
               <td><UserStatusBadge enabled={user.enabled} /></td>
-              <td>{user.status}</td>
+              <td>{ userStatusTransform(user.status) }</td>
             </tr>
           ))}
         </tbody>
@@ -153,13 +154,13 @@ const AdminUsersPage = () => {
         </button>
       )}
       <Modal
-        isOpen={!!editUserIndex}
+        isOpen={editUserIndex !== null}
         onClose={onModalClose}
         title="Edit User"
         showCloseButton={true}
         panelClassName="max-w-3xl"
       >
-        {!!editUserIndex && (
+        {(editUserIndex !== null) && (
           <EditUserForm userId={users[editUserIndex].userId} onUserUpdated={onUserUpdate} />
         )}
       </Modal>
