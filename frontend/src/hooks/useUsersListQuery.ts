@@ -83,7 +83,7 @@ export function useUsersListQuery() {
             setFilters((prev) => {
                 const next = buildFilters(filterKey, filterValue);
                 const isSame = (next === null) ? (prev === null) :
-                    (prev && prev.filterKey == next.filterKey && prev.filterValue == next.filterValue);
+                    (prev && prev.filterKey === next.filterKey && prev.filterValue === next.filterValue);
                     
                 return isSame ? prev : next;
             });
