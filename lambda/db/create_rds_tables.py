@@ -74,10 +74,13 @@ def create_tables() -> None:
                     has_free_ports BOOLEAN NOT NULL,
                     created_at TIMESTAMPTZ NOT NULL,
                     updated_at TIMESTAMPTZ NOT NULL,
-                    event_id TEXT
+                    ports_number_event_id TEXT
+                    ports_state_event_id TEXT
                 );
             """)
             cur.execute("""CREATE INDEX IF NOT EXISTS idx_stations_location ON stations USING GIST (location);""")
+            cur.execute("""CREATE INDEX IF NOT EXISTS idx_stations_active_free_true ON stations (id) WHERE state IN 
+            ('ACTIVE','INACTIVE','OUT_OF_SERVICE') AND has_free_ports = TRUE;""")
         conn.commit()
     finally:
         conn.close()

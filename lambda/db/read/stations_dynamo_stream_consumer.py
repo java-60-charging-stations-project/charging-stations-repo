@@ -30,6 +30,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     logger.info(f"Received {len(records)} records")
     operations = 0
     insert_delete_port_ops = []
+    change_free_state_port_ops = []
     for record in records:
         logger.info(f"Processing record: {record}")
         ddb = record.get("dynamodb", {})
@@ -48,7 +49,25 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 "delta": 1 if event_name == "INSERT" else -1,
             }
             insert_delete_port_ops.append(op)
-    operations = len(insert_delete_port_ops)
+        elif event_name == "MODIFY":
+            if not _is_port_entity(old_image) or not _is_port_entity(new_image):
+                continue
+            old_state = old_image.get("state")
+            new_state = new_image.get("state")
+            if not old_state or not new_state:
+                continue
+            if old_state != "FREE" and new_state != "FREE":
+                continue
+            if old_state == "FREE" and new_state == "FREE":
+                continue
+            op = {
+                "event_id": record["eventID"],
+                "station_id": old_image["station_id"],
+                "entity_key": old_image["entity_key"],
+                "operation": "PORT_RELEASED_OR_OCCUPIED",
+            }
+            change_free_state_port_ops.append(op)
+    operations = len(insert_delete_port_ops) + len(change_free_state_port_ops)
     logger.info(f"Found {operations} operations")
     if not operations:
         return {"data": {"operations": operations, "received": len(records)}}
@@ -67,24 +86,37 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 "data": insert_delete_port_ops,
             }
             response = client.invoke(
-                InvocationType="RequestResponse",
+                InvocationType="Event",
                 FunctionName=f"arn:aws:lambda:{REGION}:{AWS_LAMBDA_HOST_ACCOUNT}:function:{WRITE_STATION_FUNCTION_NAME}",
                 Payload=json.dumps(payload).encode("utf-8"),
             )
-            if response.get("FunctionError"):
-                logger.error(f"Forwarded {len(insert_delete_port_ops)} operations to update station ports failed: {response.get('FunctionError')}")
-                log_audit("ERROR", message=f"Operations to update station ports failed", status="ERROR", errorMessage=response.get('FunctionError'), **audit_base)
-                raise LambdaResponseError({"error": f"Operations to update station ports failed: {response.get('FunctionError')}", "code": "UNHANDLED_ERROR"})
-            raw = response["Payload"].read().decode("utf-8") or "{}"
-            response_json = json.loads(raw)
-            if response_json.get("error"):
-                logger.error(f"Forwarded {len(insert_delete_port_ops)} operations to update station ports failed: {response_json.get('error')}")
-                log_audit("ERROR", message=f"Operations to update station ports failed", status="ERROR", errorMessage=response_json.get('error'), **audit_base)
-                raise LambdaResponseError({"error": f"Operations to update station ports failed: {response_json.get('error')}", "code": "UNHANDLED_ERROR"})
+            status = response.get("StatusCode")
+            if status != 202:
+                logger.error(f"async invoke failed with status {status}")
+                log_audit("ERROR", message=f"async invoke failed with status {status}", status="ERROR", errorMessage=f"async invoke failed with status {status}", **audit_base)
+                raise LambdaResponseError({"error": f"async invoke failed with status {status}", "code": "UNHANDLED_ERROR"})
             logger.info(f"Forwarded {len(insert_delete_port_ops)} operations to update station ports successfully")
             log_audit("INFO", message=f"Forwarded {len(insert_delete_port_ops)} operations to update station ports successfully", status="SUCCESS", **audit_base)
-    except LambdaResponseError:
-        raise
+        if change_free_state_port_ops:
+            audit_base["event"] = "PORT_STATE_CHANGED"
+            logger.info(f"Forwarding {len(change_free_state_port_ops)} operations to {WRITE_STATION_FUNCTION_NAME}")
+            client = boto3.client("lambda", region_name=REGION)
+            payload = {
+                "service": { "action": "update_station_ports_state", "callerId": "script" },
+                "data": change_free_state_port_ops,
+            }
+            response = client.invoke(
+                InvocationType="Event",
+                FunctionName=f"arn:aws:lambda:{REGION}:{AWS_LAMBDA_HOST_ACCOUNT}:function:{WRITE_STATION_FUNCTION_NAME}",
+                Payload=json.dumps(payload).encode("utf-8"),
+            )
+            status = response.get("StatusCode")
+            if status != 202:
+                logger.error(f"async invoke failed with status {status}")
+                log_audit("ERROR", message=f"async invoke failed with status {status}", status="ERROR", errorMessage=f"async invoke failed with status {status}", **audit_base)
+                raise LambdaResponseError({"error": f"async invoke failed with status {status}", "code": "UNHANDLED_ERROR"})
+            logger.info(f"Forwarded {len(change_free_state_port_ops)} operations to update station ports state successfully")
+            log_audit("INFO", message=f"Forwarded {len(change_free_state_port_ops)} operations to update station ports state successfully", status="SUCCESS", **audit_base)
     except Exception as e:
         logger.error(f"Forwarded {operations} operations failed: {str(e)}")
         log_audit("ERROR", message=f"Forwarded {operations} operations failed", status="ERROR", errorMessage=str(e), **audit_base)

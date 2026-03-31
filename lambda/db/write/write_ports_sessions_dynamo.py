@@ -19,7 +19,6 @@ GET_STATION_FUNCTION_NAME = os.environ["GET_STATION_FUNCTION_NAME"]
 PORT_STATES = ["FREE", "OCCUPIED", "ERROR", "DISABLED", "BOOKED"]
 BOOKING_TIMEOUT_MINUTES = int(os.environ["BOOKING_TIMEOUT_MINUTES"])
 
-_dynamo = None
 _dynamo_client = None
 _serializer = TypeSerializer()
 

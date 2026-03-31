@@ -539,6 +539,8 @@ Resources:
           DB_PORT: "5432"
           DB_NAME: !Ref DBName
           DB_USER: !Sub "{{resolve:secretsmanager:${DBSecretArn}:SecretString:username}}"
+          GET_PORTS_SESSIONS_FUNCTION_NAME: !Ref GetPortsSessionsFunction
+          AWS_LAMBDA_HOST_ACCOUNT: !Ref AWS::AccountId
       Policies:
         - Version: '2012-10-17'
           Statement:
@@ -628,6 +630,8 @@ Resources:
           AttributeType: S
         - AttributeName: user_id
           AttributeType: S
+        - AttributeName: state
+          AttributeType: S
       KeySchema:
         - AttributeName: station_id
           KeyType: HASH
@@ -640,6 +644,17 @@ Resources:
               KeyType: HASH
           Projection:
             ProjectionType: ALL
+        - IndexName: state-station-index
+          KeySchema:
+            - AttributeName: state
+              KeyType: HASH
+            - AttributeName: station_id
+              KeyType: RANGE
+          Projection:
+            ProjectionType: INCLUDE
+            NonKeyAttributes:
+              - entity_key
+              - updated_at
       SSESpecification:
         SSEEnabled: true
       StreamSpecification:
@@ -803,6 +818,58 @@ Resources:
       FunctionName: !Ref GetPortsSessionsFunction
       Action: lambda:InvokeFunction
       Principal: !Sub "arn:aws:iam::${InvokerAccountIdB}:root"
+
+  ReconcileFreePortsFunction:
+    Type: AWS::Serverless::Function
+    DependsOn:
+      - StationEntitiesTable
+      - DynamoDBGatewayEndpoint
+      - ChargingStationsRDSPostgresDB
+    Properties:
+      Runtime: python3.12
+      FunctionName: charging-stations-reconcile-free-ports
+      Handler: reconcile_free_ports.handler
+      CodeUri: db/maintenance
+      Layers:
+        - !Ref CommonToolsLayer
+        - !Sub "arn:aws:lambda:${AWS::Region}:770693421928:layer:Klayers-p312-psycopg2-binary:2"
+      Description: Reconciles stations.has_free_ports between DynamoDB port states and RDS
+      Timeout: 60
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds:
+          - !Ref PrivateSubnet1Id
+          - !Ref PrivateSubnet2Id
+      Environment:
+        Variables:
+          STATIONS_DYNAMO_TABLE: !Ref StationEntitiesTable
+          FREE_PORTS_GSI_NAME: state-station-index
+          DB_HOST: !GetAtt ChargingStationsRDSPostgresDB.Endpoint.Address
+          DB_PORT: "5432"
+          DB_NAME: !Ref DBName
+          DB_USER: !Sub "{{resolve:secretsmanager:${DBSecretArn}:SecretString:username}}"
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:Query
+              Resource:
+                - !GetAtt StationEntitiesTable.Arn
+                - !Sub "${StationEntitiesTable.Arn}/index/state-station-index"
+            - Effect: Allow
+              Action: rds-db:connect
+              Resource: !Sub
+                - "arn:aws:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:${DBResourceId}/${DBUser}"
+                - DBResourceId: !GetAtt ChargingStationsRDSPostgresDB.DbiResourceId
+                  DBUser: !Sub "{{resolve:secretsmanager:${DBSecretArn}:SecretString:username}}"
+      Events:
+        ReconcileFreePortsSchedule:
+          Type: Schedule
+            Schedule: rate(1 hour)
+            Enabled: true
+  
 
 Outputs:
   UserPoolId:
