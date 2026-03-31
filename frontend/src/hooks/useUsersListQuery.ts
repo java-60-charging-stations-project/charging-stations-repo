@@ -1,64 +1,70 @@
 import { fetchAdminUsers } from "@/services/api/adminApi";
 import { getLogger } from "@/services/logging";
 import type { ListUsersFilterType, UserShortType } from "@/types/users";
+import { type ListUsersFilterKeyType } from "@/types/users";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const logger = getLogger("useUsersListQuery");
 
 const FETCH_LIMIT = 5;
 
+function buildFilters(filterKey: ListUsersFilterKeyType, filterValue: string): ListUsersFilterType | null {
+    return (filterValue === "")? null: { filterKey, filterValue };
+}
+
 export function useUsersListQuery() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [users, setUsers] = useState<UserShortType[]>([]);
     const [nextToken, setNextToken] = useState<string | undefined>(undefined);
-    const [filters, setFilters] = useState<ListUsersFilterType | undefined>(undefined);
+    const [filters, setFilters] = useState<ListUsersFilterType | null>(null);
     const latestRequestIdRef = useRef(0);
 
-    const fetchUsers = useCallback(async (requestFilters: ListUsersFilterType | undefined, isReplacing: boolean, token?: string) => {
-        const requestId = ++latestRequestIdRef.current;
-        setIsLoading(true);
-        setError(null);
-        try {
-            logger.debug("Fetching users", { filters: requestFilters, token, isReplacing, requestId });
-            const { users: fetchedUsers, paginationToken, attemptsMade } = await fetchAdminUsers({
-                limit: FETCH_LIMIT,
-                ...(requestFilters ? { filter: requestFilters } : {}),
-                ...(token ? { paginationToken: token } : {}),
-            });
-            logger.debug(`Users count: ${fetchedUsers.length}, attempts: ${attemptsMade}`);
+    const fetchUsers = useCallback(
+        async (requestFilters: ListUsersFilterType | null, isReplacing: boolean, token?: string) => {
+            const requestId = ++latestRequestIdRef.current;
+            setIsLoading(true);
+            setError(null);
+            try {
+                logger.debug("Fetching users", { filters: requestFilters, token, isReplacing, requestId });
+                const { users: fetchedUsers, paginationToken, attemptsMade } = await fetchAdminUsers({
+                    limit: FETCH_LIMIT,
+                    ...(requestFilters ? { filter: requestFilters } : {}),
+                    ...(token ? { paginationToken: token } : {}),
+                });
+                logger.debug(`Users count: ${fetchedUsers.length}, attempts: ${attemptsMade}`);
 
-            if (requestId !== latestRequestIdRef.current) {
-                logger.debug("Ignoring stale users response", { requestId, latestRequestId: latestRequestIdRef.current });
-                return;
-            }
+                if (requestId !== latestRequestIdRef.current) {
+                    logger.debug("Ignoring stale users response", { requestId, latestRequestId: latestRequestIdRef.current });
+                    return;
+                }
 
-            setNextToken(paginationToken);
-            if (isReplacing) {
-                setUsers(fetchedUsers);
+                setNextToken(paginationToken);
+                if (isReplacing) {
+                    setUsers(fetchedUsers);
+                }
+                else {
+                    setUsers((prevUsers) => [...prevUsers, ...fetchedUsers]);
+                }
             }
-            else {
-                setUsers((prevUsers) => [...prevUsers, ...fetchedUsers]);
-            }
-        }
-        catch (e) {
-            if (requestId !== latestRequestIdRef.current) {
-                logger.debug("Ignoring stale users error", { requestId, latestRequestId: latestRequestIdRef.current });
-                return;
-            }
+            catch (e) {
+                if (requestId !== latestRequestIdRef.current) {
+                    logger.debug("Ignoring stale users error", { requestId, latestRequestId: latestRequestIdRef.current });
+                    return;
+                }
 
-            setError(e instanceof Error ? e.message : "Error fetching users");
-        }
-        finally {
-            if (requestId === latestRequestIdRef.current) {
-                setIsLoading(false);
+                setError(e instanceof Error ? e.message : "Error fetching users");
             }
-        }
+            finally {
+                if (requestId === latestRequestIdRef.current) {
+                    setIsLoading(false);
+                }
+            }
     }, []);
 
     useEffect(() => {
         void fetchUsers(filters, true);
-    }, [fetchUsers, filters?.filterKey, filters?.filterValue]);
+    }, [fetchUsers, filters]);
 
     const fetchMore = useCallback(async () => {
         if (!nextToken) {
@@ -72,15 +78,27 @@ export function useUsersListQuery() {
         await fetchUsers(filters, true);
     }, [fetchUsers, filters]);
 
-    const applyFilters = useCallback((newFilters: ListUsersFilterType | undefined) => {
-        setFilters((currentFilters) => {
-            const isSameFilter =
-                currentFilters?.filterKey === newFilters?.filterKey
-                && currentFilters?.filterValue === newFilters?.filterValue;
+    const applyFilters = useCallback(
+        (filterKey: ListUsersFilterKeyType, filterValue: string) => {
+            setFilters((prev) => {
+                const next = buildFilters(filterKey, filterValue);
+                const isSame = (next === null) ? (prev === null) :
+                    (prev && prev.filterKey == next.filterKey && prev.filterValue == next.filterValue);
+                    
+                return isSame ? prev : next;
+            });
+        }, []
+    );
 
-            return isSameFilter ? currentFilters : newFilters;
-        });
-    }, []);
+    const modifyById = useCallback(
+        (userId: string, partial: Partial<UserShortType>) => {
+            const modifiedIndex = users.findIndex(user => user.userId === userId);
+            if (modifiedIndex === -1) {
+                return;
+            }
+            users[modifiedIndex] = { ...users[modifiedIndex], ...partial };
+        }
+    , [users]);
 
     return {
         isLoading,
@@ -91,5 +109,6 @@ export function useUsersListQuery() {
         fetchMore,
         refresh,
         applyFilters,
+        modifyById,
     };
 }

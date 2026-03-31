@@ -1,153 +1,122 @@
 import { getLogger } from '@/services/logging';
 import { useUsersListQuery } from '@/hooks/useUsersListQuery';
 import type { ChangeEvent, KeyboardEvent } from 'react';
-import { useMemo, useState } from 'react';
-import type { ListUsersFilterType } from '@/types/users';
+import { useState } from 'react';
 import EditUserForm from '@/components/EditUserForm';
 import Modal from '@/components/Modal';
 import { UserStatusBadge } from '@/components/StatusBadge';
+import type { ListUsersFilterKeyType, ListUsersFilterType, UserShortType, UserFullType } from '@/types/users';
 
 const logger = getLogger("AdminUsersPage");
 
-function buildFilters(emailInput: string, nameInput: string): ListUsersFilterType | undefined {
-  const trimmedEmail = emailInput.trim();
-  const trimmedName = nameInput.trim();
+const NO_FILTER_RESULTS_LABEL = "<no filters applied>";
 
-  if (trimmedEmail.length > 0) {
-    return {
-      filterKey: 'email',
-      filterValue: trimmedEmail,
-    };
+function getResultsLabel(filter: ListUsersFilterType | null) {
+  if (!filter) {
+    return NO_FILTER_RESULTS_LABEL;
   }
-
-  if (trimmedName.length > 0) {
-    return {
-      filterKey: 'name',
-      filterValue: trimmedName,
-    };
-  }
-
-  return undefined;
+  return `Users with ${filter.filterKey} beginning like "${filter.filterValue}"`;
 }
 
 const AdminUsersPage = () => {
-  const { isLoading, error, users, appliedFilters, hasMore, fetchMore, applyFilters, refresh } = useUsersListQuery();
-
-  const [emailInput, setEmailInput] = useState('');
-  const [nameInput, setNameInput] = useState('');
-
-  const [editUserId, setEditUserId] = useState<string | null>(null);
+  const { isLoading, error, users, hasMore, fetchMore, applyFilters, appliedFilters, modifyById } = useUsersListQuery();
+  const [editUser, setEditUser] = useState<UserShortType | null>(null);
+  const [searchKey, setSearchKey] = useState<ListUsersFilterKeyType>("email");
+  const [searchValue, setSearchValue] = useState<string>("");
 
   const onModalClose = () => {
-    setEditUserId(null);
+    setEditUser(null);
   };
 
-  const onUserUpdated = () => {
-    logger.debug('user updated, refreshing list');
-    void refresh();
-  };
-
-  const draftFilters = useMemo(
-    () => buildFilters(emailInput, nameInput),
-    [emailInput, nameInput],
-  );
-
-  const hasPendingFilterChanges =
-    draftFilters?.filterKey !== appliedFilters?.filterKey
-    || draftFilters?.filterValue !== appliedFilters?.filterValue;
-
-  const handleEmailChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setEmailInput(e.target.value);
-    setNameInput('');
-  };
-
-  const handleNameChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setNameInput(e.target.value);
-    setEmailInput('');
-  };
-
-  const applyDraftFilters = () => {
-    applyFilters(draftFilters);
-  };
-
-  const clearFilters = () => {
-    setEmailInput('');
-    setNameInput('');
-    applyFilters(undefined);
-  };
-
-  const handleSetFilters = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      applyDraftFilters();
+  const onUserUpdate = (userFull: UserFullType) => {
+    logger.debug("onUserUpdate triggers");
+    if (!editUser) return;
+    const { enabled, status, lastModifiedDate } = userFull;
+    if (
+      editUser.status !== status ||
+      editUser.enabled !== enabled ||
+      editUser.lastModifiedDate !== lastModifiedDate
+    ) {
+        logger.debug("onUserUpdate modifies");
+        modifyById(editUser.userId, { status, enabled, lastModifiedDate });
     }
   };
 
+  const handleSearchRequest = () => {
+    logger.debug("Fire new search");
+    const normalizedValue = searchValue.trim().toLowerCase();
+    applyFilters(searchKey, normalizedValue);
+  }
+
+  const handleSearchKeySelectChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    const filterKey = event.target.value === "email" ? "email" : "name";
+    setSearchKey(filterKey);
+  }
+
+  const handleSearchValueInputOnChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setSearchValue(event.target.value);
+  }
+
+  const handleSearchValueInputKeyDown  = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key == "Enter") {
+      handleSearchRequest();
+    }
+  };
+
+  const handleClearFilters = () => {
+    setSearchValue("");
+    handleSearchRequest();
+  }
+
+  const resultsLabel = getResultsLabel(appliedFilters);
+  
   return (
     <div>
       <div>
         <h1 className="text-2xl font-bold text-center">Administrator users management</h1>
       </div>
-      <div className="mb-4 flex items-center gap-3">
-        <button
-          onClick={applyDraftFilters}
-          disabled={!hasPendingFilterChanges}
-          className="bg-blue-500 text-white px-4 py-2 rounded-md disabled:bg-slate-300"
+      <div className="mb-4 flex items-center gap-3 text-sm">
+        <span>Filter users by </span>
+        <select
+          value={searchKey}
+          onChange={handleSearchKeySelectChange}
+          className="max-w-17 h-7 rounded border border-slate-300 bg-white px-0.5 py-0.5 text-sm align-middle"
         >
-          Apply filters
-        </button>
+          <option value="email">Email</option>
+          <option value="name">Name</option>
+        </select>
+        <span>:</span>
+        <input
+          type="text"
+          placeholder={`Type ${searchKey} here...`}
+          value={searchValue}
+          className="max-w-49 h-7 rounded border border-slate-300 bg-white px-0.5 py-0.5 text-sm"
+          onChange={handleSearchValueInputOnChange}
+          onKeyDown={handleSearchValueInputKeyDown}
+        />
         <button
-          onClick={clearFilters}
-          disabled={!appliedFilters && !draftFilters}
-          className="bg-slate-200 text-slate-800 px-4 py-2 rounded-md disabled:bg-slate-100 disabled:text-slate-400"
-        >
-          Clear filters
-        </button>
-        <div className="text-sm text-slate-600">
-          {appliedFilters
-            ? `Applied filter: ${appliedFilters.filterKey} starts with "${appliedFilters.filterValue}"`
-            : 'Applied filter: none'}
-        </div>
+          type="button"
+          onClick={handleSearchRequest}
+          className="h-7 w-27 rounded-md px-2.5 py-0.5 text-sm font-medium no-underline bg-slate-50 text-slate-800 hover:bg-slate-300 hover:text-black"
+        >Search</button>
+        <button
+          type="button"
+          onClick={handleClearFilters}
+          className="h-7 w-27 rounded-md px-2.5 py-0.5 text-sm font-medium no-underline bg-slate-50 text-slate-800 hover:bg-slate-300 hover:text-black"
+        >Clear filters</button>
       </div>
       <table className="w-full">
+        <caption className="p-1 text-lg font-medium text-left">{`Results shown for: ${resultsLabel}`} </caption>
         <thead>
           <tr>
             <th>Number</th>
             <th>Email</th>
             <th>Name</th>
             <th>Status</th>
-            <th>Confirmation State</th>
+            <th>Confirmation status</th>
           </tr>
         </thead>
         <tbody>
-          <tr key="filters">
-            <td> </td>
-            <td>
-              <input
-                type="text"
-                placeholder="Email"
-                className="border border-slate-300 px-1.5 py-0.5 rounded"
-                value={emailInput}
-                onChange={handleEmailChange}
-                onKeyDown={handleSetFilters}
-              />
-            </td>
-            <td>
-              <input
-                type="text"
-                placeholder="Name"
-                className="border border-slate-300 px-1.5 py-0.5 rounded"
-                value={nameInput}
-                onChange={handleNameChange}
-                onKeyDown={handleSetFilters}
-              />
-            </td>
-            <td> </td>
-            <td>
-              <span className="text-sm text-slate-500">
-                {hasPendingFilterChanges ? 'Draft differs from applied filter' : 'Draft matches applied filter'}
-              </span>
-            </td>
-          </tr>
           {users.length === 0 && !isLoading && !error && (
             <tr>
               <td colSpan={5} className="py-4 text-center text-slate-500">
@@ -161,7 +130,7 @@ const AdminUsersPage = () => {
               <td>
                 <button
                   type="button"
-                  onClick={() => setEditUserId(user.userId)}
+                  onClick={() => setEditUser({ ...user })}
                   className="text-blue-600 underline hover:text-blue-800 p-0 bg-transparent border-0 cursor-pointer text-left font-inherit"
                 >
                   {user.email}
@@ -186,14 +155,14 @@ const AdminUsersPage = () => {
         </button>
       )}
       <Modal
-        isOpen={!!editUserId}
+        isOpen={!!editUser}
         onClose={onModalClose}
         title="Edit User"
         showCloseButton={true}
         panelClassName="max-w-3xl"
       >
-        {editUserId && (
-          <EditUserForm key={editUserId} userId={editUserId} onUserUpdated={onUserUpdated} />
+        {!!editUser && (
+          <EditUserForm userId={editUser.userId} onUserUpdated={onUserUpdate} />
         )}
       </Modal>
     </div>
