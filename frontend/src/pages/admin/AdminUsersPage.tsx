@@ -5,7 +5,7 @@ import { useState } from 'react';
 import EditUserForm from '@/components/EditUserForm';
 import Modal from '@/components/Modal';
 import { UserStatusBadge } from '@/components/StatusBadge';
-import type { ListUsersFilterKeyType, ListUsersFilterType, UserShortType, UserFullType } from '@/types/users';
+import type { ListUsersFilterKeyType, ListUsersFilterType, UserFullType } from '@/types/users';
 
 const logger = getLogger("AdminUsersPage");
 
@@ -19,26 +19,24 @@ function getResultsLabel(filter: ListUsersFilterType | null) {
 }
 
 const AdminUsersPage = () => {
-  const { isLoading, error, users, hasMore, fetchMore, applyFilters, appliedFilters, modifyById } = useUsersListQuery();
-  const [editUser, setEditUser] = useState<UserShortType | null>(null);
+  const { isLoading, error, users, hasMore, fetchMore, applyFilters, appliedFilters, modifyByIndex } = useUsersListQuery();
+  const [editUserIndex, setEditUserIndex] = useState<number | null>(null);
   const [searchKey, setSearchKey] = useState<ListUsersFilterKeyType>("email");
   const [searchValue, setSearchValue] = useState<string>("");
 
   const onModalClose = () => {
-    setEditUser(null);
+    setEditUserIndex(null);
   };
 
   const onUserUpdate = (userFull: UserFullType) => {
-    logger.debug("onUserUpdate triggers");
-    if (!editUser) return;
-    const { enabled, status, lastModifiedDate } = userFull;
-    if (
-      editUser.status !== status ||
-      editUser.enabled !== enabled ||
-      editUser.lastModifiedDate !== lastModifiedDate
-    ) {
-        logger.debug("onUserUpdate modifies");
-        modifyById(editUser.userId, { status, enabled, lastModifiedDate });
+    logger.debug("onUserUpdate triggers, userIndex = ", editUserIndex);
+    if (!editUserIndex) {
+      return;
+    }
+    const { enabled } = userFull;
+    if ( users[editUserIndex].enabled !== enabled) {
+      logger.debug("onUserUpdate modifies");
+      modifyByIndex( editUserIndex, { enabled });
     }
   };
 
@@ -65,7 +63,7 @@ const AdminUsersPage = () => {
 
   const handleClearFilters = () => {
     setSearchValue("");
-    handleSearchRequest();
+    applyFilters(searchKey, "");
   }
 
   const resultsLabel = getResultsLabel(appliedFilters);
@@ -130,7 +128,7 @@ const AdminUsersPage = () => {
               <td>
                 <button
                   type="button"
-                  onClick={() => setEditUser({ ...user })}
+                  onClick={() => setEditUserIndex(index)}
                   className="text-blue-600 underline hover:text-blue-800 p-0 bg-transparent border-0 cursor-pointer text-left font-inherit"
                 >
                   {user.email}
@@ -155,14 +153,14 @@ const AdminUsersPage = () => {
         </button>
       )}
       <Modal
-        isOpen={!!editUser}
+        isOpen={!!editUserIndex}
         onClose={onModalClose}
         title="Edit User"
         showCloseButton={true}
         panelClassName="max-w-3xl"
       >
-        {!!editUser && (
-          <EditUserForm userId={editUser.userId} onUserUpdated={onUserUpdate} />
+        {!!editUserIndex && (
+          <EditUserForm userId={users[editUserIndex].userId} onUserUpdated={onUserUpdate} />
         )}
       </Modal>
     </div>

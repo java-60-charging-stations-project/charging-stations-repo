@@ -68,21 +68,25 @@ const EditUserForm: FC<EditUserFormProps> = ({ userId, onUserUpdated }) => {
     const [roleLoading, setRoleLoading] = useState(false);
     const [roleError, setRoleError] = useState<string | null>(null);
 
-    const loadUser = useCallback(async () => {
-        setIsLoading(true);
-        setLoadError(null);
-        try {
-            const data = await fetchAdminUserById(userId);
-            logger.debug('user details:', data);
-            setUser(data);
-        } catch (e) {
-            logger.error('error loading user details:', e);
-            setLoadError(e instanceof Error ? e.message : 'Failed to load user');
-            setUser(null);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [userId]);
+    const loadUser = useCallback(
+        async (): Promise<UserFullType | null> => {
+            setIsLoading(true);
+            setLoadError(null);
+            let fetchedUser: UserFullType | null = null;
+            try {
+                fetchedUser = await fetchAdminUserById(userId);
+                logger.debug('Fetched user id = ', fetchedUser.userId);
+                setUser(fetchedUser);
+            } catch (e) {
+                logger.error('error loading user details:', e);
+                setLoadError(e instanceof Error ? e.message : 'Failed to load user');
+                setUser(null);
+            } finally {
+                setIsLoading(false);
+            }
+            return fetchedUser;
+        }, [userId]
+    );
 
     useEffect(() => {
         void loadUser();
@@ -93,13 +97,17 @@ const EditUserForm: FC<EditUserFormProps> = ({ userId, onUserUpdated }) => {
         setLockError(null);
         setLockLoading(true);
         try {
+            let enabled = user.enabled;
             if (user.enabled) {
                 await adminDisableUser(user.userId);
+                enabled = false;
             } else {
                 await adminEnableUser(user.userId);
+                enabled = true;
             }
-            await loadUser();
-            onUserUpdated?.({...user});
+            const updatedUser = {...user, enabled};
+            setUser(updatedUser);
+            onUserUpdated?.(updatedUser);
         } catch (e) {
             setLockError(e instanceof Error ? e.message : 'Action failed');
         } finally {
@@ -113,8 +121,9 @@ const EditUserForm: FC<EditUserFormProps> = ({ userId, onUserUpdated }) => {
         setRoleLoading(true);
         try {
             await changeUserRole(user.userId, { oldRole: user.role, newRole });
-            await loadUser();
-            onUserUpdated?.({...user});
+            const updatedUser = { ...user, role: newRole };
+            setUser(updatedUser);
+            onUserUpdated?.(updatedUser);
         } catch (e) {
             setRoleError(e instanceof Error ? e.message : 'Failed to update role');
         } finally {
@@ -177,7 +186,7 @@ const EditUserForm: FC<EditUserFormProps> = ({ userId, onUserUpdated }) => {
                             <UserRoleBadge role={user.role} />
                             {getRoleActions(user.role).map(({ label, newRole, color }) => (
                                 <SimpleButton
-                                    key={newRole}
+                                    key={`${user.role}=${newRole}`}
                                     size="xs"
                                     caption={label}
                                     isLoading={roleLoading}

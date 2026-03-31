@@ -26,7 +26,7 @@ export function useUsersListQuery() {
             setIsLoading(true);
             setError(null);
             try {
-                logger.debug("Fetching users", { filters: requestFilters, token, isReplacing, requestId });
+                logger.debug("Fetching users", {  filters: requestFilters, token, isReplacing, requestId });
                 const { users: fetchedUsers, paginationToken, attemptsMade } = await fetchAdminUsers({
                     limit: FETCH_LIMIT,
                     ...(requestFilters ? { filter: requestFilters } : {}),
@@ -90,15 +90,20 @@ export function useUsersListQuery() {
         }, []
     );
 
-    const modifyById = useCallback(
-        (userId: string, partial: Partial<UserShortType>) => {
-            const modifiedIndex = users.findIndex(user => user.userId === userId);
-            if (modifiedIndex === -1) {
-                return;
-            }
-            users[modifiedIndex] = { ...users[modifiedIndex], ...partial };
+    const modifyByIndex = useCallback(
+        (userIndex: number, partial: Partial<UserShortType>) => {
+            setUsers(
+                prevUsers => {
+                    logger.debug(".modifyById index = ", userIndex);
+                    const updated = { ...prevUsers[userIndex], ...partial };
+                    const updatedUsers = [...prevUsers];
+                    updatedUsers[userIndex] = updated;
+                    
+                    return updatedUsers;
+                }
+            );
         }
-    , [users]);
+    , []);
 
     return {
         isLoading,
@@ -109,6 +114,6 @@ export function useUsersListQuery() {
         fetchMore,
         refresh,
         applyFilters,
-        modifyById,
+        modifyByIndex,
     };
 }
