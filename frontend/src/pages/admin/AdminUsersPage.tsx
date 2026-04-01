@@ -5,7 +5,9 @@ import { useState } from 'react';
 import EditUserForm from '@/components/EditUserForm';
 import Modal from '@/components/Modal';
 import { UserStatusBadge } from '@/components/StatusBadge';
-import type { ListUsersFilterKeyType, ListUsersFilterType, UserShortType, UserFullType } from '@/types/users';
+import type { ListUsersFilterKeyType, ListUsersFilterType, UserFullType } from '@/types/users';
+import { userStatusTransform } from '@/services/utils';
+import EasyButton from '@/components/EasyButton';
 
 const logger = getLogger("AdminUsersPage");
 
@@ -15,30 +17,30 @@ function getResultsLabel(filter: ListUsersFilterType | null) {
   if (!filter) {
     return NO_FILTER_RESULTS_LABEL;
   }
-  return `Users with ${filter.filterKey} beginning like "${filter.filterValue}"`;
+  return `users with ${filter.filterKey}s beginning with "${filter.filterValue}"`;
 }
 
 const AdminUsersPage = () => {
-  const { isLoading, error, users, hasMore, fetchMore, applyFilters, appliedFilters, modifyById } = useUsersListQuery();
-  const [editUser, setEditUser] = useState<UserShortType | null>(null);
+  const { isLoading, error, users, hasMore, fetchMore, applyFilters, appliedFilters, modifyByIndex } = useUsersListQuery();
+  const [editUserIndex, setEditUserIndex] = useState<number | null>(null);
   const [searchKey, setSearchKey] = useState<ListUsersFilterKeyType>("email");
   const [searchValue, setSearchValue] = useState<string>("");
 
+  const resultsLabel = getResultsLabel(appliedFilters);
+
   const onModalClose = () => {
-    setEditUser(null);
+    setEditUserIndex(null);
   };
 
   const onUserUpdate = (userFull: UserFullType) => {
-    logger.debug("onUserUpdate triggers");
-    if (!editUser) return;
-    const { enabled, status, lastModifiedDate } = userFull;
-    if (
-      editUser.status !== status ||
-      editUser.enabled !== enabled ||
-      editUser.lastModifiedDate !== lastModifiedDate
-    ) {
-        logger.debug("onUserUpdate modifies");
-        modifyById(editUser.userId, { status, enabled, lastModifiedDate });
+    logger.debug("onUserUpdate triggers, userIndex = ", editUserIndex);
+    if (editUserIndex === null) {
+      return;
+    }
+    const { enabled } = userFull;
+    if ( users[editUserIndex].enabled !== enabled) {
+      logger.debug("onUserUpdate modifies");
+      modifyByIndex( editUserIndex, { enabled });
     }
   };
 
@@ -65,10 +67,8 @@ const AdminUsersPage = () => {
 
   const handleClearFilters = () => {
     setSearchValue("");
-    handleSearchRequest();
+    applyFilters(searchKey, "");
   }
-
-  const resultsLabel = getResultsLabel(appliedFilters);
   
   return (
     <div>
@@ -94,16 +94,12 @@ const AdminUsersPage = () => {
           onChange={handleSearchValueInputOnChange}
           onKeyDown={handleSearchValueInputKeyDown}
         />
-        <button
-          type="button"
-          onClick={handleSearchRequest}
-          className="h-7 w-27 rounded-md px-2.5 py-0.5 text-sm font-medium no-underline bg-slate-50 text-slate-800 hover:bg-slate-300 hover:text-black"
-        >Search</button>
-        <button
-          type="button"
-          onClick={handleClearFilters}
-          className="h-7 w-27 rounded-md px-2.5 py-0.5 text-sm font-medium no-underline bg-slate-50 text-slate-800 hover:bg-slate-300 hover:text-black"
-        >Clear filters</button>
+        <EasyButton pH={7} pW={27} onClick={handleSearchRequest}>
+          Search
+        </EasyButton>
+        <EasyButton pH={7} pW={27} onClick={handleClearFilters}>
+          Clear filters
+        </EasyButton>
       </div>
       <table className="w-full">
         <caption className="p-1 text-lg font-medium text-left">{`Results shown for: ${resultsLabel}`} </caption>
@@ -130,7 +126,7 @@ const AdminUsersPage = () => {
               <td>
                 <button
                   type="button"
-                  onClick={() => setEditUser({ ...user })}
+                  onClick={() => setEditUserIndex(index)}
                   className="text-blue-600 underline hover:text-blue-800 p-0 bg-transparent border-0 cursor-pointer text-left font-inherit"
                 >
                   {user.email}
@@ -138,7 +134,7 @@ const AdminUsersPage = () => {
               </td>
               <td>{user.name}</td>
               <td><UserStatusBadge enabled={user.enabled} /></td>
-              <td>{user.status}</td>
+              <td>{ userStatusTransform(user.status) }</td>
             </tr>
           ))}
         </tbody>
@@ -146,23 +142,22 @@ const AdminUsersPage = () => {
       {isLoading && <div>Loading...</div>}
       {error && <div>Error: {error}</div>}
       {hasMore && (
-        <button
+        <EasyButton
           onClick={fetchMore}
           disabled={isLoading}
-          className="bg-blue-500 text-white px-4 py-2 rounded-md disabled:bg-slate-300"
         >
-          Load more
-        </button>
+            Load more
+        </EasyButton>
       )}
       <Modal
-        isOpen={!!editUser}
+        isOpen={editUserIndex !== null}
         onClose={onModalClose}
         title="Edit User"
         showCloseButton={true}
         panelClassName="max-w-3xl"
       >
-        {!!editUser && (
-          <EditUserForm userId={editUser.userId} onUserUpdated={onUserUpdate} />
+        {(editUserIndex !== null) && (
+          <EditUserForm userId={users[editUserIndex].userId} onUserUpdated={onUserUpdate} />
         )}
       </Modal>
     </div>

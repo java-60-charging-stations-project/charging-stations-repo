@@ -210,9 +210,9 @@ export function UserStatusBadgeDisabled() {
             color="#fecaca"
             textColor="#991b1b"
             borderColor="#d97777"
-            textSize="text-[10px]"
+            textSize="text-[11px]"
             textWeight="font-medium"
-            size="px-2 py-0.5"
+            size="px-2 py-1"
         />
     );
 };
@@ -224,9 +224,9 @@ export function UserStatusBadgeEnabled() {
             color="#bbf7d0"
             textColor="#166534"
             borderColor="#4ade80"
-            textSize="text-[10px]"
+            textSize="text-[11px]"
             textWeight="font-medium"
-            size="px-2 py-0.5"
+            size="px-2 py-1"
         />
     );
 };
@@ -242,9 +242,9 @@ export function UserRoleBadgeUser() {
             color="#bbf7d0"
             textColor="#166534"
             borderColor="#4ade80"
-            textSize="text-[10px]"
+            textSize="text-[11px]"
             textWeight="font-medium"
-            size="px-2 py-0.5"
+            size="px-2 py-1"
         />
     );
 };
@@ -256,9 +256,9 @@ export function UserRoleBadgeSupport() {
             color="#fed7aa"
             textColor="#9a3412"
             borderColor="#fb923c"
-            textSize="text-[10px]"
+            textSize="text-[11px]"
             textWeight="font-medium"
-            size="px-2 py-0.5"
+            size="px-2 py-1"
         />
     );
 };
@@ -270,9 +270,9 @@ export function UserRoleBadgeAdmin() {
             color="#bfdbfe"
             textColor="#1e40af"
             borderColor="#60a5fa"
-            textSize="text-[10px]"
+            textSize="text-[11px]"
             textWeight="font-medium"
-            size="px-2 py-0.5"
+            size="px-2 py-1"
         />
     );
 };

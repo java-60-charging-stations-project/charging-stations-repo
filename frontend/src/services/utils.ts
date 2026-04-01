@@ -17,3 +17,24 @@ export async function buildHash(values: string[]): Promise<string> {
     const hash = await hashKey(normalizedKey);
     return hash;
 };
+
+export function userStatusTransform(status: string): string {
+    switch (status) {
+        case "UNCONFIRMED":
+            return "Not confirmed";
+        case "CONFIRMED":
+            return "Confirmed";
+        case "ARCHIVED":
+            return "Archived";
+        case "COMPROMISED":
+            return "Compromised";
+        case "RESET_REQUIRED":
+            return "Reset required";
+        case "FORCE_CHANGE_PASSWORD":
+            return "Changing password";
+        case "EXTERNAL_PROVIDER":
+            return "External";
+        default:
+            return "Unknown";
+    }
+}
