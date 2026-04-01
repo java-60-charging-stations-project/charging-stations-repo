@@ -167,7 +167,7 @@ const EditUserForm: FC<EditUserFormProps> = ({ userId, onUserUpdated }) => {
                         <div className="flex items-center gap-3 flex-wrap">
                             <UserStatusBadge enabled={user.enabled} />
                             <span> : </span>
-                            <EasyButton pHeight={7} disabled={lockLoading} onClick={handleToggleLock}>
+                            <EasyButton pH={7} disabled={lockLoading} onClick={handleToggleLock}>
                                 {user.enabled ? 'Disable user' : 'Enable user'}
                             </EasyButton>
                             {lockError && (
@@ -184,7 +184,7 @@ const EditUserForm: FC<EditUserFormProps> = ({ userId, onUserUpdated }) => {
                             <span> : </span>
                             {getRoleActions(user.role).map(({ label, newRole }) => (
                                 <EasyButton
-                                    pHeight={7}
+                                    pH={7}
                                     key={`${user.role}=${newRole}`}
                                     disabled={roleLoading}
                                     onClick={()=>handleChangeRole(newRole)}

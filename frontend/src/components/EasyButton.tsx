@@ -1,13 +1,13 @@
 import type { ComponentPropsWithoutRef, FC } from "react";
 
 type CustomEasyButtonProps = {
-    pHeight?: number;
-    pWidth?: number;
+    pH?: number;
+    pW?: number;
 }
 
 type EasyButtonProps = CustomEasyButtonProps & ComponentPropsWithoutRef<"button">;
 
-const EasyButton: FC<EasyButtonProps> = ({ children, pHeight, pWidth, ...rest }) => {
+const EasyButton: FC<EasyButtonProps> = ({ children, pH: pHeight, pW: pWidth, ...rest }) => {
     const hClass = pHeight ? `h-${pHeight} `: "";
     const wClass = pWidth ? `w-${pWidth} ` : "";
     return (

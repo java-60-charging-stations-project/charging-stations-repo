@@ -33,11 +33,7 @@ const Modal: FC<ModalProps> = ({ isOpen, onClose, showCloseButton, title, childr
                 {children}
                 { showCloseButton && (
                     <div className="mt-4 flex justify-center">
-                        <EasyButton
-                            onClick={onClose}
-                            pHeight={10}
-                            pWidth={45}
-                        >
+                        <EasyButton onClick={onClose} pH={10} pW={45}>
                             Close
                         </EasyButton>
                     </div>

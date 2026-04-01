@@ -94,10 +94,10 @@ const AdminUsersPage = () => {
           onChange={handleSearchValueInputOnChange}
           onKeyDown={handleSearchValueInputKeyDown}
         />
-        <EasyButton pHeight={7} pWidth={27} onClick={handleSearchRequest}>
+        <EasyButton pH={7} pW={27} onClick={handleSearchRequest}>
           Search
         </EasyButton>
-        <EasyButton pHeight={7} pWidth={27} onClick={handleClearFilters}>
+        <EasyButton pH={7} pW={27} onClick={handleClearFilters}>
           Clear filters
         </EasyButton>
       </div>
