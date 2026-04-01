@@ -1,6 +1,7 @@
 import os
 import boto3
 import psycopg2
+from psycopg2 import sql
 import json
 import uuid
 from datetime import datetime
@@ -45,6 +46,35 @@ def get_connection() -> psycopg2.extensions.connection:
             sslmode="require",
         )
     return _conn
+
+def extract_partial_station_instance_from_event(data: dict) -> dict:
+    logger.info(f"Extracting partial station instance from event")
+    try:
+        station_data = {
+        "id": data["stationId"],
+        "name": data.get("name"),
+        "owner": data.get("owner"),
+        "city": data.get("city"),
+        "address": data.get("address"),
+        "rate_plan": data.get("ratePlan"),
+        "email": data.get("email"),
+        "phone": data.get("phone"),
+        "site_technician": data.get("siteTechnician"),
+        "max_power_kw": data.get("maxPowerKw", 0.0),
+        "longitude": data.get("longitude", 0.0),
+        "latitude": data.get("latitude", 0.0),
+        }
+        station_obj = {}
+        for key, value in station_data.items():
+            if value is not None:
+                station_obj[key] = value
+        return station_obj
+    except KeyError as e:
+        logger.error(f"Missing key: {e}")
+        raise LambdaResponseError({"error": f"missing key: {e}", "code": "INVALID_REQUEST"})
+    except Exception as e:
+        logger.error(f"Unhandled error: {e}")
+        raise LambdaResponseError({"error": f"unhandled error: {e}", "code": "UNHANDLED_ERROR"})
 
 def extract_full_station_instance_from_event(event: dict) -> StationInstance:
     logger.info(f"Extracting station instance from event")
@@ -107,6 +137,30 @@ def extract_station_state_from_event(event: dict) -> dict:
     except KeyError as e:
         logger.error(f"Missing key: {e}")
         raise LambdaResponseError({"error": f"missing key: {e}", "code": "INVALID_REQUEST"})
+
+def update_station_to_rds(station: dict) -> None:
+    station_id = station.get("station_id")
+    if not station_id:
+        raise LambdaResponseError({"error": "missing station_id", "code": "INVALID_REQUEST"})
+    updates = {k: v for k, v in station.items() if k != "station_id"}
+    if not updates:
+        return
+    try:
+        conn = get_connection()
+        with conn.cursor() as cur:
+            set_parts = [
+                sql.SQL("{} = %s").format(sql.Identifier(col))
+                for col in updates.keys()
+            ]
+            query = sql.SQL("UPDATE stations SET {} WHERE id = %s").format(
+                sql.SQL(", ").join(set_parts)
+            )
+            params = list(updates.values()) + [station_id]
+            cur.execute(query, params)
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise LambdaResponseError({"error": f"Error updating station: {e}", "code": "DATABASE_ERROR"})
 
 def insert_station_to_rds(station: StationInstance) -> None:
     try:
@@ -406,6 +460,11 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                 updated_at = change_station_state(station_id, old_state, new_state)
                 log_audit("INFO", message=f"{station_id} state changed from {old_state} to {new_state}", status="SUCCESS", **audit_base)
                 return SuccessResponsePayload(data={"updated_at": updated_at.isoformat()}, meta={})
+            case "updateStation":
+                station = extract_partial_station_instance_from_event(event)
+                update_station_to_rds(station)
+                log_audit("INFO", message="station updated to RDS successfully", status="SUCCESS", **audit_base)
+                return SuccessResponsePayload(data={"station_id": station["station_id"]}, meta={})
             case "deleteStation":
                 station_id = event["data"]["stationId"]
                 updated_at = delete_station(station_id)

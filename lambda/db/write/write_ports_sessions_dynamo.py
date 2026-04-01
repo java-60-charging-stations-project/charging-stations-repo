@@ -132,6 +132,16 @@ def get_update_data_from_event(event: dict) -> dict:
         logger.error(f"error getting update data from event: {e}")
         raise LambdaResponseError({"error": f"error getting update data from event: {e}", "code": "UNHANDLED_ERROR"})
 
+def close_session(session_data: dict) -> dict:
+    try:
+        client = get_dynamo_client()
+    except Exception as e:
+        logger.error(f"error getting dynamo client: {e}")
+        raise LambdaResponseError({"error": f"error getting dynamo client: {e}", "code": "DATABASE_ERROR"})
+    session_id = session_data["session_id"]
+    client.delete_item(TableName=STATIONS_DYNAMO_TABLE, Key={"session_id": {"S": session_id}})
+    return session_data
+
 def update_station_ports(action: str, port_data: dict, user_id: str| None = None) -> dict:
     if not port_data["port_key"]:
         logger.error(f"port key is required for {action}")
@@ -216,13 +226,25 @@ def update_station_ports(action: str, port_data: dict, user_id: str| None = None
             elif new_state == "OCCUPIED":
                 update_info["time_started_at"] = now.isoformat()
             elif new_state == "FREE":
-                pass
+                try:
+                    # close_session(update_info)
+                    pass
+                except Exception as e:
+                    logger.error(f"error closing session: {e}")
+                    raise LambdaResponseError({"error": f"error closing session: {e}", "code": "DATABASE_ERROR"})
+                return update_info
             session_object = build_session_object(update_info)
-            transact_items.append({"Put": {
-                    "TableName": STATIONS_DYNAMO_TABLE,
-                    "Item": to_av_map(session_object),
-                    "ConditionExpression": "attribute_not_exists(station_id) AND attribute_not_exists(entity_key)",
-                    }})
+            session_lock_item = {
+                "station_id": user_id,
+                "entity_key": "SESSION_LOCK",
+                "session_id": session_object["session_id"],
+                "port_code": entity_key,
+                "created_at": now.isoformat(),
+            }
+            transact_items.append({"Put": {"TableName": STATIONS_DYNAMO_TABLE,"Item": to_av_map(session_object),
+                    "ConditionExpression": "attribute_not_exists(station_id) AND attribute_not_exists(entity_key)"}},
+                    {"Put": {"TableName": STATIONS_DYNAMO_TABLE,"Item": to_av_map(session_lock_item),
+                    "ConditionExpression": "attribute_not_exists(station_id) AND attribute_not_exists(entity_key)"}})
             update_info["session_id"] = session_object["session_id"]
         response = client.transact_write_items(TransactItems=transact_items)
         logger.info(f"transaction response: {response}")
