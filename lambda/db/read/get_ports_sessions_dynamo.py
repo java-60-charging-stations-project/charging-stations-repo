@@ -73,6 +73,7 @@ def get_session_by_user(user_id: str) -> list[dict]:
         items = resp.get("Items", [])
         sessions: list[dict] = []
         for item in items:
+            item["port_code"] = item["entity_key"].split("#")[1]
             sessions.append(item)
         return sessions
     except Exception as e:
