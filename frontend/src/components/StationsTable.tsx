@@ -1,5 +1,5 @@
 import { useState, type FC } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import type { ApiArrayResponse } from "@/types/apiTypes";
 import type { StationBase, StationsListParams, StationState } from "@/types/stations";
 import { useStationsQuery } from "@/hooks/useStationsQuery";
@@ -50,6 +50,7 @@ function SortButton({
 
 const StationsTable: FC<StationsTableProps> =({ fetchFn, detailPath, showStateFilter = true }) => {
     const navigate = useNavigate();
+    const location = useLocation();
     const { isLoading, error, stations, meta, parameters, setters } =
         useStationsQuery(fetchFn);
 
@@ -154,7 +155,7 @@ const StationsTable: FC<StationsTableProps> =({ fetchFn, detailPath, showStateFi
                                 {detailPath ? (
                                     <button
                                         className="text-blue-600 hover:underline cursor-pointer bg-transparent border-none p-0"
-                                        onClick={() => navigate(detailPath(station.id))}
+                                        onClick={() => navigate(detailPath(station.id), {state: {from: location}})}
                                     >
                                         {station.name}
                                     </button>

@@ -8,11 +8,11 @@ import { fetchStationById as supportFetchStationById } from "@/services/api/supp
 import type { AdminCreateStationRequest, StationState } from "@/types/stations";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { config } from "@/config/env";
-import NavButton from "@/components/NavButton";
 import StationStateActions from "@/components/stations/StationStateActions";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import SimpleButton from "@/components/SimpleButton";
+import EasyButton from "@/components/EasyButton";
 
 const logger = getLogger('StationEditPage');
 
@@ -31,20 +31,18 @@ const FieldRow = ({ label, error, children }: { label: string; error?: string; c
 const StationEditPage = () => {
     const { stationId } = useParams<{ stationId: string }>();
     const isViewMode = !!stationId;
-    const { pathname } = useLocation();
-    const useSupportStationApi = pathname.startsWith("/support/stations");
+    const location = useLocation();
     const { userRole } = useAuth();
-    const [isSupportUser, setIsSupportUser] = useState(false);
     const [currentStationState, setCurrentStationState] = useState<StationState | null>(null);
     const [stationUpdatedAt, setStationUpdatedAt] = useState<string>("");
+    const [portsCount, setPortsCount] = useState(0);
     const navigate = useNavigate();
 
     const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<StationFormData>();
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [submitSuccess, setSubmitSuccess] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
-
-    const [initialPortsCount, setInitialPortsCount] = useState<number | null>(null);
+    const isSupportUser = userRole === "SUPPORT";
 
     const isLocked = isViewMode || isSubmitting || submitSuccess;
     const watchedMaxPowerKw = watch("maxPowerKw");
@@ -52,15 +50,10 @@ const StationEditPage = () => {
     const watchedPeakRate = watch("ratePlan.peakRate");
     const watchedOffPeakRate = watch("ratePlan.offPeakRate");
 
-    useEffect(() => {
-        setIsSupportUser(userRole === "SUPPORT");
-    }, [userRole]);
-
     const loadStation = useCallback(async () => {
         if (!stationId) return;
-        const fetchStationById = useSupportStationApi
-            ? supportFetchStationById
-            : adminFetchStationById;
+        const fetchStationById = isSupportUser ? supportFetchStationById : adminFetchStationById;
+        
         try {
             const station = await fetchStationById(stationId);
             setCurrentStationState(station.state);
@@ -77,13 +70,11 @@ const StationEditPage = () => {
                 phone: station.phone,
                 email: station.email,
             });
-            if (initialPortsCount === null) {
-                setInitialPortsCount(station.portsCount);
-            }
+            setPortsCount(station.portsCount);
         } catch (err) {
             setLoadError(err instanceof Error ? err.message : "Failed to load station");
         }
-    }, [stationId, reset, useSupportStationApi]);
+    }, [stationId, reset, isSupportUser]);
 
     useEffect(() => {
         void loadStation();
@@ -114,11 +105,20 @@ const StationEditPage = () => {
 
     const ratesTitle = `Rates in ${config.currency.code}`;
     const backPath = isSupportUser ? "/support/stations" : "/admin/stations";
+    
+    const handleNavigateBack = () => {
+        if (location.state?.from) {
+            navigate(location.state?.from);
+        }
+        else {
+            navigate(backPath); // Fallback, shouldn't ever happen
+        }
+    }
 
     return (
         <div className="max-w-md mx-auto mt-5 p-4 text-[9px] leading-tight rounded-lg shadow-md flex flex-col space-y-3">
             <div>
-                <NavButton to={backPath} caption="← Back to stations" />
+                <SimpleButton color={"primary"} handleClick={handleNavigateBack} caption="← Back to stations" />
             </div>
             <h1 className="text-center">{isViewMode ? "Station details" : "Create a new station"}</h1>
             {loadError && <p className="text-red-500 text-xs">{loadError}</p>}
@@ -240,30 +240,24 @@ const StationEditPage = () => {
                 <FieldRow label="Technician Email">
                     <input className="w-full" disabled={isLocked} {...register("email")} />
                 </FieldRow>
-
-                {isViewMode && initialPortsCount !== null && (
-                    <div className="mb-1 flex items-center flex-wrap">
-                        <label className={LABEL}>Ports count</label>
-                        <div className="flex-1 flex items-center justify-between gap-2 min-w-0">
-                            <span className="text-neutral-800 tabular-nums">
-                                {initialPortsCount}
-                            </span>
-                            {useSupportStationApi && stationId && (
-                                <SimpleButton
-                                    caption="View ports"
-                                    handleClick={() => {
-                                        navigate(
-                                            `/support/stations/view/${stationId}/ports`,
-                                        );
-                                    }}
-                                    size="xs"
-                                    color="tertiary"
-                                />
+                {
+                    stationId && (
+                        <FieldRow label="Ports">
+                            {isSupportUser ? (
+                                <div className="w-full flex">
+                                    <EasyButton
+                                        onClick={() => { navigate(`/support/stations/view/${stationId}/ports`); }}
+                                        pH={7}
+                                    >
+                                        Manage ports
+                                    </EasyButton>
+                                </div>
+                            ): (
+                                <input className="w-full" disabled={true} value={portsCount}/>
                             )}
-                        </div>
-                    </div>
-                )}
-
+                        </FieldRow>
+                    )
+                }
                 {!isViewMode && (
                     <>
                         <input
@@ -278,19 +272,17 @@ const StationEditPage = () => {
                 )}
             </form>
             {isViewMode && currentStationState && (
-                <>
-                    <StationStateActions
-                        stationId={stationId!}
-                        stationState={currentStationState}
-                        updatedAt={stationUpdatedAt}
-                        userRole={userRole}
-                        maxPowerKw={watchedMaxPowerKw}
-                        peakRate={watchedPeakRate}
-                        offPeakRate={watchedOffPeakRate}
-                        onStateChanged={loadStation}
-                        onDeleted={() => navigate(backPath)}
+                <StationStateActions
+                    stationId={stationId!}
+                    stationState={currentStationState}
+                    updatedAt={stationUpdatedAt}
+                    userRole={userRole}
+                    maxPowerKw={watchedMaxPowerKw}
+                    peakRate={watchedPeakRate}
+                    offPeakRate={watchedOffPeakRate}
+                    onStateChanged={loadStation}
+                    onDeleted={handleNavigateBack}
                 />
-                </>
             )}
         </div>
     );
