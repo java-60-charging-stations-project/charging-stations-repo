@@ -7,7 +7,7 @@ import { useForm, useWatch, type SubmitHandler } from "react-hook-form";
 import { config } from "@/config/env";
 import StationStateActions from "@/components/stations/StationStateActions";
 import EasyButton from "@/components/EasyButton";
-import { useLocation, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 import useFromParam from "@/hooks/useFromParam";
 
 const logger = getLogger("StationEditForm");
@@ -58,7 +58,7 @@ const StationEditForm: FC<StationEditFormProps> = ({
         try {
             const loadedStation = await fetchStationMethod(stationId);
             setStation(loadedStation);
-
+            
             reset({
                 name: loadedStation.name,
                 owner: loadedStation.owner,
@@ -269,7 +269,7 @@ const StationEditForm: FC<StationEditFormProps> = ({
                     peakRate={watchedPeakRate}
                     offPeakRate={watchedOffPeakRate}
                     onStateChanged={loadStation}
-                    onDeleted={()=>{}}
+                    onDeleted={loadStation}
                 />
             )}
         </>
