@@ -70,6 +70,8 @@ const StationsTable: FC<StationsTableProps> =({ fetchFn, detailPath, showStateFi
         if (e.key === "Enter") handleLoad();
     };
 
+    logger.debug("Location: ", location);
+
     return (
         <div className="text-[10px] leading-tight">
             {/* Filter bar */}
