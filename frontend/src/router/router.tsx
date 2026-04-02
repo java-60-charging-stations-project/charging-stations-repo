@@ -21,8 +21,9 @@ import ConfirmPage from '@/pages/guest/ConfirmPage';
 import AppRedirect from './AppRedirect';
 import AuthRoute from './AuthRoute';
 import { APP_PATH } from './roleNavigation';
-import StationEditPage from '@/pages/StationEditPage';
 import StationPortsViewPage from '@/pages/StationPortsViewPage';
+import AdminStationEditPage from '@/pages/admin/AdminStationsEditPage';
+import SupportStationEditPage from '@/pages/support/SupportStationEditPage';
 
 const router = createBrowserRouter([
     /* Unprotected GUEST pages */
@@ -59,7 +60,7 @@ const router = createBrowserRouter([
                             { path: "logs", element: <SupportLogsPage /> },
                             { path: "stations", element: <SupportStationsPage /> },
                             { path: "stations/view/:stationId/ports", element: <StationPortsViewPage /> },
-                            { path: "stations/view/:stationId", element: <StationEditPage /> },
+                            { path: "stations/view/:stationId", element: <SupportStationEditPage /> },
                             { path: "sessions", element: <SupportSessionsPage /> },
                         ]
                     },
@@ -71,8 +72,8 @@ const router = createBrowserRouter([
                             { path: "users", element: <AdminUsersPage /> },
                             { path: "users/:userId", element: <AdminUserEditPage /> },
                             { path: "stations", element: <AdminStationsPage /> },
-                            { path: "stations/create", element: <StationEditPage /> },
-                            { path: "stations/view/:stationId", element: <StationEditPage /> },
+                            { path: "stations/create", element: <AdminStationEditPage /> },
+                            { path: "stations/view/:stationId", element: <AdminStationEditPage /> },
                         ]
                     },
                 ]
