@@ -1,15 +1,19 @@
-import { useLocation, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 import StationEditPage from "../StationEditPage";
 import { fetchStationById } from "@/services/api/supportApi";
+import useFromParam from "@/hooks/useFromParam";
 
 
 const SupportStationEditPage = () => {
     const navigate = useNavigate();
-    const location = useLocation();
+    const from = useFromParam();
 
     const navigateBack = () => {
-        const pathFrom = location.state?.from ?? "/support/stations";
-        navigate(pathFrom);
+        if (from) {
+            navigate(from);
+        } else {
+            navigate("/support/stations");
+        }
     };
     
     return (

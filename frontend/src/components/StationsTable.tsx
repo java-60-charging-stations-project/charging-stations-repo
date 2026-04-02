@@ -1,5 +1,5 @@
 import { useState, type FC } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, type Location } from "react-router";
 import type { ApiArrayResponse } from "@/types/apiTypes";
 import type { StationBase, StationsListParams, StationState } from "@/types/stations";
 import { useStationsQuery } from "@/hooks/useStationsQuery";
@@ -16,6 +16,10 @@ const STATE_OPTIONS: StationState[] = [
     "OUT_OF_SERVICE",
     "DELETED",
 ];
+
+function getEncodedPath(location: Location): string {
+    return encodeURIComponent(location.pathname + location.search);
+}
 
 export interface StationsTableProps {
     // Must be a stable reference (module-level import)
@@ -68,6 +72,12 @@ const StationsTable: FC<StationsTableProps> =({ fetchFn, detailPath, showStateFi
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === "Enter") handleLoad();
+    };
+
+    const navigateToViewStation = (stationId: string) => {
+        if (detailPath) {
+            navigate(detailPath(stationId) + `?from=${getEncodedPath(location)}`);
+        }
     };
 
     logger.debug("Location: ", location);
@@ -157,7 +167,7 @@ const StationsTable: FC<StationsTableProps> =({ fetchFn, detailPath, showStateFi
                                 {detailPath ? (
                                     <button
                                         className="text-blue-600 hover:underline cursor-pointer bg-transparent border-none p-0"
-                                        onClick={() => navigate(detailPath(station.id), {state: {from: location}})}
+                                        onClick={() => navigateToViewStation(station.id)}
                                     >
                                         {station.name}
                                     </button>

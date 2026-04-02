@@ -7,7 +7,8 @@ import { useForm, useWatch, type SubmitHandler } from "react-hook-form";
 import { config } from "@/config/env";
 import StationStateActions from "@/components/stations/StationStateActions";
 import EasyButton from "@/components/EasyButton";
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
+import useFromParam from "@/hooks/useFromParam";
 
 const logger = getLogger("StationEditForm");
 
@@ -41,12 +42,14 @@ const StationEditForm: FC<StationEditFormProps> = ({
     const isSupportUser = userRole === "SUPPORT";
     const [station, setStation] = useState <StationBase | null>(null);
     const navigate = useNavigate();
+    const from = useFromParam();
     // Watched values
     const watchedMaxPowerKw = useWatch({ control, name: "maxPowerKw" });
     const watchedPeakRate = useWatch({ control, name: "ratePlan.peakRate" });
     const watchedOffPeakRate = useWatch({control, name: "ratePlan.offPeakRate"});
 
     const isLocked = !!stationId || isSubmitting || submitSuccess;
+    const fromPath = from ? encodeURIComponent(from) : "";    
 
     const loadStation = useCallback(async () => {
         if (!stationId) {
@@ -229,7 +232,9 @@ const StationEditForm: FC<StationEditFormProps> = ({
                             {isSupportUser ? (
                                 <div className="w-full flex">
                                     <EasyButton
-                                        onClick={() => { navigate(`/support/stations/view/${stationId}/ports`); }}
+                                        onClick={() => {
+                                            navigate(`/support/stations/view/${stationId}/ports?from=${fromPath}`);
+                                        }}
                                         pH={7}
                                     >
                                         Manage ports
