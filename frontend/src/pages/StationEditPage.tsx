@@ -5,8 +5,8 @@ import {
     fetchStationById as adminFetchStationById,
 } from "@/services/api/adminApi";
 import { fetchStationById as supportFetchStationById } from "@/services/api/supportApi";
-import type { AdminCreateStationRequest, StationState } from "@/types/stations";
-import { useForm, type SubmitHandler } from "react-hook-form";
+import type { AdminCreateStationRequest, StationBase } from "@/types/stations";
+import { useForm, useWatch, type SubmitHandler } from "react-hook-form";
 import { config } from "@/config/env";
 import StationStateActions from "@/components/stations/StationStateActions";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -30,47 +30,45 @@ const FieldRow = ({ label, error, children }: { label: string; error?: string; c
 
 const StationEditPage = () => {
     const { stationId } = useParams<{ stationId: string }>();
-    const isViewMode = !!stationId;
-    const location = useLocation();
     const { userRole } = useAuth();
-    const [currentStationState, setCurrentStationState] = useState<StationState | null>(null);
-    const [stationUpdatedAt, setStationUpdatedAt] = useState<string>("");
-    const [portsCount, setPortsCount] = useState(0);
+    const location = useLocation();
     const navigate = useNavigate();
 
-    const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<StationFormData>();
+
+    const { register, handleSubmit, reset, control, formState: { errors, isSubmitting } } = useForm<StationFormData>();
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [submitSuccess, setSubmitSuccess] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
     const isSupportUser = userRole === "SUPPORT";
+    const [station, setStation] = useState <StationBase | null>(null);
 
-    const isLocked = isViewMode || isSubmitting || submitSuccess;
-    const watchedMaxPowerKw = watch("maxPowerKw");
+    const isLocked = !!stationId || isSubmitting || submitSuccess;
+    // Watched values
+    const watchedMaxPowerKw = useWatch({ control, name: "maxPowerKw" });
+    const watchedPeakRate = useWatch({ control, name: "ratePlan.peakRate" });
+    const watchedOffPeakRate = useWatch({control, name: "ratePlan.offPeakRate"});
 
-    const watchedPeakRate = watch("ratePlan.peakRate");
-    const watchedOffPeakRate = watch("ratePlan.offPeakRate");
 
     const loadStation = useCallback(async () => {
         if (!stationId) return;
         const fetchStationById = isSupportUser ? supportFetchStationById : adminFetchStationById;
         
         try {
-            const station = await fetchStationById(stationId);
-            setCurrentStationState(station.state);
-            setStationUpdatedAt(station.updatedAt);
+            const loadedStation = await fetchStationById(stationId);
+            setStation(loadedStation);
+
             reset({
-                name: station.name,
-                owner: station.owner,
-                city: station.city,
-                address: station.address,
-                location: station.location as AdminCreateStationRequest['location'],
-                maxPowerKw: station.maxPowerKw as number,
-                ratePlan: station.ratePlan as AdminCreateStationRequest['ratePlan'],
-                siteTechnician: station.siteTechnician,
-                phone: station.phone,
-                email: station.email,
+                name: loadedStation.name,
+                owner: loadedStation.owner,
+                city: loadedStation.city,
+                address: loadedStation.address,
+                location: loadedStation.location as AdminCreateStationRequest['location'],
+                maxPowerKw: loadedStation.maxPowerKw as number,
+                ratePlan: loadedStation.ratePlan as AdminCreateStationRequest['ratePlan'],
+                siteTechnician: loadedStation.siteTechnician,
+                phone: loadedStation.phone,
+                email: loadedStation.email,
             });
-            setPortsCount(station.portsCount);
         } catch (err) {
             setLoadError(err instanceof Error ? err.message : "Failed to load station");
         }
@@ -120,7 +118,7 @@ const StationEditPage = () => {
             <div>
                 <SimpleButton color={"primary"} handleClick={handleNavigateBack} caption="← Back to stations" />
             </div>
-            <h1 className="text-center">{isViewMode ? "Station details" : "Create a new station"}</h1>
+            <h1 className="text-center">{stationId ? "Station details" : "Create a new station"}</h1>
             {loadError && <p className="text-red-500 text-xs">{loadError}</p>}
             <form onSubmit={handleSubmit(onSubmit)} className="w-full text-xs">
                 <FieldRow label="City" error={errors.city?.message}>
@@ -253,12 +251,12 @@ const StationEditPage = () => {
                                     </EasyButton>
                                 </div>
                             ): (
-                                <input className="w-full" disabled={true} value={portsCount}/>
+                                <input className="w-full" disabled={true} value={station?.portsCount ?? ""}/>
                             )}
                         </FieldRow>
                     )
                 }
-                {!isViewMode && (
+                {!stationId && (
                     <>
                         <input
                             type="submit"
@@ -271,11 +269,11 @@ const StationEditPage = () => {
                     </>
                 )}
             </form>
-            {isViewMode && currentStationState && (
+            {station && (
                 <StationStateActions
                     stationId={stationId!}
-                    stationState={currentStationState}
-                    updatedAt={stationUpdatedAt}
+                    stationState={station.state}
+                    updatedAt={station.updatedAt}
                     userRole={userRole}
                     maxPowerKw={watchedMaxPowerKw}
                     peakRate={watchedPeakRate}
