@@ -60,7 +60,7 @@ def extract_partial_station_instance_from_event(event: dict) -> dict:
                 "peakRate": rate_plan["peakRate"],
                 "offPeakRate": rate_plan["offPeakRate"],
             })
-        location = data.get("location")
+        location = data.get("location") or {}
         station_data = {
         "id": data["stationId"],
         "name": data.get("name"),

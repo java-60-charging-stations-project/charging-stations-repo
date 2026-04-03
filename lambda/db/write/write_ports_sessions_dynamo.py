@@ -86,6 +86,7 @@ def insert_station_ports(station_id: str, ports: list[dict]) -> list[dict]:
         client.transact_write_items(TransactItems=transact_items)
         for item in port_items:
             item["last_meter_kw"] = float(item["last_meter_kw"])
+            item["entity_key"] = item["entity_key"].split("#")[1]
         return port_items
     except ClientError as e:
         err_code = e.response.get("Error", {}).get("Code", "")
@@ -241,10 +242,12 @@ def update_station_ports(action: str, port_data: dict, user_id: str| None = None
                 "port_code": entity_key,
                 "created_at": now.isoformat(),
             }
-            transact_items.append({"Put": {"TableName": STATIONS_DYNAMO_TABLE,"Item": to_av_map(session_object),
-                    "ConditionExpression": "attribute_not_exists(station_id) AND attribute_not_exists(entity_key)"}},
-                    {"Put": {"TableName": STATIONS_DYNAMO_TABLE,"Item": to_av_map(session_lock_item),
-                    "ConditionExpression": "attribute_not_exists(station_id) AND attribute_not_exists(entity_key)"}})
+            transact_items.extend([
+                {"Put": {"TableName": STATIONS_DYNAMO_TABLE,"Item": to_av_map(session_object),
+                "ConditionExpression": "attribute_not_exists(station_id) AND attribute_not_exists(entity_key)"}},
+                {"Put": {"TableName": STATIONS_DYNAMO_TABLE,"Item": to_av_map(session_lock_item),
+                "ConditionExpression": "attribute_not_exists(station_id) AND attribute_not_exists(entity_key)"
+                    }}])
             update_info["session_id"] = session_object["session_id"]
         response = client.transact_write_items(TransactItems=transact_items)
         logger.info(f"transaction response: {response}")

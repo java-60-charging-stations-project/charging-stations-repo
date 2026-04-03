@@ -181,6 +181,72 @@ Response (error):
 }
 ```
 
+### Update station (partial RDS update)
+
+Lambda: `charging-stations-write-station-rds`  
+Action: `updateStation`
+
+Updates only fields present in `data`. Omit fields you are not changing.
+
+- **`stationId`** (required): target station UUID.
+- **`ratePlan`** (optional): object with `currencyCode`, `currencyName`, `peakRate`, `offPeakRate` — stored as JSONB (`rate_plan`). If provided, `peakRate` and `offPeakRate` are required inside the object.
+- **`location`** (optional): `{ "longitude": number, "latitude": number }`. When **both** are present, RDS `location` (PostGIS geography) is set via `ST_MakePoint(longitude, latitude)` in SRID 4326. Omit `location` to leave coordinates unchanged.
+- Other optional fields: `name`, `owner`, `city`, `address`, `email`, `phone`, `siteTechnician`, `maxPowerKw` (maps to `site_technician`, `max_power_kw` in RDS).
+
+Request example:
+
+```json
+{
+  "service": { "action": "updateStation", "callerId": "string" },
+  "data": {
+    "stationId": "station-uuid",
+    "name": "string",
+    "owner": "string",
+    "city": "string",
+    "address": "string",
+    "email": "string",
+    "phone": "string",
+    "siteTechnician": "string",
+    "maxPowerKw": 22.0,
+    "ratePlan": {
+      "currencyCode": "ILS",
+      "currencyName": "Israeli Shekel",
+      "peakRate": 2.25,
+      "offPeakRate": 1.55
+    },
+    "location": { "longitude": 34.7818, "latitude": 32.0853 }
+  }
+}
+```
+
+Response (success): `data` is a map of updated attributes (snake_case column names). `updated_at` is ISO formatted. If `location` was updated, the response includes a `location` object with `longitude` and `latitude` (not GeoJSON).
+
+```json
+{
+  "data": {
+    "station attributes updated": {
+      "name": "string",
+      "owner": "string",
+      "city": "string",
+      "address": "string",
+      "email": "string",
+      "phone": "string",
+      "siteTechnician": "string",
+      "maxPowerKw": 22.0,
+      "ratePlan": {
+        "currencyCode": "ILS",
+        "currencyName": "Israeli Shekel",
+        "peakRate": 2.25,
+        "offPeakRate": 1.55
+    },
+      "location": { "longitude": 34.7818, "latitude": 32.0853 }
+    }
+  }
+}
+```
+
+Response (error): same error envelope as other write-station actions (`INVALID_REQUEST`, `DATABASE_ERROR`, etc.).
+
 ### Get all stations
 
 Lambda: `charging-stations-get-station-info`  
@@ -387,8 +453,9 @@ Key design:
 
 - **Partition key:** `station_id`
 - **Sort key:** `entity_key`
-- **Port rows:** `entity_key = "PORT#<code>"`, initial `state: "DISABLED"`, plus `port_id`, `last_meter_kw`, timestamps.
+- **Port rows:** `entity_key = "PORT#<code>"`, initial `state: "DISABLED"`, plus `port_id`, `last_meter_kw`, `state` (required for GSI), timestamps.
 - **Session rows:** `entity_key = "PORT#<code>#SESSION#<session_id>"` (same partition key).
+- **GSI `state-station-index`:** partition key `state`, sort key `station_id` — query `state = FREE` + `station_id` for “any free port on this station” and for hourly RDS reconciliation.
 
 ---
 
@@ -488,16 +555,18 @@ Use `userUpdateStationPorts` with the same `data` shape and include `data.userId
   "data": {
     "stationId": "station-uuid",
     "portCode": "A1",
-    "oldState": "FREE|BOOKED",
+    "oldState": "FREE|BOOKED|OCCUPIED",
     "newState": "FREE|BOOKED|OCCUPIED",
     "userId": "user-uuid"
   }
 }
 ```
 
-`userUpdateStationPorts` requires `userId`.
+`userUpdateStationPorts` requires `userId`. Valid **`oldState`** values include **`OCCUPIED`** (e.g. ending a charging session and returning the port to `FREE`).
 
-Current implementation creates a session item in the same DynamoDB transaction for `userUpdateStationPorts` requests and returns the created `session_id`.
+For transitions that create or continue a session (`BOOKED` / `OCCUPIED`), the implementation uses a transactional **session lock** item (`entity_key`: `SESSION_LOCK`, partition key `station_id` = `userId`) so a user cannot open two concurrent sessions.
+
+Current implementation creates session-related items in the same DynamoDB transaction where applicable and returns `session_id` when a session is created or updated (not when transitioning to `FREE` only).
 
 Response (success):
 
@@ -529,7 +598,8 @@ Response (error): `INVALID_REQUEST` (bad states, wrong number of keys for user p
 ### `deleteStationPorts`
 
 Lambda: `charging-stations-write-station-ports-dynamo`  
-Action: `deleteStationPorts`
+
+Action: `deleteStationPorts`  
 
 **Current rule:** exactly one sort key per request (`portKey`). Port must exist and have state `DISABLED`.
 
@@ -561,6 +631,38 @@ Response (success):
 ---
 
 ## Read
+
+### `get_has_free_ports_by_station`  
+
+Lambda: `charging-stations-get-ports-sessions-dynamo`  
+
+Action: `get_has_free_ports_by_station`  
+
+Lightweight check: queries GSI **`state-station-index`** with `state = FREE` and `station_id = <stationId>`, `Limit=1`, `ProjectionExpression=station_id`. Returns whether **at least one** port on the station is `FREE`.
+
+Used internally by `charging-stations-write-station-rds` (`update_station_ports_state`) and by the hourly reconcile job.
+
+Request:
+
+```json
+{
+  "service": { "action": "get_has_free_ports_by_station", "callerId": "string" },
+  "data": { "stationId": "station-uuid" }
+}
+```
+
+Response (success):
+
+```json
+{
+  "data": { "has_free_ports": true },
+  "meta": {}
+}
+```
+
+---
+
+### `getPortsByStation`
 
 Reads **port** rows for one station. Query uses `Key("station_id").eq(stationId)` and keeps only items where `entity_key` has exactly one `#` separator (`PORT#<code>`), so session rows (`PORT#<code>#SESSION#...`) are excluded.
 
@@ -622,14 +724,26 @@ Response (success):
   "data": {
     "session": [
       {
-        "session_id": "session-uuid",
+        "entity_key": "PORT#7237#SESSION#ed65575c-4988-41a7-b4fc-003b318fa1ad",
+        "tariff": "1.55",
         "station_id": "station-uuid",
-        "entity_key": "PORT#A1#SESSION#session-uuid",
-        "port_code": "A1",
-        "state": "BOOKED|ACTIVE|UNPAID",
-        "user_id": "user-uuid",
         "created_at": "ISO timestamp",
-        "updated_at": "ISO timestamp"
+        "energy_consumed_kwh": int,
+        "time_booked_at": "ISO timestamp" or null,
+        "state": "BOOKED",
+        "time_booked_before": "ISO timestamp" or null,
+        "updated_at": "ISO timestamp",
+        "user_id": "123",
+        "ended_at": null,
+        "session_id": "session-uuid",
+        "stopped_at": null,
+        "charge_level_percent": null,
+        "booking_duration_minutes": null,
+        "estimated_minutes_remaining": null,
+        "current_cost": int,
+        "duration_minutes": null,
+        "started_at": null,
+        "port_code": "7237"
       }
     ]
   },
@@ -645,11 +759,13 @@ Current implementation queries `user_id-index` with `KeyConditionExpression = us
 
 Triggered by the **DynamoDB stream** on the station entities table (after insert/update/remove).
 
-**Port detection:** `entity_key` split by `#` has **exactly two** segments (`PORT#<code>`) — excludes session rows.
+**Port detection:** `entity_key` split by `#` has **exactly two** segments (`PORT#<code>`) — excludes session and lock rows.
 
-Current implementation handles only `INSERT` / `REMOVE` for port rows and forwards those events to `charging-stations-write-station-rds` action `update_station_ports` to adjust RDS `ports` count.
+### `INSERT` / `REMOVE` (port rows)
 
-Internal payload to RDS (insert/remove):
+Forwards to `charging-stations-write-station-rds` action **`update_station_ports`** to adjust RDS `ports` count (idempotent per stream `event_id`).
+
+Internal payload:
 
 ```json
 {
@@ -668,6 +784,32 @@ Internal payload to RDS (insert/remove):
 
 `delta` is `1` on insert, `-1` on remove.
 
-The consumer treats Lambda invoke errors as failures: it checks `FunctionError` on the invoke response and the JSON `error` field in the payload.
+### `MODIFY` (port rows — free ↔ non-free)
 
-After a successful port insert/remove in Dynamo, the stream consumer runs as above so RDS `ports` stays in sync.
+When a port’s `state` changes between **`FREE` and any non-FREE state** (and not `FREE`→`FREE`), the consumer forwards to **`update_station_ports_state`**, which recomputes `has_free_ports` in RDS (via `get_has_free_ports_by_station`) and updates idempotently using `ports_state_event_id`.
+
+Internal payload:
+
+```json
+{
+  "service": { "action": "update_station_ports_state", "callerId": "script" },
+  "data": [
+    {
+      "event_id": "dynamodb-stream-event-id",
+      "station_id": "station-uuid",
+      "entity_key": "PORT#<code>",
+      "operation": "PORT_RELEASED_OR_OCCUPIED"
+    }
+  ]
+}
+```
+
+Both forward paths use **`lambda:InvokeFunction`** with **`InvocationType: Event`** (asynchronous). Failures are surfaced via CloudWatch on the **target** write Lambda, not as a synchronous error to the stream consumer.
+
+---
+
+## Maintenance — `charging-stations-reconcile-free-ports`
+
+Scheduled **hourly** (`rate(1 hour)`). Compares DynamoDB port states (GSI `state-station-index`) with RDS `stations.has_free_ports` for active stations and batch-updates rows where values differ (`IS DISTINCT FROM`). Serves as a safety net next to stream-driven updates.
+
+Not part of the public HTTP API; invoked by EventBridge only.
