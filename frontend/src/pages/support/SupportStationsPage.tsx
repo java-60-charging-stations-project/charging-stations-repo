@@ -1,7 +1,10 @@
 import StationsTable from "@/components/StationsTable";
 import { fetchStations } from "@/services/api/supportApi";
+import { useCallback } from "react";
+
 
 const SupportStationsPage = () => {
+    const detailPath = useCallback((stationId: string) => `/support/stations/view/${stationId}`, []);
     return (
         <>
             <div>
@@ -11,7 +14,7 @@ const SupportStationsPage = () => {
                 <h1>Stations</h1>
                 <StationsTable
                     fetchFn={fetchStations}
-                    detailPath={(id) => `/support/stations/view/${id}`}
+                    detailPath={detailPath}
                 />
             </div>
         </>

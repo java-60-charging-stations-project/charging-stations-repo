@@ -5,12 +5,16 @@ import type { StationState } from "@/types/stations";
 import NavButton from "@/components/NavButton";
 import PortsView from "@/components/stations/PortsView";
 import { useAuth } from "@/hooks/useAuth";
+import useFromParam from "@/hooks/useFromParam";
 
 const StationPortsViewPage = () => {
     const { stationId } = useParams<{ stationId: string }>();
     const { userRole } = useAuth();
     const [stationState, setStationState] = useState<StationState | null>(null);
     const [loadError, setLoadError] = useState<string | null>(null);
+    const from = useFromParam();
+
+    const fromPath = from ? encodeURIComponent(from) : "";
 
     useEffect(() => {
         if (!stationId) return;
@@ -46,7 +50,7 @@ const StationPortsViewPage = () => {
         );
     }
 
-    const backToStationPath = `/support/stations/view/${stationId}`;
+    const backToStationPath = `/support/stations/view/${stationId}${from?`?from=${fromPath}`:""}`;
 
     return (
         <div className="max-w-md mx-auto mt-5 p-4 text-[9px] leading-tight rounded-lg shadow-md flex flex-col space-y-3">

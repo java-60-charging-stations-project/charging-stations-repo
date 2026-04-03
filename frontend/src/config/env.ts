@@ -14,4 +14,5 @@ export const config = {
     supportGroupName: (import.meta.env.VITE_SUPPORT_GROUP_NAME as string) ?? "SUPPORT",
     defaultPageSize: Number(import.meta.env.VITE_DEFAULT_PAGE_SIZE ?? "10") || 10,
     maxPortsPerStation: Number(import.meta.env.VITE_MAX_PORTS_PER_STATION ?? "22") || 22,
+    pollingIntervalMs: import.meta.env.VITE_POLLING_INTERVAL_MS,
 }
