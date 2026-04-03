@@ -65,6 +65,7 @@ def create_tables() -> None:
                     city TEXT NOT NULL,
                     address TEXT,
                     email TEXT,
+                    phone TEXT,
                     site_technician TEXT,
                     max_power_kw FLOAT,
                     location GEOGRAPHY(Point, 4326),
