@@ -52,7 +52,7 @@ def get_ports_by_station(station_id: str) -> list[PortInstance]:
         logger.error(f"error getting station ports: {e}")
         raise LambdaResponseError({"error": f"error getting station ports: {e}", "code": "DATABASE_ERROR"})
 
-def get_session_by_user(user_id: str) -> list[dict]:
+def get_session_by_user(user_id: str) -> dict:
     try:
         table = get_dynamo_stations_table()
     except Exception as e:
@@ -71,11 +71,9 @@ def get_session_by_user(user_id: str) -> list[dict]:
                 },
             )
         items = resp.get("Items", [])
-        sessions: list[dict] = []
-        for item in items:
-            item["port_code"] = item["entity_key"].split("#")[1]
-            sessions.append(item)
-        return sessions
+        session = items[0]
+        session["port_code"] = session["entity_key"].split("#")[1]
+        return session
     except Exception as e:
         logger.error(f"error getting session by user: {e}")
         raise LambdaResponseError({"error": f"error getting session by user: {e}", "code": "DATABASE_ERROR"})

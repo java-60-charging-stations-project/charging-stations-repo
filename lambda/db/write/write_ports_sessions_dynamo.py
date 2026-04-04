@@ -3,27 +3,32 @@ import uuid
 import boto3
 import json
 from decimal import Decimal
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from utils.logger import logger, log_audit
 from utils.error_handlers import LambdaResponseError
 from data_types.contract_types import SuccessResponsePayload, ErrorResponsePayload
 from data_types.db_instance_types import PortInstance, PortSessionInstance
 from botocore.exceptions import ClientError
-from boto3.dynamodb.types import TypeSerializer
+from boto3.dynamodb.types import TypeSerializer, TypeDeserializer
 
 AWS_REGION = os.environ["AWS_REGION"]
 STATIONS_DYNAMO_TABLE = os.environ["STATIONS_DYNAMO_TABLE"]
 AWS_LAMBDA_HOST_ACCOUNT = os.environ["AWS_LAMBDA_HOST_ACCOUNT"]
 GET_STATION_FUNCTION_NAME = os.environ["GET_STATION_FUNCTION_NAME"]
+GET_PORTS_SESSIONS_FUNCTION_NAME = os.environ["GET_PORTS_SESSIONS_FUNCTION_NAME"]
 PORT_STATES = ["FREE", "OCCUPIED", "ERROR", "DISABLED", "BOOKED"]
 BOOKING_TIMEOUT_MINUTES = int(os.environ["BOOKING_TIMEOUT_MINUTES"])
 
 _dynamo_client = None
 _serializer = TypeSerializer()
+_deserializer = TypeDeserializer()
 
 def to_av_map(py_obj: dict) -> dict:
     return {k: _serializer.serialize(v) for k, v in py_obj.items()}
+
+def from_av_map(av_map: dict) -> dict:
+    return {k: _deserializer.deserialize(v) for k, v in av_map.items()}
 
 def get_dynamo_client():
     global _dynamo_client
@@ -34,7 +39,7 @@ def get_dynamo_client():
 def build_port_item(station_id: str, port: dict) -> PortInstance:
     try:
         port_id = str(uuid.uuid4())
-        timestamp = datetime.now().isoformat()
+        timestamp = datetime.now(timezone.utc).isoformat()
         port_item: PortInstance = {
             "station_id": station_id,
             "entity_key": f"PORT#{port["code"]}",
@@ -133,15 +138,95 @@ def get_update_data_from_event(event: dict) -> dict:
         logger.error(f"error getting update data from event: {e}")
         raise LambdaResponseError({"error": f"error getting update data from event: {e}", "code": "UNHANDLED_ERROR"})
 
-def close_session(session_data: dict) -> dict:
+def get_session_by_user(user_id: str) -> dict:
     try:
-        client = get_dynamo_client()
+        client = boto3.client("lambda", region_name=AWS_REGION)
     except Exception as e:
-        logger.error(f"error getting dynamo client: {e}")
-        raise LambdaResponseError({"error": f"error getting dynamo client: {e}", "code": "DATABASE_ERROR"})
-    session_id = session_data["session_id"]
-    client.delete_item(TableName=STATIONS_DYNAMO_TABLE, Key={"session_id": {"S": session_id}})
-    return session_data
+        logger.error(f"error getting lambda client: {e}")
+        raise LambdaResponseError({"error": f"error getting lambda client: {e}", "code": "DATABASE_ERROR"})
+    payload = {
+        "service": {"action": "getSessionByUser", "callerId": "script"},
+        "data": {"userId": user_id},
+    }
+    resp = client.invoke(
+        FunctionName=f"arn:aws:lambda:{AWS_REGION}:{AWS_LAMBDA_HOST_ACCOUNT}:function:{GET_PORTS_SESSIONS_FUNCTION_NAME}",
+        InvocationType="RequestResponse",
+        Payload=json.dumps(payload).encode("utf-8"),
+    )
+    if resp.get("StatusCode") != 200:
+        raise LambdaResponseError({"error": f"error getting session by user: {resp.get('error')}", "code": "DATABASE_ERROR"})
+    if resp.get("FunctionError"):
+        raise LambdaResponseError({"error": f"error getting session by user: {resp['FunctionError']}", "code": "DATABASE_ERROR"})
+    raw = resp["Payload"].read().decode("utf-8") or "{}"
+    response_json = json.loads(raw)
+    if response_json.get("error"):
+        raise LambdaResponseError({"error": f"error getting session by user: {response_json.get('error')}", "code": "INVALID_REQUEST"})
+    return response_json["data"]["session"]
+
+def calculate_price(session: dict, now: datetime) -> tuple[Decimal, Decimal, Decimal, Decimal]:
+    tariff = session["tariff"]
+    booking_price = Decimal(0)
+    idle_price = Decimal(0)
+    price = Decimal(0)
+    if session.get("time_booked_at"):
+        booked_at = datetime.fromisoformat(session["time_booked_at"])
+        started_charging = session.get("started_at")
+        finished_booking = datetime.fromisoformat(started_charging) if started_charging else now
+        booking_seconds = Decimal(str((finished_booking - booked_at).total_seconds()))
+        booking_minutes = booking_seconds / Decimal(60)
+        booking_price = booking_minutes * tariff
+        price += booking_price
+    energy_consumed_price = session["energy_consumed_kwh"] * tariff
+    price += energy_consumed_price
+    if session.get("stopped_at"):
+        stopped_at = datetime.fromisoformat(session["stopped_at"])
+        idle_seconds = Decimal(str((now - stopped_at).total_seconds()))
+        idle_minutes = idle_seconds / Decimal(60)
+        idle_price = idle_minutes * tariff
+        price += idle_price
+    return price.quantize(Decimal("0.01")), booking_price, energy_consumed_price, idle_price
+
+def _transact_update_session_close_unpaid(session: dict, now: datetime) -> dict:
+    ts_iso = now.isoformat()
+    price = calculate_price(session, now)[0]
+    return {
+        "Update": {
+            "TableName": STATIONS_DYNAMO_TABLE,
+            "Key": {
+                "station_id": {"S": str(session["station_id"])},
+                "entity_key": {"S": session["entity_key"]},
+            },
+            "UpdateExpression": "SET #st = :unpaid, updated_at = :ts, ended_at = :ts, final_cost = :price",
+            "ConditionExpression": "attribute_exists(station_id) AND (#st = :active OR #st = :booked)",
+            "ExpressionAttributeNames": {"#st": "state"},
+            "ExpressionAttributeValues": {
+                ":active": {"S": "ACTIVE"},
+                ":booked": {"S": "BOOKED"},
+                ":unpaid": {"S": "UNPAID"},
+                ":ts": {"S": ts_iso},
+                ":price": {"N": str(price)},
+            },
+        }
+    }
+
+def _transact_update_session_booked_to_active(session: dict, ts_iso: str) -> dict:
+    return {
+        "Update": {
+            "TableName": STATIONS_DYNAMO_TABLE,
+            "Key": {
+                "station_id": {"S": str(session["station_id"])},
+                "entity_key": {"S": session["entity_key"]},
+            },
+            "UpdateExpression": "SET #st = :active, updated_at = :ts, started_at = :ts",
+            "ConditionExpression": "attribute_exists(station_id) AND #st = :booked",
+            "ExpressionAttributeNames": {"#st": "state"},
+            "ExpressionAttributeValues": {
+                ":booked": {"S": "BOOKED"},
+                ":active": {"S": "ACTIVE"},
+                ":ts": {"S": ts_iso},
+            },
+        }
+    }
 
 def update_station_ports(action: str, port_data: dict, user_id: str| None = None) -> dict:
     if not port_data["port_key"]:
@@ -185,7 +270,7 @@ def update_station_ports(action: str, port_data: dict, user_id: str| None = None
             raise LambdaResponseError({"error": f"invalid new state: {new_state}", "code": "INVALID_REQUEST"})
     elif action == "lambda_update_station_ports":
         pass
-    updated_at = datetime.now().isoformat()
+    updated_at = datetime.now(timezone.utc).isoformat()
     transact_items: list[dict] = []
     try:
         attr_values = {
@@ -197,67 +282,68 @@ def update_station_ports(action: str, port_data: dict, user_id: str| None = None
         attr_names = {"#s": "state"}
         entity_key = f"PORT#{port_key}"
         transact_items.append({
-            "Update": {
-                "TableName": STATIONS_DYNAMO_TABLE,
-                "Key": {
-                    "station_id": {"S": station_id},
-                    "entity_key": {"S": entity_key},
-                },
+            "Update": {"TableName": STATIONS_DYNAMO_TABLE,
+                "Key": {"station_id": {"S": station_id}, "entity_key": {"S": entity_key}},
                 "UpdateExpression": update_expression,
                 "ConditionExpression": "attribute_exists(entity_key) AND #s = :old_state",
                 "ExpressionAttributeNames": attr_names,
-                "ExpressionAttributeValues": attr_values,
-            }
-        })
+                "ExpressionAttributeValues": attr_values,}})
         update_info = {
             "station_id": station_id,
             "entity_key": entity_key,
             "new_state": new_state,
             "updated_at": updated_at,
         }
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         if user_id:
             update_info["port_booked"] = False
             update_info["user_id"] = user_id
-            if  new_state == "BOOKED":
-                booked_by = now - timedelta(minutes=BOOKING_TIMEOUT_MINUTES)
-                update_info["time_booked_at"] = now.isoformat()
-                update_info["time_booked_before"] = booked_by.isoformat()
-                update_info["port_booked"] = True
-            elif new_state == "OCCUPIED":
-                update_info["time_started_at"] = now.isoformat()
-            elif new_state == "FREE":
-                try:
-                    # close_session(update_info)
-                    pass
-                except Exception as e:
-                    logger.error(f"error closing session: {e}")
-                    raise LambdaResponseError({"error": f"error closing session: {e}", "code": "DATABASE_ERROR"})
-                return update_info
-            session_object = build_session_object(update_info)
-            session_lock_item = {
-                "station_id": user_id,
-                "entity_key": "SESSION_LOCK",
-                "session_id": session_object["session_id"],
-                "port_code": entity_key,
-                "created_at": now.isoformat(),
-            }
-            transact_items.extend([
-                {"Put": {"TableName": STATIONS_DYNAMO_TABLE,"Item": to_av_map(session_object),
-                "ConditionExpression": "attribute_not_exists(station_id) AND attribute_not_exists(entity_key)"}},
-                {"Put": {"TableName": STATIONS_DYNAMO_TABLE,"Item": to_av_map(session_lock_item),
-                "ConditionExpression": "attribute_not_exists(station_id) AND attribute_not_exists(entity_key)"
-                    }}])
-            update_info["session_id"] = session_object["session_id"]
+            if old_state == "FREE" and new_state != "FREE": 
+                if new_state == "BOOKED":
+                    booked_by = now - timedelta(minutes=BOOKING_TIMEOUT_MINUTES)
+                    update_info["time_booked_at"] = now.isoformat()
+                    update_info["time_booked_before"] = booked_by.isoformat()
+                    update_info["port_booked"] = True
+                elif new_state == "OCCUPIED":
+                    update_info["time_started_at"] = now.isoformat()
+                session_object = build_session_object(update_info)
+                session_lock_item = {
+                    "station_id": user_id,
+                    "entity_key": "SESSION_LOCK",
+                    "session_id": session_object["session_id"],
+                    "port_code": entity_key,
+                    "created_at": now.isoformat(),
+                }
+                transact_items.extend([
+                    {"Put": {"TableName": STATIONS_DYNAMO_TABLE,"Item": to_av_map(session_object),
+                    "ConditionExpression": "attribute_not_exists(station_id) AND attribute_not_exists(entity_key)"}},
+                    {"Put": {"TableName": STATIONS_DYNAMO_TABLE,"Item": to_av_map(session_lock_item),
+                    "ConditionExpression": "attribute_not_exists(station_id) AND attribute_not_exists(entity_key)"
+                        }}])
+                update_info["session_id"] = session_object["session_id"]
+                update_info["entity_key"] = port_key
+            else:
+                session = get_session_by_user(user_id)
+                update_info["session_id"] = session["session_id"]
+                update_info["entity_key"] = port_key
+                if new_state == "OCCUPIED" and old_state == "BOOKED":
+                    ts_iso = now.isoformat()
+                    transact_items.append(_transact_update_session_booked_to_active(session, ts_iso))
+                elif old_state in ["BOOKED", "OCCUPIED"] and new_state == "FREE":
+                    transact_items.append(_transact_update_session_close_unpaid(session, now))
         response = client.transact_write_items(TransactItems=transact_items)
         logger.info(f"transaction response: {response}")
-        update_info["entity_key"] = entity_key.split("#")[1]
         return update_info
     except ClientError as e:
         err_code = e.response.get("Error", {}).get("Code", "")
         if err_code == "ConditionalCheckFailedException":
-            logger.error(f"port not found or old state does not match: {e}")
-            raise LambdaResponseError({"error": f"port not found or old state does not match: {e}", "code": "INVALID_REQUEST"})
+            logger.error(f"session not found or old state does not match: {e}")
+            raise LambdaResponseError({"error": f"session not found or old state does not match: {e}", 
+            "code": "INVALID_REQUEST"})
+        if err_code == "TransactionCanceledException":
+            reasons = e.response.get("CancellationReasons") or []
+            logger.error(f"transaction canceled: {e} cancellation_reasons={reasons}")
+            raise LambdaResponseError({"error": f"transaction canceled: {e}", "code": "DATABASE_ERROR"})
         logger.error(f"error updating station ports: {e}")
         raise LambdaResponseError({"error": f"error updating station ports: {e}", "code": "DATABASE_ERROR"})
     except LambdaResponseError:
@@ -274,7 +360,7 @@ def delete_station_ports(station_id: str, port_key: str) -> list[dict]:
         raise LambdaResponseError(
             {"error": f"error getting dynamo client: {e}", "code": "DATABASE_ERROR"}
         )
-    deleted_at = datetime.now().isoformat()
+    deleted_at = datetime.now(timezone.utc).isoformat()
     try:
         entity_key = f"PORT#{port_key}"
         client.delete_item(
@@ -326,7 +412,7 @@ def get_tariff(station_id: str) -> Decimal:
 def build_session_object(session_data: dict) -> dict:
     try:
         session_id = str(uuid.uuid4())
-        timestamp = datetime.now().isoformat()
+        timestamp = datetime.now(timezone.utc).isoformat()
         tariff = get_tariff(session_data["station_id"])
         port_booked = session_data.get("port_booked")
         session_object: PortSessionInstance = {
@@ -335,9 +421,10 @@ def build_session_object(session_data: dict) -> dict:
             "entity_key": f"{session_data['entity_key']}#SESSION#{session_id}",
             "state": "BOOKED" if port_booked else "ACTIVE",
             "user_id": session_data["user_id"],
-            "energy_consumed_kwh": Decimal(0.0),
-            "tariff": tariff,
-            "current_cost": Decimal(0.0),
+            "energy_consumed_kwh": Decimal(0),
+            "tariff": Decimal(tariff),
+            "current_cost": Decimal(0),
+            "final_cost": Decimal(0),
             "estimated_minutes_remaining": None,
             "duration_minutes": None,
             "charge_level_percent": None,

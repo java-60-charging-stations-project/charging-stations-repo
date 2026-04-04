@@ -5,7 +5,7 @@ from psycopg2 import sql
 from psycopg2.extras import Json
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 from utils.logger import logger
 from utils.logger import log_audit
@@ -92,7 +92,7 @@ def extract_full_station_instance_from_event(event: dict) -> StationInstance:
     try:
         data = event["data"]
         location = data["location"] if data.get("location") else {"longitude": 0.0, "latitude": 0.0}
-        timestamp = datetime.now()
+        timestamp = datetime.now(timezone.utc)
         station_instance: StationInstance = {
             "id": str(uuid.uuid4()),
             "code": data["code"],
@@ -160,7 +160,7 @@ def update_station_to_rds(station: dict) -> None:
     has_geo = (lon is not None and lat is not None)
     if not updates and not has_geo:
         return None
-    updates["updated_at"] = datetime.now()
+    updates["updated_at"] = datetime.now(timezone.utc)
     try:
         conn = get_connection()
         with conn.cursor() as cur:
@@ -255,7 +255,7 @@ def change_station_state(station_id: str, old_state: str, new_state: str) -> dat
         raise LambdaResponseError({"error": f"Error getting connection: {e}", "code": "DATABASE_ERROR"})
     try:
         with conn.cursor() as cur:
-            updated_at = datetime.now()
+            updated_at = datetime.now(timezone.utc)
             cur.execute(
                 """
                     UPDATE stations SET state = %s, updated_at = %s WHERE id = %s AND state = %s
@@ -300,7 +300,7 @@ def delete_station(station_id: str) -> datetime:
         logger.error(f"Error getting connection: {e}")
         raise LambdaResponseError({"error": f"Error getting connection: {e}", "code": "DATABASE_ERROR"})
     try:
-        updated_at = datetime.now()
+        updated_at = datetime.now(timezone.utc)
         state = "DELETED"
         with conn.cursor() as cur:
             cur.execute("""
@@ -345,7 +345,7 @@ def update_station_ports(station_id: str, delta: int, event_id: str) -> datetime
         raise LambdaResponseError({"error": f"Error getting connection: {e}", "code": "DATABASE_ERROR"})
     try:
         with conn.cursor() as cur:
-            updated_at = datetime.now()
+            updated_at = datetime.now(timezone.utc)
             cur.execute(
                 """
                     UPDATE stations SET ports = ports + %s, updated_at = %s, ports_number_event_id = %s WHERE id = %s 
@@ -418,7 +418,7 @@ def update_station_ports_state(station_id: str, event_id: str) -> datetime | Non
         raise LambdaResponseError({"error": f"Error getting connection: {e}", "code": "DATABASE_ERROR"})
     try:
         with conn.cursor() as cur:
-            updated_at = datetime.now()
+            updated_at = datetime.now(timezone.utc)
             cur.execute(
                 """
                     UPDATE stations SET has_free_ports = %s, updated_at = %s, ports_state_event_id = %s WHERE id = %s 

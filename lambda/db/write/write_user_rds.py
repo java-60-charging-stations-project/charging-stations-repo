@@ -1,7 +1,7 @@
 import os
 import boto3
 import psycopg2
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 from utils.logger import logger, log_audit
 from utils.error_handlers import LambdaResponseError
@@ -56,7 +56,7 @@ def extract_user_instance_from_event(event: dict) -> UserInstance:
         email = attrs['email']
         name = attrs.get('name')
         full_name = name if name and not name.startswith("cognito:") else "Console User"
-        timestamp = datetime.now()
+        timestamp = datetime.now(timezone.utc)
         user_instance: UserInstance = {
             "user_id": attrs['sub'] if not console_created else event["userName"],
             "full_name": full_name,
