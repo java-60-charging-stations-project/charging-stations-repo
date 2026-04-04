@@ -698,6 +698,8 @@ Resources:
           AWS_LAMBDA_HOST_ACCOUNT: !Ref AWS::AccountId
           GET_STATION_FUNCTION_NAME: !Ref GetStationInfoFunction
           BOOKING_TIMEOUT_MINUTES: "15"
+          GET_PORTS_SESSIONS_FUNCTION_NAME: !Ref GetPortsSessionsFunction
+
       Policies:
         - Version: '2012-10-17'
           Statement:
@@ -714,7 +716,9 @@ Resources:
             - Effect: Allow
               Action:
                 - lambda:InvokeFunction
-              Resource: !GetAtt GetStationInfoFunction.Arn
+              Resource: 
+                - !GetAtt GetStationInfoFunction.Arn
+                - !GetAtt GetPortsSessionsFunction.Arn
     
   WriteStationPortsInvokePermissionA:
     Type: AWS::Lambda::Permission

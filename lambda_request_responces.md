@@ -454,7 +454,8 @@ Key design:
 - **Partition key:** `station_id`
 - **Sort key:** `entity_key`
 - **Port rows:** `entity_key = "PORT#<code>"`, initial `state: "DISABLED"`, plus `port_id`, `last_meter_kw`, `state` (required for GSI), timestamps.
-- **Session rows:** `entity_key = "PORT#<code>#SESSION#<session_id>"` (same partition key).
+- **Session rows:** `entity_key = "PORT#<code>#SESSION#<session_id>"` (same station partition key as the port).
+- **Session lock row (user-wide):** one item per user so they cannot start two sessions at once. Uses the same attribute names as the table (`station_id`, `entity_key`) but **`station_id` is set to the user id** (not the station uuid) and **`entity_key` = `SESSION_LOCK`**. That key is global per user across all stations.
 - **GSI `state-station-index`:** partition key `state`, sort key `station_id` — query `state = FREE` + `station_id` for “any free port on this station” and for hourly RDS reconciliation.
 
 ---
@@ -462,6 +463,8 @@ Key design:
 ## Write — `charging-stations-write-station-ports-dynamo`
 
 Action-based handler: `event.service.action` and `event.service.callerId`. Success responses include `"meta": {}` where applicable.
+
+**Environment (deploy):** this function needs `GET_PORTS_SESSIONS_FUNCTION_NAME` set to the deployed name of `charging-stations-get-ports-sessions-dynamo`, plus IAM permission to invoke it, so user flows that load an existing session (e.g. `BOOKED` → `OCCUPIED`, release to `FREE`) can call `getSessionByUser` internally.
 
 ### `insertStationPorts`
 
@@ -564,9 +567,15 @@ Use `userUpdateStationPorts` with the same `data` shape and include `data.userId
 
 `userUpdateStationPorts` requires `userId`. Valid **`oldState`** values include **`OCCUPIED`** (e.g. ending a charging session and returning the port to `FREE`).
 
-For transitions that create or continue a session (`BOOKED` / `OCCUPIED`), the implementation uses a transactional **session lock** item (`entity_key`: `SESSION_LOCK`, partition key `station_id` = `userId`) so a user cannot open two concurrent sessions.
+**Session lock:** the **session lock** item uses sort key `SESSION_LOCK` and stores the user id in the table’s **`station_id`** attribute (overload in the single-table design). A conditional `Put` ensures **at most one lock per user** everywhere, so a user cannot open a second session on another port/station until the first flow completes and the lock is cleared as designed.
 
-Current implementation creates session-related items in the same DynamoDB transaction where applicable and returns `session_id` when a session is created or updated (not when transitioning to `FREE` only).
+**Transactional updates:** for **`FREE` → `BOOKED`** or **`FREE` → `OCCUPIED`** with `userId`, one **`TransactWriteItems`** call typically includes: (1) port state update, (2) new session row `Put`, (3) session lock `Put`. All succeed or all roll back.
+
+**New session `BOOKED` vs `ACTIVE`:** when creating the session row, **`BOOKED`** is used if `time_booked_at` is present on the payload (reservation path); **`FREE` → `OCCUPIED`** without booking leaves `time_booked_at` unset so the new session is **`ACTIVE`**. Do not set `time_booked_at` on immediate-charge flows.
+
+**Continuing / ending a session:** for **`BOOKED` → `OCCUPIED`**, **`OCCUPIED` → `FREE`**, etc., the writer loads the current session via **`getSessionByUser`** and appends session row updates in the same transaction as the port update where applicable.
+
+`session_id` is returned when a new session is created from **`FREE`**; when updating an existing session, the response includes the current `session_id` from that session. `entity_key` in the success payload is the **port code** (not the full `PORT#…` sort key).
 
 Response (success):
 
@@ -583,15 +592,13 @@ Response (success):
 }
 ```
 
-For user flows, response may also include:
+For user flows, the success payload may also include:
 
-- `time_booked_at`
-- `time_booked_before`
-- `time_started_at`
+- `time_booked_at`, `time_booked_before` (booking path)
+- `time_started_at` (when applicable)
 - `user_id`
-- `port_booked`
 
-Response (error): `INVALID_REQUEST` (bad states, wrong number of keys for user path, condition failed), `DATABASE_ERROR`, etc.
+Response (error): `INVALID_REQUEST` (bad states, condition failed, stale port/session state), `DATABASE_ERROR` (including Dynamo **`TransactionCanceledException`** when a multi-item transaction is rolled back — e.g. port state mismatch, session conditional failure, or **session lock already present** if the user already has an open session elsewhere). The error text may include Dynamo **`CancellationReasons`** for debugging.
 
 ---
 
@@ -751,7 +758,10 @@ Response (success):
 }
 ```
 
-Current implementation queries `user_id-index` with `KeyConditionExpression = user_id` and applies `state IN (BOOKED, ACTIVE, UNPAID)`.
+Implementation notes:
+
+- Query uses GSI **`user_id-index`** with `KeyConditionExpression = user_id` and filter **`state IN (BOOKED, ACTIVE, UNPAID)`**.
+- Numeric fields are JSON numbers when returned through the API (they may be stored as `Decimal` in Dynamo).
 
 ---
 

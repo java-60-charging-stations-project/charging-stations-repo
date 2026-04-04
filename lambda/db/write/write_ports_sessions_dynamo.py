@@ -161,10 +161,10 @@ def get_session_by_user(user_id: str) -> dict:
     response_json = json.loads(raw)
     if response_json.get("error"):
         raise LambdaResponseError({"error": f"error getting session by user: {response_json.get('error')}", "code": "INVALID_REQUEST"})
-    return response_json["data"]["session"]
+    return response_json["data"]["session"][0]
 
 def calculate_price(session: dict, now: datetime) -> tuple[Decimal, Decimal, Decimal, Decimal]:
-    tariff = session["tariff"]
+    tariff = Decimal(str(session["tariff"]))
     booking_price = Decimal(0)
     idle_price = Decimal(0)
     price = Decimal(0)
@@ -296,14 +296,12 @@ def update_station_ports(action: str, port_data: dict, user_id: str| None = None
         }
         now = datetime.now(timezone.utc)
         if user_id:
-            update_info["port_booked"] = False
             update_info["user_id"] = user_id
             if old_state == "FREE" and new_state != "FREE": 
                 if new_state == "BOOKED":
                     booked_by = now - timedelta(minutes=BOOKING_TIMEOUT_MINUTES)
                     update_info["time_booked_at"] = now.isoformat()
                     update_info["time_booked_before"] = booked_by.isoformat()
-                    update_info["port_booked"] = True
                 elif new_state == "OCCUPIED":
                     update_info["time_started_at"] = now.isoformat()
                 session_object = build_session_object(update_info)
@@ -342,8 +340,9 @@ def update_station_ports(action: str, port_data: dict, user_id: str| None = None
             "code": "INVALID_REQUEST"})
         if err_code == "TransactionCanceledException":
             reasons = e.response.get("CancellationReasons") or []
-            logger.error(f"transaction canceled: {e} cancellation_reasons={reasons}")
-            raise LambdaResponseError({"error": f"transaction canceled: {e}", "code": "DATABASE_ERROR"})
+            logger.error(f"session not created due to transaction cancellation: {reasons}")
+            raise LambdaResponseError({"error": f"session not created due to transaction cancellation: {reasons}",
+             "code": "DATABASE_ERROR"})
         logger.error(f"error updating station ports: {e}")
         raise LambdaResponseError({"error": f"error updating station ports: {e}", "code": "DATABASE_ERROR"})
     except LambdaResponseError:
@@ -414,7 +413,7 @@ def build_session_object(session_data: dict) -> dict:
         session_id = str(uuid.uuid4())
         timestamp = datetime.now(timezone.utc).isoformat()
         tariff = get_tariff(session_data["station_id"])
-        port_booked = session_data.get("port_booked")
+        port_booked = session_data.get("time_booked_at")
         session_object: PortSessionInstance = {
             "session_id": session_id,
             "station_id": session_data["station_id"],
