@@ -5,6 +5,7 @@ import type { SessionsService } from './sessions.service';
 import { projectSession, resolveViewerRole, type ViewerRole } from './sessions.types';
 import type { UserSessionsIService } from './users/userSessions.service.interface';
 import { createLogger } from '../../utils/logger';
+import { ForbiddenError, ResourceNotFoundError } from '../../common/serviceErrors';
 
 const sessionIdParam = z.string().min(1);
 
@@ -25,6 +26,18 @@ const startChargingSessionSchema = z.object({
   stationId: z.string().min(1),
   portCode: z.string().min(1),
   oldState: z.enum(['FREE', 'BOOKED']),
+});
+
+const stopBookingSchema = z.object({
+  stationId: z.string().min(1),
+  portCode: z.string().min(1),
+  oldState: z.literal('BOOKED'),
+});
+
+const stopChargingSchema = z.object({
+  stationId: z.string().min(1),
+  portCode: z.string().min(1),
+  oldState: z.literal('OCCUPIED'),
 });
 
 export class SessionsController {
@@ -67,6 +80,30 @@ export class SessionsController {
     res.status(200).json(wrapResponse(data));
   };
 
+  stopBooking = async (req: Request, res: Response) => {
+    const userId = req.user!.sub!;
+    const payload = stopBookingSchema.parse(req.body);
+    const data = await this.userSessionsService.stopBooking(
+      userId,
+      payload.stationId,
+      payload.portCode,
+      payload.oldState,
+    );
+    res.status(200).json(wrapResponse(data));
+  };
+
+  stopChargingSession = async (req: Request, res: Response) => {
+    const userId = req.user!.sub!;
+    const payload = stopChargingSchema.parse(req.body);
+    const data = await this.userSessionsService.stopChargingSession(
+      userId,
+      payload.stationId,
+      payload.portCode,
+      payload.oldState,
+    );
+    res.status(200).json(wrapResponse(data));
+  };
+
 
   /**
    * GET /sessions/all — ADMIN or SUPPORT only; all sessions with role-shaped items.
@@ -84,8 +121,7 @@ export class SessionsController {
    * USER: only own userId (must equal `sub`). SUPPORT/ADMIN: any userId.
    */
   listByUser = async (req: Request, res: Response) => {
-    const sub = req.user?.sub;
-    if (!sub) return res.status(401).json({ code: 401, error: { message: 'Unauthorized' } });
+    const sub = req.user!.sub!;
 
     const q = req.query.userId;
     if (typeof q !== 'string' || !q.trim()) {
@@ -110,20 +146,17 @@ export class SessionsController {
    * GET /sessions/:sessionId — one session; USER only if owner; SUPPORT/ADMIN any.
    */
   getById = async (req: Request, res: Response) => {
-    const sub = req.user?.sub;
-    if (!sub) return res.status(401).json({ code: 401, error: { message: 'Unauthorized' } });
+    const sub = req.user!.sub!;
 
     const sessionId = sessionIdParam.parse(req.params.sessionId);
     const groups = req.user?.groups ?? [];
     const viewer: ViewerRole = resolveViewerRole(groups);
 
     const row = await this.service.getById(sessionId);
-    if (!row) {
-      return res.status(404).json({ code: 404, error: { message: 'Session not found' } });
-    }
+    if (!row) throw new ResourceNotFoundError('Session not found', 'SESSION_NOT_FOUND');
 
     if (viewer === 'USER' && row.userId !== sub) {
-      return res.status(403).json({ code: 403, error: { message: 'Forbidden' } });
+      throw new ForbiddenError('Forbidden', 'FORBIDDEN');
     }
 
     const data = projectSession(row, viewer);
@@ -131,8 +164,7 @@ export class SessionsController {
   };
 
   startSession = async (req: Request, res: Response) => {
-    const sub = req.user?.sub;
-    if (!sub) return res.status(401).json({ code: 401, error: { message: 'Unauthorized' } });
+    const sub = req.user!.sub!;
 
     const payload = startSessionSchema.parse(req.body);
     const session = await this.service.startSession(sub, payload.stationId, payload.portId);
@@ -140,8 +172,7 @@ export class SessionsController {
   };
 
   stopSession = async (req: Request, res: Response) => {
-    const sub = req.user?.sub;
-    if (!sub) return res.status(401).json({ code: 401, error: { message: 'Unauthorized' } });
+    const sub = req.user!.sub!;
 
     const sessionId = sessionIdParam.parse(req.params.sessionId);
     const session = await this.service.stopSession(sub, sessionId);

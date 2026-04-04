@@ -50,7 +50,7 @@ export class UserSessionsServiceLambda implements UserSessionsIService {
     stationId: string,
     portCode: string,
     oldState: UserSessionPortState,
-    newState: 'BOOKED' | 'OCCUPIED',
+    newState: 'BOOKED' | 'OCCUPIED' | 'FREE',
   ): Promise<UserSessionPortUpdateResponse> {
     logger.debug('Invoking ports write lambda: userUpdateStationPorts', {
       userId,
@@ -125,5 +125,23 @@ export class UserSessionsServiceLambda implements UserSessionsIService {
     oldState: UserSessionPortState,
   ): Promise<UserSessionPortUpdateResponse> {
     return this.updateStationPort(userId, stationId, portCode, oldState, 'OCCUPIED');
+  }
+
+  async stopBooking(
+    userId: string,
+    stationId: string,
+    portCode: string,
+    oldState: UserSessionPortState,
+  ): Promise<UserSessionPortUpdateResponse> {
+    return this.updateStationPort(userId, stationId, portCode, oldState, 'FREE');
+  }
+
+  async stopChargingSession(
+    userId: string,
+    stationId: string,
+    portCode: string,
+    oldState: UserSessionPortState,
+  ): Promise<UserSessionPortUpdateResponse> {
+    return this.updateStationPort(userId, stationId, portCode, oldState, 'FREE');
   }
 }

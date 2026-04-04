@@ -3,6 +3,8 @@ import type {
   AdminCreateStationRequest,
   AdminCreateStationResponse,
   AdminDeleteStationResponse,
+  AdminUpdateStationRequest,
+  AdminUpdateStationResponse,
   AdminUpdateStationStateResponse,
   AdminUpdateStationPortsResponse,
   ApiPort,
@@ -38,6 +40,12 @@ export interface StationsService {
   ): Promise<AdminUpdateStationStateResponse>;
 
   updateStationPorts(stationId: string, deltaPorts: number, callerId: string): Promise<AdminUpdateStationPortsResponse>;
+
+  updateStation(
+    stationId: string,
+    patch: AdminUpdateStationRequest,
+    callerId: string
+  ): Promise<AdminUpdateStationResponse>;
 
   addPorts(stationId: string, payload: AddPortsRequest, callerId: string): Promise<ApiPort[]>;
 

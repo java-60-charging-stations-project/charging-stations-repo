@@ -8,6 +8,8 @@ import type {
   AdminCreateStationRequest,
   AdminCreateStationResponse,
   AdminDeleteStationResponse,
+  AdminUpdateStationRequest,
+  AdminUpdateStationResponse,
   AdminUpdateStationStateResponse,
   AdminUpdateStationPortsResponse,
   ApiPort,
@@ -200,6 +202,38 @@ export class StationsServiceLocal implements StationsService {
       portsCount: station.portsCount,
       occupiedPorts: station.occupiedPorts,
     };
+  }
+
+  async updateStation(
+    stationId: string,
+    patch: AdminUpdateStationRequest,
+    _callerId: string
+  ): Promise<AdminUpdateStationResponse> {
+    const station = STATIONS.find((s) => s.id === stationId);
+    if (!station) {
+      throw new ResourceNotFoundError('Station not found');
+    }
+
+    if (patch.name !== undefined) station.name = patch.name;
+    if (patch.owner !== undefined) station.owner = patch.owner;
+    if (patch.city !== undefined) station.city = patch.city;
+    if (patch.address !== undefined) station.address = patch.address;
+    if (patch.ratePlan !== undefined) station.ratePlan = patch.ratePlan;
+    if (patch.email !== undefined) station.email = patch.email;
+    if (patch.phone !== undefined) station.phone = patch.phone;
+    if (patch.siteTechnician !== undefined) station.siteTechnician = patch.siteTechnician;
+    if (patch.maxPowerKw !== undefined) station.maxPowerKw = patch.maxPowerKw;
+
+    if (patch.longitude !== undefined || patch.latitude !== undefined) {
+      const prev = station.location ?? { latitude: 0, longitude: 0 };
+      station.location = {
+        latitude: patch.latitude ?? prev.latitude,
+        longitude: patch.longitude ?? prev.longitude,
+      };
+    }
+
+    station.updatedAt = new Date().toISOString();
+    return { stationId };
   }
 
   async addPorts(stationId: string, payload: AddPortsRequest, _callerId: string): Promise<ApiPort[]> {

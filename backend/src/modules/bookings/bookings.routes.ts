@@ -7,10 +7,10 @@ export function bookingsRouter(): Router {
   const router = Router();
   const controller = new BookingsController(buildBookingsService());
 
-  router.get('/bookings', verifyCognitoJwt, controller.listMyBookings);
-  router.post('/bookings', verifyCognitoJwt, controller.createBooking);
-  router.get('/bookings/:bookingId', verifyCognitoJwt, controller.getBooking);
-  router.delete('/bookings/:bookingId', verifyCognitoJwt, controller.cancelBooking);
+  router.get('/', verifyCognitoJwt, controller.listMyBookings);
+  router.post('/', verifyCognitoJwt, controller.createBooking);
+  router.get('/:bookingId', verifyCognitoJwt, controller.getBooking);
+  router.delete('/:bookingId', verifyCognitoJwt, controller.cancelBooking);
 
   return router;
 }

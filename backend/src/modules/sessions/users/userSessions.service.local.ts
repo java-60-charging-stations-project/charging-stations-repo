@@ -65,6 +65,38 @@ export class UserSessionsServiceLocal implements UserSessionsIService {
     };
   }
 
+  async stopBooking(
+    userId: string,
+    stationId: string,
+    portCode: string,
+    _oldState: UserSessionPortState,
+  ): Promise<UserSessionPortUpdateResponse> {
+    const updatedAt = new Date().toISOString();
+    for (const s of LOCAL_USER_SESSIONS) {
+      if (s.userId === userId && s.stationId === stationId && s.portCode === portCode && s.state === 'BOOKED') {
+        s.state = 'UNPAID';
+        s.updatedAt = updatedAt;
+      }
+    }
+    return { stationId, portCode, newState: 'FREE', updatedAt };
+  }
+
+  async stopChargingSession(
+    userId: string,
+    stationId: string,
+    portCode: string,
+    _oldState: UserSessionPortState,
+  ): Promise<UserSessionPortUpdateResponse> {
+    const updatedAt = new Date().toISOString();
+    for (const s of LOCAL_USER_SESSIONS) {
+      if (s.userId === userId && s.stationId === stationId && s.portCode === portCode && s.state === 'ACTIVE') {
+        s.state = 'UNPAID';
+        s.updatedAt = updatedAt;
+      }
+    }
+    return { stationId, portCode, newState: 'FREE', updatedAt };
+  }
+
   private appendLocalSession(
     userId: string,
     stationId: string,

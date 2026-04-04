@@ -20,4 +20,18 @@ export interface UserSessionsIService {
     portCode: string,
     oldState: UserSessionPortState,
   ): Promise<UserSessionPortUpdateResponse>;
+
+  stopBooking(
+    userId: string,
+    stationId: string,
+    portCode: string,
+    oldState: UserSessionPortState,
+  ): Promise<UserSessionPortUpdateResponse>;
+
+  stopChargingSession(
+    userId: string,
+    stationId: string,
+    portCode: string,
+    oldState: UserSessionPortState,
+  ): Promise<UserSessionPortUpdateResponse>;
 };

@@ -11,22 +11,24 @@ export function sessionsRouter(): Router {
 
   // Register static paths before /:sessionId
   router.get(
-    '/sessions/all',
+    '/all',
     verifyCognitoJwt,
     requireGroups([ADMIN_GROUP, SUPPORT_GROUP]),
     controller.listAll
   );
 
   // User sessions routes
-  router.get('/sessions/user', verifyCognitoJwt, controller.getUserSessions);
-  router.post('/sessions/user/booking', verifyCognitoJwt, controller.createBooking);
-  router.post('/sessions/user/charging', verifyCognitoJwt, controller.startChargingSession);
+  router.get('/user', verifyCognitoJwt, controller.getUserSessions);
+  router.post('/user/booking', verifyCognitoJwt, controller.createBooking);
+  router.post('/user/charging', verifyCognitoJwt, controller.startChargingSession);
+  router.post('/user/booking/stop', verifyCognitoJwt, controller.stopBooking);
+  router.post('/user/charging/stop', verifyCognitoJwt, controller.stopChargingSession);
 
-  router.get('/sessions', verifyCognitoJwt, controller.listByUser);
-  router.post('/sessions', verifyCognitoJwt, controller.startSession);
-  router.post('/sessions/:sessionId/stop', verifyCognitoJwt, controller.stopSession);
+  router.get('/', verifyCognitoJwt, controller.listByUser);
+  router.post('/', verifyCognitoJwt, controller.startSession);
+  router.post('/:sessionId/stop', verifyCognitoJwt, controller.stopSession);
 
-  router.get('/sessions/:sessionId', verifyCognitoJwt, controller.getById);
+  router.get('/:sessionId', verifyCognitoJwt, controller.getById);
 
   return router;
 }

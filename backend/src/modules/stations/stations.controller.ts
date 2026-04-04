@@ -61,6 +61,22 @@ const updateStationPortsSchema = z.object({
 const addPortsSchema = z.object({
   ports: z.array(z.object({ portCode: z.string().min(1) })).min(1),
 });
+
+const updateStationSchema = z
+  .object({
+    name: z.string().min(1).optional(),
+    owner: z.string().min(1).optional(),
+    city: z.string().min(1).optional(),
+    address: z.string().min(1).optional(),
+    ratePlan: ratePlanSchema.optional(),
+    email: z.string().nullable().optional(),
+    phone: z.string().nullable().optional(),
+    siteTechnician: z.string().nullable().optional(),
+    maxPowerKw: z.number().nullable().optional(),
+    longitude: z.number().nullable().optional(),
+    latitude: z.number().nullable().optional(),
+  })
+  .strict();
 function canChangeStatus(
   current: StationState | undefined,
   next: StationState,
@@ -128,6 +144,15 @@ export class StationsController {
 
     const result = await this.service.updateStationPorts(stationId, deltaPorts, callerId);
     res.json({ code: 200, data: result });
+  };
+
+  updateStation = async (req: Request, res: Response) => {
+    const stationId = idSchema.parse(req.params.stationId);
+    const patch = updateStationSchema.parse(req.body);
+    const callerId = req.user?.sub ?? '';
+
+    const data = await this.service.updateStation(stationId, patch, callerId);
+    res.status(200).json({ code: 200, data });
   };
 
   addPorts = async (req: Request, res: Response) => {

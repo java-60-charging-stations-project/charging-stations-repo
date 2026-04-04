@@ -283,6 +283,25 @@ export interface AdminUpdateStationStateRequest {
   newState: StationLifecycleState;
 }
 
+/** Request body for PATCH /admin/stations/{stationId} (partial update). */
+export interface AdminUpdateStationRequest {
+  name?: string;
+  owner?: string;
+  city?: string;
+  address?: string;
+  ratePlan?: RatePlan;
+  email?: string | null;
+  phone?: string | null;
+  siteTechnician?: string | null;
+  maxPowerKw?: number | null;
+  longitude?: number | null;
+  latitude?: number | null;
+}
+
+export interface AdminUpdateStationResponse {
+  stationId: string;
+}
+
 /** Single item inside StationPortsCreateRequest.ports */
 export interface AddPortInput {
   portCode: string;
@@ -294,11 +313,12 @@ export interface AddPortsRequest {
 }
 
 export function mapLambdaPortRow(row: LambdaPortDynamoRow): ApiPort {
-  const portId = String(row.port_id ?? row.code);
-  const portCode = String(row.entity_key ?? row.code);
+  const code = row.code ?? row.entity_key ?? '';
+  const portId = String(row.port_id ?? code);
+  const portCode = String(code);
   return {
     portId: portId,
-    portCode:portCode,
+    portCode: portCode,
     status: row.state,
     lastMeterKw: row.last_meter_kw == null ? 0 : Number(row.last_meter_kw),
     createdAt: row.created_at ?? '',

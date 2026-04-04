@@ -28,11 +28,11 @@ export function createApp() {
 
   const api = express.Router();
   api.use(healthRouter());
-  api.use(authRouter());
+  api.use('/auth', authRouter());
   api.use(usersRouter());
   api.use(stationsRouter());
-  api.use(bookingsRouter());
-  api.use(sessionsRouter());
+  api.use('/bookings', bookingsRouter());
+  api.use('/sessions', sessionsRouter());
 
   if (env.apiPrefix) {
     app.use(env.apiPrefix, api);

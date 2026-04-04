@@ -16,6 +16,18 @@ export function mapLambdaUserSession(row: LambdaUserSessionRow): UserSession {
     userId: row.user_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    timeBookedAt: row.time_booked_at,
+    timeBookedBefore: row.time_booked_before,
+    startedAt: row.started_at,
+    stoppedAt: row.stopped_at,
+    endedAt: row.ended_at,
+    tariff: row.tariff,
+    currentCost: row.current_cost,
+    energyConsumedKwh: row.energy_consumed_kwh,
+    estimatedMinutesRemaining: row.estimated_minutes_remaining,
+    durationMinutes: row.duration_minutes,
+    bookingDurationMinutes: row.booking_duration_minutes,
+    chargeLevelPercent: row.charge_level_percent,
   };
 }
 
@@ -34,5 +46,6 @@ export function mapLambdaUserStationPortUpdate(
     updatedAt: data.updated_at,
     timeBookedAt: data.time_booked_at,
     timeBookedBefore: data.time_booked_before,
+    sessionId: data.session_id,
   };
 }

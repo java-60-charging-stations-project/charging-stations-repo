@@ -5,6 +5,6 @@ export function authRouter(): Router {
   const router = Router();
   const controller = new AuthController();
 
-  router.get('/auth/config', controller.getCognitoConfig);
+  router.get('/config', controller.getCognitoConfig);
   return router;
 }

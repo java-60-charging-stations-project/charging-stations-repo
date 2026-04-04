@@ -110,6 +110,11 @@ Role-based JSON (`USER` / `SUPPORT` / `ADMIN`). **Data is currently in-memory mo
 - `GET /sessions/:sessionId` — JWT; user sees only own session; staff sees any.
 - `GET /sessions?userId=...` — JWT; user only own `userId`; staff any.
 - `GET /sessions/all` — JWT + **ADMIN** or **SUPPORT** — all sessions, projection by role.
+- `GET /sessions/user` — JWT; get sessions for current user (Dynamo via `getSessionByUser`).
+- `POST /sessions/user/booking` — JWT; user books a port (`userUpdateStationPorts` → state `BOOKED`).
+- `POST /sessions/user/booking/stop` — JWT; user cancels booking (`userUpdateStationPorts` → state `FREE`), `oldState` must be `BOOKED`.
+- `POST /sessions/user/charging` — JWT; user starts charging (`userUpdateStationPorts` → state `OCCUPIED`), `oldState` can be `FREE` or `BOOKED`.
+- `POST /sessions/user/charging/stop` — JWT; user stops charging (`userUpdateStationPorts` → state `FREE`), `oldState` must be `OCCUPIED`.
 
 ### Sessions + bookings flow (current behavior)
 
@@ -132,6 +137,14 @@ Business rules implemented:
 Important note:
 - This flow is currently process-memory mock logic for local development.
 - Station port updates for support/admin (`PATCH /support/stations/:stationId/ports`, `PATCH /admin/stations/:stationId/ports`) invoke the write Lambda action `update_station_ports`, then re-read the station for the HTTP response.
+
+### User sessions (Dynamo) response fields
+
+`GET /sessions/user` returns `data.sessions[]` with (current contract):
+
+- **Base**: `sessionId`, `stationId`, `entityKey`, `portCode`, `state`, `userId`, `createdAt`, `updatedAt`
+- **Optional timing**: `timeBookedAt`, `timeBookedBefore`, `startedAt`, `stoppedAt`, `endedAt`
+- **Optional billing/telemetry**: `tariff`, `currentCost`, `energyConsumedKwh`, `estimatedMinutesRemaining`, `durationMinutes`, `bookingDurationMinutes`, `chargeLevelPercent`
 
 ### Quick verification (manual)
 

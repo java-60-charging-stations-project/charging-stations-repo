@@ -23,6 +23,8 @@ import { wrapLambdaRequest } from '../../common/wrappers';
 import { DEFAULT_PAGE_SIZE } from '../../common/constants';
 import type {
   AddPortsRequest,
+  AdminUpdateStationRequest,
+  AdminUpdateStationResponse,
   AdminCreateStationRequest,
   AdminCreateStationResponse,
   AdminDeleteStationResponse,
@@ -241,6 +243,25 @@ export class StationsServiceLambda implements StationsService {
       portsCount: station.portsCount,
       occupiedPorts: station.occupiedPorts ?? 0,
     };
+  }
+
+  async updateStation(
+    stationId: string,
+    patch: AdminUpdateStationRequest,
+    callerId: string
+  ): Promise<AdminUpdateStationResponse> {
+    logger.debug('Invoking stations write lambda: updateStation', { stationId, callerId, patchKeys: Object.keys(patch) });
+
+    const payload: Record<string, unknown> = { stationId, ...patch };
+    // Lambda expects snake-ish numeric location fields, not nested `location`.
+    const result = await LAMBDA_INVOKER.invokeJson<{ data: { station_id?: string } } | LambdaErrorResponse>(
+      env.stationsLambdaWriteFunctionName,
+      wrapLambdaRequest('updateStation', callerId, payload)
+    );
+    if (isLambdaErrorPayload(result)) {
+      throwFromStationsLambdaError(result);
+    }
+    return { stationId: result.data?.station_id ?? stationId };
   }
 
   async addPorts(stationId: string, payload: AddPortsRequest, callerId: string): Promise<ApiPort[]> {

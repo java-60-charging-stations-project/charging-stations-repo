@@ -221,8 +221,10 @@ export interface LambdaPortDynamoRow {
   station_id: string;
   /** Sort key, напр. `PORT#<code>` */
   entity_key: string | null;
-  /** Код порта на станции (уникален в рамках станции в модели) */
-  code: string;
+  /**
+   * Код порта на станции (уникален в рамках станции в модели).
+   */
+  code?: string;
   port_id?: string;
   state: LambdaPortState;
   last_meter_kw: number | null;
