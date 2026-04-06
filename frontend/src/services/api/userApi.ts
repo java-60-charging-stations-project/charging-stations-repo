@@ -22,7 +22,7 @@ export async function fetchStations(
   return apiClient.get<ApiArrayResponse<StationBase>>("/user/stations", {
     params: { ...params, ...USER_REQUIRED_PARAMS},
   });
-}
+};
 
 export async function fetchStationById(stationId: string): Promise<StationBase> {
   const response = await apiClient.get<ApiResponse<StationBase>>(
@@ -30,7 +30,7 @@ export async function fetchStationById(stationId: string): Promise<StationBase> 
   );
 
   return response.data;
-}
+};
 
 export async function fetchStationPorts(stationId: string): Promise<StationPort[]> {
   const response = await apiClient.get<ApiResponse<StationPortsListResponse>>(
@@ -38,7 +38,7 @@ export async function fetchStationPorts(stationId: string): Promise<StationPort[
   );
 
   return response.data.ports;
-}
+};
 
 export async function fetchUserSessions(): Promise<Session[]> {
   const response = await apiClient.get<ApiResponse<UserSessionsResponse>>(
@@ -46,7 +46,7 @@ export async function fetchUserSessions(): Promise<Session[]> {
   );
 
   return response.data.sessions;
-}
+};
 
 export async function createBooking(
   payload: UserSessionPortUpdateRequest,
@@ -57,7 +57,7 @@ export async function createBooking(
   );
 
   return response.data;
-}
+};
 
 export async function startChargingSession(
   payload: UserSessionPortUpdateRequest,
@@ -68,4 +68,26 @@ export async function startChargingSession(
   );
 
   return response.data;
-}
+};
+
+export async function cancelBooking(
+  payload: UserSessionPortUpdateRequest
+): Promise<UserSessionPortUpdateResponse> {
+  const response = await apiClient.post<ApiResponse<UserSessionPortUpdateResponse>>(
+    "/sessions/user/booking/stop",
+    payload,
+  );
+
+  return response.data;
+};
+
+export async function stopCharging(
+  payload: UserSessionPortUpdateRequest
+): Promise<UserSessionPortUpdateResponse> {
+  const response = await apiClient.post<ApiResponse<UserSessionPortUpdateResponse>>(
+    "/sessions/user/charging/stop",
+    payload,
+  );
+
+  return response.data;
+};

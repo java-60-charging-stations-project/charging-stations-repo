@@ -29,4 +29,5 @@ export type UserSessionPortUpdateResponse = {
     updatedAt: string;
     timeBookedAt?: string;
     timeBookedBefore?: string;
+    sessionId?: string;
 };
