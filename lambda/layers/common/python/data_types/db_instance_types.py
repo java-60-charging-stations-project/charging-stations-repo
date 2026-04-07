@@ -54,20 +54,25 @@ class RequestParameters(TypedDict):
     page_size: Optional[int]
 
 class PortSessionInstance(TypedDict):
+    user_id: str
     station_id: str
     entity_key: str
     session_id: str
-    state: Literal["BOOKED", "ACTIVE", "COMPLETED", "FAILED", "UNPAID", "PAID"]
+    state: Literal["BOOKED", "ACTIVE", "FAILED", "UNPAID", "PAID"]
     energy_consumed_kwh: float | Decimal
     tariff: float | Decimal
     current_cost: float | Decimal
+    final_cost: float | Decimal
     estimated_minutes_remaining: int | None
     duration_minutes: int | None
     booking_duration_minutes: int | None
     charge_level_percent: int | None
     created_at: str
     updated_at: str | None
-    booked_at: str | None
+    time_booked_at: str | None
+    time_booked_before: str | None
     started_at: str | None
+    stopped_at: str | None
     ended_at: str | None
     last_event_id: str | None
+    paid_at: str | None

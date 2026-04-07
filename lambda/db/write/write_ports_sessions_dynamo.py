@@ -408,6 +408,53 @@ def get_tariff(station_id: str) -> Decimal:
     tariff = str((response_json.get("data", {}).get("rate_plan", {}).get("offPeakRate", 0.0)))
     return tariff
 
+def pay_session(session_data: dict) -> dict:
+    try:
+        client = get_dynamo_client()
+    except Exception as e:
+        logger.error(f"error getting dynamo client for pay session: {e}")
+        raise LambdaResponseError({"error": f"error getting dynamo client for pay session: {e}", "code": "DATABASE_ERROR"})
+    user_id = session_data["user_id"]
+    entity_key = session_data["entity_key"]
+    transact_items: list[dict] = []
+    now = datetime.now(timezone.utc).isoformat()
+    transact_items.append({
+        "Delete": {"TableName": STATIONS_DYNAMO_TABLE,
+        "Key": {"station_id": {"S": str(user_id)}, "entity_key": {"S": "SESSION_LOCK"}},
+        "ConditionExpression": "attribute_exists(station_id)"}})
+    transact_items.append({
+        "Update": {"TableName": STATIONS_DYNAMO_TABLE,
+        "Key": {"station_id": {"S": str(session_data["station_id"])}, "entity_key": {"S": entity_key}},
+        "UpdateExpression": "SET #st = :paid, updated_at = :ts, paid_at = :ts, last_event_id = :last_event_id",
+        "ConditionExpression": """attribute_exists(station_id) AND attribute_exists(entity_key) AND attribute_not_exists(paid_at) 
+        AND (attribute_not_exists(last_event_id) OR last_event_id <> :last_event_id)""",
+        "ExpressionAttributeNames": {"#st": "state"},
+        "ExpressionAttributeValues": {":paid": {"S": "PAID"}, ":ts": {"S": now}, ":last_event_id": {"S": session_data["event_id"]}}},
+    })
+    try:
+        client.transact_write_items(TransactItems=transact_items)
+        session_id = entity_key.split("#")[-1]
+        response = {
+            "user_id": user_id,
+            "session_id": session_id,
+            "paid_at": now,
+        }
+        logger.info(f"session paid successfully: {response}")
+        return response
+    except ClientError as e:
+        err_code = e.response.get("Error", {}).get("Code", "")
+        if err_code == "ConditionalCheckFailedException":
+            logger.error(f"session not found or old state does not match: {e}")
+            raise LambdaResponseError({"error": f"session not found or old state does not match: {e}", 
+            "code": "INVALID_REQUEST"})
+        logger.error(f"error updating station ports: {e}")
+        raise LambdaResponseError({"error": f"error updating station ports: {e}", "code": "DATABASE_ERROR"})
+    except LambdaResponseError:
+        raise
+    except Exception as e:
+        logger.error(f"error updating station ports: {e}")
+        raise LambdaResponseError({"error": f"error updating station ports: {e}", "code": "UNHANDLED_ERROR"})
+
 def build_session_object(session_data: dict) -> dict:
     try:
         session_id = str(uuid.uuid4())
@@ -435,6 +482,8 @@ def build_session_object(session_data: dict) -> dict:
             "started_at": timestamp if not port_booked else None,
             "stopped_at": None,
             "ended_at": None,
+            "last_event_id": None,
+            "paid_at": None,
         }
         logger.info(f"Session object built successfully: {session_object}")
         return session_object
@@ -490,6 +539,14 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                 deleted_port = delete_station_ports(station_id, port_key)
                 log_audit("INFO", message="station ports deleted successfully", status="SUCCESS", **audit_base)
                 return SuccessResponsePayload(data=deleted_port, meta={})
+            case "pay_session":
+                paid_sessions: list[dict] = []
+                for session_data in event["data"]:
+                    paid_session = pay_session(session_data)
+                    paid_sessions.append(paid_session)
+                    log_audit("INFO", message="session paid successfully", status="SUCCESS", **audit_base)
+                log_audit("INFO", message="all sessions paid successfully", status="SUCCESS", **audit_base)
+                return SuccessResponsePayload(data={"paid_sessions": paid_sessions}, meta={})
             case _:
                 log_audit("ERROR", message=f"invalid action {action}", status="ERROR", errorMessage=f"invalid action {action}", **audit_base)
                 return ErrorResponsePayload(error=f"invalid action {action}", code="INVALID_REQUEST")
