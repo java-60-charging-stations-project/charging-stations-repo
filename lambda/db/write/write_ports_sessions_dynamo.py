@@ -416,6 +416,7 @@ def pay_session(session_data: dict) -> dict:
         raise LambdaResponseError({"error": f"error getting dynamo client for pay session: {e}", "code": "DATABASE_ERROR"})
     user_id = session_data["user_id"]
     entity_key = session_data["entity_key"]
+    event_id = session_data["event_id"]
     transact_items: list[dict] = []
     now = datetime.now(timezone.utc).isoformat()
     transact_items.append({
@@ -426,10 +427,10 @@ def pay_session(session_data: dict) -> dict:
         "Update": {"TableName": STATIONS_DYNAMO_TABLE,
         "Key": {"station_id": {"S": str(session_data["station_id"])}, "entity_key": {"S": entity_key}},
         "UpdateExpression": "SET #st = :paid, updated_at = :ts, paid_at = :ts, last_event_id = :last_event_id",
-        "ConditionExpression": """attribute_exists(station_id) AND attribute_exists(entity_key) AND attribute_not_exists(paid_at) 
-        AND (attribute_not_exists(last_event_id) OR last_event_id <> :last_event_id)""",
+        "ConditionExpression": """attribute_exists(station_id) AND attribute_exists(entity_key) AND attribute_type(paid_at, :type_null) 
+        AND (attribute_type(last_event_id, :type_null) OR last_event_id <> :last_event_id)""",
         "ExpressionAttributeNames": {"#st": "state"},
-        "ExpressionAttributeValues": {":paid": {"S": "PAID"}, ":ts": {"S": now}, ":last_event_id": {"S": session_data["event_id"]}}},
+        "ExpressionAttributeValues": {":paid": {"S": "PAID"}, ":ts": {"S": now}, ":last_event_id": {"S": event_id}, ":type_null": {"S": "NULL"}}},
     })
     try:
         client.transact_write_items(TransactItems=transact_items)

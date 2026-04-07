@@ -760,7 +760,10 @@ Resources:
             - Effect: Allow
               Action:
                 - lambda:InvokeFunction
-              Resource: !GetAtt WriteStationRDSFunction.Arn
+              Resource: 
+                - !GetAtt WriteStationRDSFunction.Arn
+                - !GetAtt WriteStationPortsFunction.Arn
+              
       Description: Consumes DynamoDB stream records from station entities table
       VpcConfig:
         SecurityGroupIds:

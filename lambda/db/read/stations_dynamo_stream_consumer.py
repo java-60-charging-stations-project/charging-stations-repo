@@ -28,7 +28,7 @@ def _is_port_entity(image: dict[str, Any] | None) -> bool:
 def _is_session_entity(image: dict[str, Any] | None) -> bool:
     res: bool = False
     if image and (entity_key := image.get("entity_key")):
-        res = len(entity_key.split("#")) == 3
+        res = len(entity_key.split("#")) == 4
     return res
 
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
