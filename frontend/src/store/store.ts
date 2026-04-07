@@ -1,4 +1,4 @@
-import { configureStore } from "@reduxjs/toolkit";
+import { configureStore, type Action, type ThunkAction } from "@reduxjs/toolkit";
 import authReducer from "./authSlice";
 import { restoreSession } from "./authSlice";
 import { tokenStorage } from "@/services/tokenStorage";
@@ -16,3 +16,4 @@ if (tokenStorage.getRefreshToken()) {
 export type AppStore = typeof store;
 export type RootState = ReturnType<AppStore['getState']>;
 export type AppDispatch = AppStore['dispatch'];
+export type AppThunk<ThunkReturnType = void> = ThunkAction<ThunkReturnType, RootState, unknown, Action>;
