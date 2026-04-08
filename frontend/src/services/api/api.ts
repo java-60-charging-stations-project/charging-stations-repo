@@ -188,6 +188,23 @@ class ApiClient {
         logger.debug(`DELETE response data: `, data);
         return data;
     }
+
+    async request<T = unknown>(config: AxiosRequestConfig): Promise<T> {
+        logger.debug("REQUEST", {
+            url: config.url,
+            method: config.method,
+            params: config.params,
+            data: config.data,
+        });
+
+        const response = await this.client.request<T>(config);
+
+        const { status, data } = response;
+
+        logger.debug("RESPONSE", { status, data });
+
+        return data;
+    }
 }
 
 export const apiClient: ApiClient = new ApiClient(
