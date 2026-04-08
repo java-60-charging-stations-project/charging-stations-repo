@@ -224,12 +224,17 @@ export class StationsServiceLocal implements StationsService {
     if (patch.siteTechnician !== undefined) station.siteTechnician = patch.siteTechnician;
     if (patch.maxPowerKw !== undefined) station.maxPowerKw = patch.maxPowerKw;
 
-    if (patch.longitude !== undefined || patch.latitude !== undefined) {
-      const prev = station.location ?? { latitude: 0, longitude: 0 };
-      station.location = {
-        latitude: patch.latitude ?? prev.latitude,
-        longitude: patch.longitude ?? prev.longitude,
-      };
+    const nextLocation = patch.location
+      ? patch.location
+      : (patch.longitude !== undefined || patch.latitude !== undefined)
+        ? {
+            latitude: patch.latitude ?? (station.location?.latitude ?? 0),
+            longitude: patch.longitude ?? (station.location?.longitude ?? 0),
+          }
+        : undefined;
+
+    if (nextLocation) {
+      station.location = nextLocation;
     }
 
     station.updatedAt = new Date().toISOString();

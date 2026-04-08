@@ -512,6 +512,66 @@ paths:
           $ref: '#/components/responses/ErrorResponse'
         '503':
           $ref: '#/components/responses/ServiceUnavailableResponse'
+    patch:
+      operationId: updateAdminStation
+      summary: Update charging station fields as admin
+      description: |
+        Partially updates a station. `stationId` is taken from the path; all request body fields are optional.
+        This endpoint invokes the write Lambda action `updateStation`.
+      security:
+        - bearerAuth: []
+      x-roles: [ADMIN]
+      parameters:
+        - name: stationId
+          in: path
+          required: true
+          description: Station identifier
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminUpdateStationRequest'
+            example:
+              name: UHub
+              owner: ElecoNSLtd.
+              city: Tel Aviv
+              address: 99 Ibn Gabirol St
+              ratePlan:
+                currencyCode: ILS
+                currencyName: Israeli Shekel
+                peakRate: 2.55
+                offPeakRate: 1.55
+              email: test@google.com
+              phone: "0501234567"
+              siteTechnician: Tioch 42
+              maxPowerKw: 110
+              location:
+                longitude: 39.7821
+                latitude: 38.085
+      responses:
+        '200':
+          description: Station updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateStationGatewayResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestResponse'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          $ref: '#/components/responses/ErrorResponse'
+        '409':
+          $ref: '#/components/responses/ConflictResponse'
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
     delete:
       operationId: deleteAdminStation
       summary: Delete charging station as admin
@@ -610,6 +670,146 @@ paths:
           $ref: '#/components/responses/UnauthenticatedResponse'
         '403':
           $ref: '#/components/responses/ForbiddenResponse'
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
+
+  /sessions/user:
+    get:
+      operationId: listUserSessions
+      summary: List current user's sessions (Dynamo)
+      description: |
+        Returns sessions for the authenticated user via DynamoDB-backed Lambda (`getSessionByUser`).
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User sessions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSessionsApiResponse'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedResponse'
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
+
+  /sessions/user/booking:
+    post:
+      operationId: createUserBookingOnPort
+      summary: Book a station port (user)
+      description: |
+        Books a port for the authenticated user by invoking `userUpdateStationPorts` (`newState=BOOKED`).
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserSessionPortUpdateRequest'
+      responses:
+        '200':
+          description: Port booked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSessionPortUpdateApiResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestResponse'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedResponse'
+        '409':
+          $ref: '#/components/responses/ConflictResponse'
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
+
+  /sessions/user/booking/stop:
+    post:
+      operationId: stopUserBookingOnPort
+      summary: Cancel booking (user)
+      description: |
+        Cancels an existing booking by invoking `userUpdateStationPorts` (`newState=FREE`).
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserSessionPortUpdateRequest'
+      responses:
+        '200':
+          description: Booking cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSessionPortUpdateApiResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestResponse'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedResponse'
+        '409':
+          $ref: '#/components/responses/ConflictResponse'
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
+
+  /sessions/user/charging:
+    post:
+      operationId: startUserChargingOnPort
+      summary: Start charging on port (user)
+      description: |
+        Starts charging by invoking `userUpdateStationPorts` (`newState=OCCUPIED`).
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserSessionPortUpdateRequest'
+      responses:
+        '200':
+          description: Charging started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSessionPortUpdateApiResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestResponse'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedResponse'
+        '409':
+          $ref: '#/components/responses/ConflictResponse'
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
+
+  /sessions/user/charging/stop:
+    post:
+      operationId: stopUserChargingOnPort
+      summary: Stop charging on port (user)
+      description: |
+        Stops charging by invoking `userUpdateStationPorts` (`newState=FREE`).
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserSessionPortUpdateRequest'
+      responses:
+        '200':
+          description: Charging stopped
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSessionPortUpdateApiResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestResponse'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedResponse'
+        '409':
+          $ref: '#/components/responses/ConflictResponse'
         '500':
           $ref: '#/components/responses/ErrorResponse'
 
@@ -2153,6 +2353,183 @@ components:
           type: string
           format: date-time
           description: Last known updatedAt value for optimistic concurrency control
+
+    AdminUpdateStationRequest:
+      type: object
+      description: Partial update body for `PATCH /admin/stations/{stationId}`.
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+        owner:
+          type: string
+        city:
+          type: string
+        address:
+          type: string
+        ratePlan:
+          $ref: '#/components/schemas/RatePlan'
+        email:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        siteTechnician:
+          type: string
+          nullable: true
+        maxPowerKw:
+          type: number
+          format: float
+          nullable: true
+        location:
+          $ref: '#/components/schemas/Location'
+
+    UpdateStationGatewayResponse:
+      type: object
+      description: Gateway JSON for `PATCH /admin/stations/{stationId}`.
+      required: [code, data]
+      properties:
+        code:
+          type: integer
+          example: 200
+        data:
+          type: object
+          required: [stationId]
+          properties:
+            stationId:
+              type: string
+
+    UserSessionState:
+      type: string
+      enum: [BOOKED, ACTIVE, UNPAID]
+
+    UserSessionPortState:
+      type: string
+      enum: [FREE, BOOKED, OCCUPIED, ERROR, DISABLED]
+
+    UserSession:
+      type: object
+      required: [sessionId, stationId, entityKey, portCode, state, userId, createdAt, updatedAt]
+      properties:
+        sessionId:
+          type: string
+        stationId:
+          type: string
+        entityKey:
+          type: string
+        portCode:
+          type: string
+        state:
+          $ref: '#/components/schemas/UserSessionState'
+        userId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        timeBookedAt:
+          type: string
+          format: date-time
+          nullable: true
+        timeBookedBefore:
+          type: string
+          format: date-time
+          nullable: true
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+        stoppedAt:
+          type: string
+          format: date-time
+          nullable: true
+        endedAt:
+          type: string
+          format: date-time
+          nullable: true
+        tariff:
+          oneOf:
+            - type: number
+            - type: string
+          nullable: true
+        currentCost:
+          oneOf:
+            - type: number
+            - type: string
+          nullable: true
+        energyConsumedKwh:
+          oneOf:
+            - type: number
+            - type: string
+          nullable: true
+        estimatedMinutesRemaining:
+          type: integer
+          nullable: true
+        durationMinutes:
+          type: integer
+          nullable: true
+        bookingDurationMinutes:
+          type: integer
+          nullable: true
+        chargeLevelPercent:
+          type: integer
+          nullable: true
+
+    UserSessionsApiResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [sessions]
+          properties:
+            sessions:
+              type: array
+              items:
+                $ref: '#/components/schemas/UserSession'
+
+    UserSessionPortUpdateRequest:
+      type: object
+      required: [stationId, portCode, oldState]
+      properties:
+        stationId:
+          type: string
+        portCode:
+          type: string
+        oldState:
+          $ref: '#/components/schemas/UserSessionPortState'
+
+    UserSessionPortUpdateResponse:
+      type: object
+      required: [stationId, portCode, newState, updatedAt]
+      properties:
+        stationId:
+          type: string
+        portCode:
+          type: string
+        newState:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+        timeBookedAt:
+          type: string
+          format: date-time
+        timeBookedBefore:
+          type: string
+          format: date-time
+        sessionId:
+          type: string
+
+    UserSessionPortUpdateApiResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/UserSessionPortUpdateResponse'
 
     Session:
       type: object
