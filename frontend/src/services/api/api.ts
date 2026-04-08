@@ -189,7 +189,10 @@ class ApiClient {
         return data;
     }
 
-    async request<T = unknown>(config: AxiosRequestConfig): Promise<T> {
+    async request<T = unknown>(
+        config: AxiosRequestConfig,
+        signal?: AbortSignal
+    ): Promise<T> {
         logger.debug("REQUEST", {
             url: config.url,
             method: config.method,
@@ -197,7 +200,10 @@ class ApiClient {
             data: config.data,
         });
 
-        const response = await this.client.request<T>(config);
+        const response = await this.client.request<T>({
+            ...config,
+            signal,
+        });
 
         const { status, data } = response;
 
