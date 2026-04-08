@@ -75,6 +75,7 @@ const updateStationSchema = z
     maxPowerKw: z.number().nullable().optional(),
     longitude: z.number().nullable().optional(),
     latitude: z.number().nullable().optional(),
+    location: locationSchema.optional(),
   })
   .strict();
 function canChangeStatus(

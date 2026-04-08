@@ -296,6 +296,7 @@ export interface AdminUpdateStationRequest {
   maxPowerKw?: number | null;
   longitude?: number | null;
   latitude?: number | null;
+  location?: Location;
 }
 
 export interface AdminUpdateStationResponse {

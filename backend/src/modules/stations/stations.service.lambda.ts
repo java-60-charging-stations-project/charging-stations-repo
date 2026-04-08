@@ -252,8 +252,21 @@ export class StationsServiceLambda implements StationsService {
   ): Promise<AdminUpdateStationResponse> {
     logger.debug('Invoking stations write lambda: updateStation', { stationId, callerId, patchKeys: Object.keys(patch) });
 
-    const payload: Record<string, unknown> = { stationId, ...patch };
-    // Lambda expects snake-ish numeric location fields, not nested `location`.
+    // Lambda expects `location: { longitude, latitude }` (see `write_station_rds.py`).
+    const payload: Record<string, unknown> = { stationId, ...patch }
+    const locationFromFlat =
+      patch.longitude == null && patch.latitude == null
+        ? undefined
+        : {
+            longitude: patch.longitude ?? undefined,
+            latitude: patch.latitude ?? undefined,
+          };
+    const location = patch.location ?? locationFromFlat;
+    if (location) {
+      payload.location = location;
+    }
+    delete payload.longitude;
+    delete payload.latitude;
     const result = await LAMBDA_INVOKER.invokeJson<{ data: { station_id?: string } } | LambdaErrorResponse>(
       env.stationsLambdaWriteFunctionName,
       wrapLambdaRequest('updateStation', callerId, payload)

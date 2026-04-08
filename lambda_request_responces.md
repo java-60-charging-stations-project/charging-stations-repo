@@ -637,6 +637,55 @@ Response (success):
 
 ---
 
+### `pay_session` (internal)
+
+Lambda: `charging-stations-write-station-ports-dynamo`  
+Action: `pay_session`
+
+Used internally by the DynamoDB stream consumer when a session transitions to `UNPAID`.  
+Input `data` is an array of operations (batch-friendly).
+
+Internal request:
+
+```json
+{
+  "service": { "action": "pay_session", "callerId": "DynamoDB Stream Consumer" },
+  "data": [
+    {
+      "event_id": "dynamodb-stream-event-id",
+      "station_id": "station-uuid",
+      "entity_key": "PORT#A1#SESSION#session-uuid",
+      "operation": "SESSION_UNPAID",
+      "user_id": "user-uuid"
+    }
+  ]
+}
+```
+
+Response (success):
+
+```json
+{
+  "data": {
+    "paid_sessions": [
+      {
+        "user_id": "user-uuid",
+        "session_id": "session-uuid",
+        "paid_at": "ISO timestamp"
+      }
+    ]
+  },
+  "meta": {}
+}
+```
+
+Implementation notes:
+
+- Requires an existing user lock row (`station_id = <user_id>`, `entity_key = "SESSION_LOCK"`); payment is rejected if lock is missing.
+- Uses conditional update/idempotency guards on `paid_at` and `last_event_id` to prevent duplicate payment state updates from stream retries.
+
+---
+
 ## Read
 
 ### `get_has_free_ports_by_station`  
@@ -770,6 +819,7 @@ Implementation notes:
 Triggered by the **DynamoDB stream** on the station entities table (after insert/update/remove).
 
 **Port detection:** `entity_key` split by `#` has **exactly two** segments (`PORT#<code>`) — excludes session and lock rows.
+**Session detection:** `entity_key` split by `#` has **exactly four** segments (`PORT#<code>#SESSION#<session_id>`).
 
 ### `INSERT` / `REMOVE` (port rows)
 
@@ -779,7 +829,7 @@ Internal payload:
 
 ```json
 {
-  "service": { "action": "update_station_ports", "callerId": "script" },
+  "service": { "action": "update_station_ports", "callerId": "DynamoDB Stream Consumer" },
   "data": [
     {
       "event_id": "dynamodb-stream-event-id",
@@ -802,7 +852,7 @@ Internal payload:
 
 ```json
 {
-  "service": { "action": "update_station_ports_state", "callerId": "script" },
+  "service": { "action": "update_station_ports_state", "callerId": "DynamoDB Stream Consumer" },
   "data": [
     {
       "event_id": "dynamodb-stream-event-id",
@@ -814,7 +864,28 @@ Internal payload:
 }
 ```
 
-Both forward paths use **`lambda:InvokeFunction`** with **`InvocationType: Event`** (asynchronous). Failures are surfaced via CloudWatch on the **target** write Lambda, not as a synchronous error to the stream consumer.
+### `MODIFY` (session rows — transition to `UNPAID`)
+
+When a session row changes from `BOOKED`/`ACTIVE` to `UNPAID`, the consumer forwards to the write-dynamo lambda action `pay_session`.
+
+Internal payload:
+
+```json
+{
+  "service": { "action": "pay_session", "callerId": "DynamoDB Stream Consumer" },
+  "data": [
+    {
+      "event_id": "dynamodb-stream-event-id",
+      "station_id": "station-uuid",
+      "entity_key": "PORT#A1#SESSION#session-uuid",
+      "operation": "SESSION_UNPAID",
+      "user_id": "user-uuid"
+    }
+  ]
+}
+```
+
+All forward paths use **`lambda:InvokeFunction`** with **`InvocationType: Event`** (asynchronous). Failures are surfaced via CloudWatch on the **target** write Lambda, not as a synchronous error to the stream consumer.
 
 ---
 
