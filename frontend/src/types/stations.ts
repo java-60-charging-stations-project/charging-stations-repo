@@ -80,6 +80,23 @@ export type AdminCreateStationResponse = {
     stationId: string;
 };
 
+export type AdminUpdateStationRequest = {
+    name?: string;
+    owner?: string;
+    city?: string;
+    address?: string;
+    ratePlan?: RatePlan;
+    email?: string | null;
+    phone?: string | null;
+    siteTechnician?: string | null;
+    maxPowerKw?: number | null;
+    location?: GeoLocation;
+};
+
+export type AdminUpdateStationResponse = {
+    stationId: string;
+};
+
 export type ChangeStationStateRequest = {
     oldState: StationState;
     newState: StationState;
