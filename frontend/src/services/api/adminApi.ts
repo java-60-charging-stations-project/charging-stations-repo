@@ -10,8 +10,6 @@ import type {
     ChangeStationStateRequest,
     AdminCreateStationRequest,
     AdminCreateStationResponse,
-    AdminUpdateStationRequest,
-    AdminUpdateStationResponse,
     ChangeStationStateResponse,
     StationBase,
     StationsListParams,
@@ -90,14 +88,6 @@ export async function createStation(stationCreateRequest: AdminCreateStationRequ
     const response = await apiClient.post<ApiResponse<AdminCreateStationResponse>>(
         '/admin/stations',
         stationCreateRequest,
-    );
-    return response.data;
-};
-
-export async function updateStation(stationId: string, stationUpdateRequest: AdminUpdateStationRequest): Promise<AdminUpdateStationResponse> {
-    const response = await apiClient.patch<ApiResponse<AdminUpdateStationResponse>>(
-        `/admin/stations/${stationId}`,
-        stationUpdateRequest,
     );
     return response.data;
 };
