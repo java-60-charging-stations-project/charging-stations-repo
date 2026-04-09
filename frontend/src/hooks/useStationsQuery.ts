@@ -5,9 +5,22 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
 
 
+const DEFAULT_POLLING_INTERVAL = 30_000;
+const configPollingInterval = Number(config.pollingIntervalMs) || DEFAULT_POLLING_INTERVAL;
+
+type StationsQueryOptions = {
+    isPollingEnabled?: boolean;
+    pollingInterval?: number;
+};
+
 export function useStationsQuery(
-    fetchMethod: (params: StationsListParams) => Promise<ApiArrayResponse<StationBase>>
+    fetchMethod: (params: StationsListParams) => Promise<ApiArrayResponse<StationBase>>,
+    options?: StationsQueryOptions,
 ) {
+    const {
+        isPollingEnabled = true,
+        pollingInterval = configPollingInterval,
+    } = options ?? {};
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<Error | null>(null);
     const [stations, setStations] = useState<StationBase[]>([]);
@@ -48,6 +61,12 @@ export function useStationsQuery(
         fetchStations();
         return () => { isCancelled = true; };
     }, [city, owner, state, orderBy, page, pageSize, refreshToken, fetchMethod]);
+
+    useEffect(() => {
+        if (!isPollingEnabled) return;
+        const intervalId = setInterval(() => setRefreshToken((c) => c + 1), pollingInterval);
+        return () => clearInterval(intervalId);
+    }, [isPollingEnabled, pollingInterval]);
 
     const setPage = (page: number) => {
         setSearchParams((prev) => {
