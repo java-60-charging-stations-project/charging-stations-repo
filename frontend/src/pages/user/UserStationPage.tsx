@@ -1,235 +1,218 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
-import NavButton from "@/components/NavButton";
+import { Link, useNavigate, useParams } from "react-router";
+import {
+  useGetSessionsQuery,
+  useStartBookingMutation,
+  useStartChargingMutation,
+} from "@/store/apiSlice";
+import { fetchStationById, fetchStationPorts } from "@/services/api/userApi";
+import type { StationBase, StationPort } from "@/types/stations";
+import EasySpinner from "@/components/EasySpinner";
 import Modal from "@/components/Modal";
 import SimpleButton from "@/components/SimpleButton";
-import {
-  createBooking,
-  fetchStationById,
-  fetchStationPorts,
-  startChargingSession,
-} from "@/services/api/userApi";
-import type { StationBase, StationPort } from "@/types/stations";
 
 const UserStationPage = () => {
   const { stationId } = useParams<{ stationId: string }>();
+  const navigate = useNavigate();
+
   const [station, setStation] = useState<StationBase | null>(null);
   const [ports, setPorts] = useState<StationPort[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isBooking, setIsBooking] = useState<boolean>(false);
-  const [bookingMessage, setBookingMessage] = useState<string | null>(null);
-  const [bookingError, setBookingError] = useState<string | null>(null);
-  const [isPreparingCharging, setIsPreparingCharging] = useState<boolean>(false);
-  const [isStartingCharging, setIsStartingCharging] = useState<boolean>(false);
-  const [chargingMessage, setChargingMessage] = useState<string | null>(null);
-  const [chargingError, setChargingError] = useState<string | null>(null);
-  const [chargeModalOpen, setChargeModalOpen] = useState<boolean>(false);
-  const [availableFreePorts, setAvailableFreePorts] = useState<StationPort[]>([]);
-  const [selectedPortCode, setSelectedPortCode] = useState<string>("");
+  const [isLoadingPorts, setIsLoadingPorts] = useState(true);
+  const [portsError, setPortsError] = useState<string | null>(null);
 
-  const loadStation = useCallback(async () => {
-    if (!stationId) {
-      setStation(null);
-      return;
-    }
+  const [chargeModalOpen, setChargeModalOpen] = useState(false);
+  const [selectedPortCode, setSelectedPortCode] = useState("");
 
-    try {
-      const nextStation = await fetchStationById(stationId);
-      setStation(nextStation);
-    } catch {
-      setStation(null);
-    }
+  const { data: sessionsData } = useGetSessionsQuery(undefined, {
+    pollingInterval: 5000,
+    skipPollingIfUnfocused: true,
+    refetchOnReconnect: true,
+  });
+
+  const [startBooking, { isLoading: isBooking, error: bookingError }] =
+    useStartBookingMutation();
+  const [startCharging, { isLoading: isCharging, error: chargingError }] =
+    useStartChargingMutation();
+
+  const existingSessionLabel = useMemo(() => {
+    const s = sessionsData?.sessions.find(
+      (s) =>
+        s.state === "BOOKED" || s.state === "ACTIVE" || s.state === "UNPAID",
+    );
+    if (!s) return null;
+    const labels: Record<string, string> = {
+      BOOKED: "booked",
+      ACTIVE: "active",
+      UNPAID: "unpaid",
+    };
+    return labels[s.state] ?? s.state.toLowerCase();
+  }, [sessionsData]);
+
+  const hasExistingSession = existingSessionLabel !== null;
+
+  const freePorts = useMemo(
+    () => ports.filter((p) => p.status === "FREE"),
+    [ports],
+  );
+
+  useEffect(() => {
+    if (!stationId) return;
+    void fetchStationById(stationId)
+      .then(setStation)
+      .catch(() => setStation(null));
   }, [stationId]);
 
-  const loadPorts = useCallback(async (): Promise<StationPort[]> => {
+  const loadPorts = useCallback(async () => {
     if (!stationId) {
-      const missingStationError = "Missing station id.";
-      setError(missingStationError);
-      setIsLoading(false);
-      throw new Error(missingStationError);
+      setPortsError("Missing station id.");
+      setIsLoadingPorts(false);
+      return [];
     }
-
-    setIsLoading(true);
-    setError(null);
-
+    setIsLoadingPorts(true);
+    setPortsError(null);
     try {
       const nextPorts = await fetchStationPorts(stationId);
       setPorts(nextPorts);
       return nextPorts;
     } catch (err) {
-      const message =
+      const msg =
         err instanceof Error ? err.message : "Failed to load station ports";
-      setError(message);
-      throw new Error(message);
+      setPortsError(msg);
+      return [];
     } finally {
-      setIsLoading(false);
+      setIsLoadingPorts(false);
     }
   }, [stationId]);
 
   useEffect(() => {
-    void loadStation();
-  }, [loadStation]);
-
-  useEffect(() => {
-    void loadPorts().catch(() => undefined);
+    void loadPorts();
   }, [loadPorts]);
 
-  const freePortsCount = useMemo(
-    () => ports.filter((port) => port.status === "FREE").length,
-    [ports],
-  );
+  const handleBook = async () => {
+    if (!stationId || hasExistingSession) return;
 
-  const handleBook = useCallback(async () => {
-    if (!stationId) {
-      setBookingError("Missing station id.");
-      setBookingMessage(null);
+    const latestPorts = await loadPorts();
+    const freePort = latestPorts.find((p) => p.status === "FREE");
+    if (!freePort) {
+      setPortsError("No free ports available right now.");
       return;
     }
 
-    setIsBooking(true);
-    setBookingMessage(null);
-    setBookingError(null);
-
     try {
-      const latestPorts = await loadPorts();
-      const freePort = latestPorts.find((port) => port.status === "FREE");
-
-      if (!freePort) {
-        setBookingError("No free ports available right now.");
-        return;
-      }
-
-      const response = await createBooking({
+      await startBooking({
         stationId,
         portCode: freePort.portCode,
         oldState: "FREE",
-      });
-
-      setBookingMessage(
-        `You have successfully booked port N ${response.portCode}.`,
-      );
-      await loadPorts();
-    } catch (err) {
-      setBookingError(
-        err instanceof Error ? err.message : "Failed to book a port",
-      );
-    } finally {
-      setIsBooking(false);
+      }).unwrap();
+      navigate("/user/session");
+    } catch {
+      /* error exposed via bookingError */
     }
-  }, [loadPorts, stationId]);
+  };
 
-  const handleInitiateCharging = useCallback(async () => {
-    setIsPreparingCharging(true);
-    setChargingMessage(null);
-    setChargingError(null);
+  const handleInitiateCharging = async () => {
+    if (!stationId || hasExistingSession) return;
     setSelectedPortCode("");
 
-    try {
-      const latestPorts = await loadPorts();
-      const freePorts = latestPorts.filter((port) => port.status === "FREE");
-
-      if (freePorts.length === 0) {
-        setAvailableFreePorts([]);
-        setChargingError("There is no free ports right now");
-        return;
-      }
-
-      setAvailableFreePorts(freePorts);
-      setChargeModalOpen(true);
-    } catch (err) {
-      setAvailableFreePorts([]);
-      setChargingError(
-        err instanceof Error ? err.message : "Failed to load station ports",
-      );
-    } finally {
-      setIsPreparingCharging(false);
-    }
-  }, [loadPorts]);
-
-  const handleCharge = useCallback(async () => {
-    if (!stationId || !selectedPortCode) {
+    const latestPorts = await loadPorts();
+    const free = latestPorts.filter((p) => p.status === "FREE");
+    if (free.length === 0) {
+      setPortsError("No free ports available right now.");
       return;
     }
+    setChargeModalOpen(true);
+  };
 
+  const handleStartCharging = async () => {
+    if (!stationId || !selectedPortCode || hasExistingSession) return;
     setChargeModalOpen(false);
-    setIsStartingCharging(true);
-    setChargingMessage(null);
-    setChargingError(null);
 
     try {
-      await startChargingSession({
+      await startCharging({
         stationId,
         portCode: selectedPortCode,
         oldState: "FREE",
-      });
-      setChargingMessage("Your charging session is started");
-      await loadPorts();
-    } catch (err) {
-      setChargingError(
-        err instanceof Error ? err.message : "Failed to start charging session",
-      );
-    } finally {
-      setIsStartingCharging(false);
+      }).unwrap();
+      navigate("/user/session");
+    } catch {
+      /* error exposed via chargingError */
     }
-  }, [loadPorts, selectedPortCode, stationId]);
+  };
+
+  const mutationErrorMsg =
+    (bookingError as { message?: string } | undefined)?.message ??
+    (chargingError as { message?: string } | undefined)?.message ??
+    null;
 
   return (
-    <div className="mx-auto mt-5 max-w-md space-y-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-      <div>
-        <NavButton to="/user/stations" caption="← Back to stations" />
-      </div>
+    <div className="space-y-6">
+      <Link
+        to="/user/stations"
+        className="inline-block text-sm text-blue-600 hover:underline"
+      >
+        &larr; Back to stations
+      </Link>
 
-      <div className="space-y-1">
-        <h1 className="text-center text-2xl font-bold">
-          {station?.name ?? "Station"}
-        </h1>
-        <p className="text-center text-sm text-slate-500">
-          City: {station?.city ?? "Unknown city"}
-        </p>
-        <p className="text-center text-sm text-slate-500">
-          Address: {station?.address ?? "Unknown address"}
-        </p>
-      </div>
+      <h1 className="text-center text-2xl font-bold">
+        {station?.name ?? "Station"}
+      </h1>
+      <p className="text-center text-sm text-slate-500">
+        {station?.city ?? "Unknown city"},{" "}
+        {station?.address ?? "Unknown address"}
+      </p>
 
-      {error && (
+      {hasExistingSession && (
+        <section className="rounded-md border border-amber-300 bg-amber-50 p-4">
+          <p className="text-sm font-medium text-amber-800">
+            You already have the {existingSessionLabel} session.
+          </p>
+          <Link
+            to="/user/session"
+            className="mt-2 inline-block text-sm font-medium text-blue-600 hover:underline"
+          >
+            Go to sessions &rarr;
+          </Link>
+        </section>
+      )}
+
+      {portsError && (
         <p className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
-          {error}
+          {portsError}
         </p>
       )}
 
-      {!error && (
-        <p className="text-center text-base text-slate-700">
-          {isLoading
-            ? "Loading station ports..."
-            : `The station has ${freePortsCount} free (of ${ports.length}) ports right now.`}
+      {mutationErrorMsg && (
+        <p className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+          {mutationErrorMsg}
         </p>
+      )}
+
+      {isLoadingPorts ? (
+        <EasySpinner />
+      ) : (
+        !portsError && (
+          <p className="text-center text-sm text-slate-700">
+            The station has {freePorts.length} free (of {ports.length}) ports
+            right now.
+          </p>
+        )
       )}
 
       <div className="flex justify-center">
-        <SimpleButton
-          caption="Update"
-          loadingCaption="Updating..."
-          handleClick={() => void loadPorts()}
-          isLoading={isLoading}
-          isDisabled={!stationId}
-        />
+        <button
+          type="button"
+          className="rounded bg-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-300"
+          onClick={() => void loadPorts()}
+          disabled={isLoadingPorts}
+        >
+          Refetch
+        </button>
       </div>
 
-      <section className="space-y-3 rounded-md border border-slate-200 bg-slate-50 p-4">
-        <h2 className="text-lg font-semibold text-slate-900">Book a port now:</h2>
-
-        {bookingMessage && (
-          <p className="rounded border border-green-300 bg-green-50 p-3 text-sm text-green-700">
-            {bookingMessage}
-          </p>
-        )}
-
-        {bookingError && (
-          <p className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
-            {bookingError}
-          </p>
-        )}
+      <section className="space-y-3 rounded-md border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 className="text-lg font-semibold text-slate-900">
+          Book a port now
+        </h2>
 
         <div className="flex justify-center">
           <SimpleButton
@@ -237,33 +220,27 @@ const UserStationPage = () => {
             loadingCaption="Booking..."
             handleClick={() => void handleBook()}
             isLoading={isBooking}
-            isDisabled={!stationId || isLoading}
+            isDisabled={
+              hasExistingSession || !stationId || isLoadingPorts
+            }
           />
         </div>
       </section>
 
-      <section className="space-y-3 rounded-md border border-slate-200 bg-slate-50 p-4">
-        <h2 className="text-lg font-semibold text-slate-900">On the station right now?</h2>
-
-        {chargingMessage && (
-          <p className="rounded border border-green-300 bg-green-50 p-3 text-sm text-green-700">
-            {chargingMessage}
-          </p>
-        )}
-
-        {chargingError && (
-          <p className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
-            {chargingError}
-          </p>
-        )}
+      <section className="space-y-3 rounded-md border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 className="text-lg font-semibold text-slate-900">
+          On the station right now?
+        </h2>
 
         <div className="flex justify-center">
           <SimpleButton
             caption="Initiate charging"
             loadingCaption="Preparing..."
             handleClick={() => void handleInitiateCharging()}
-            isLoading={isPreparingCharging}
-            isDisabled={!stationId || isLoading || isStartingCharging}
+            isLoading={isCharging}
+            isDisabled={
+              hasExistingSession || !stationId || isLoadingPorts
+            }
           />
         </div>
       </section>
@@ -280,8 +257,8 @@ const UserStationPage = () => {
             value={selectedPortCode}
             onChange={(e) => setSelectedPortCode(e.target.value)}
           >
-            <option value="">--Chose your port--</option>
-            {availableFreePorts.map((port) => (
+            <option value="">-- Choose your port --</option>
+            {freePorts.map((port) => (
               <option key={port.portId} value={port.portCode}>
                 {port.portCode}
               </option>
@@ -291,9 +268,9 @@ const UserStationPage = () => {
           <div className="flex justify-end">
             <SimpleButton
               caption="Charge"
-              loadingCaption="Charging..."
-              handleClick={() => void handleCharge()}
-              isLoading={isStartingCharging}
+              loadingCaption="Starting..."
+              handleClick={() => void handleStartCharging()}
+              isLoading={isCharging}
               isDisabled={!selectedPortCode}
             />
           </div>
