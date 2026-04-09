@@ -13,6 +13,8 @@ const UserCurrentSessionPage = () => {
     data?.sessions.filter((s) => s.state === "BOOKED") ?? [];
   const activeSessions =
     data?.sessions.filter((s) => s.state === "ACTIVE") ?? [];
+  const unpaidSessions =
+    data?.sessions.filter((s) => s.state === "UNPAID") ?? [];
 
   return (
     <div className="space-y-6">
@@ -64,11 +66,26 @@ const UserCurrentSessionPage = () => {
             </section>
           )}
 
-          {bookedSessions.length === 0 && activeSessions.length === 0 && (
-            <p className="text-center text-sm text-slate-500">
-              No active sessions
-            </p>
+          {unpaidSessions.length > 0 && (
+            <section>
+              <h2 className="mb-3 text-lg font-semibold text-slate-900">
+                Unpaid sessions
+              </h2>
+              <div className="space-y-3">
+                {unpaidSessions.map((s) => (
+                  <SessionCard key={s.sessionId} session={s} />
+                ))}
+              </div>
+            </section>
           )}
+
+          {bookedSessions.length === 0 &&
+            activeSessions.length === 0 &&
+            unpaidSessions.length === 0 && (
+              <p className="text-center text-sm text-slate-500">
+                No active sessions
+              </p>
+            )}
         </div>
       )}
     </div>

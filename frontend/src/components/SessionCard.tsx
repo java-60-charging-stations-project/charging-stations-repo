@@ -58,6 +58,7 @@ export default function SessionCard({ session }: { session: Session }) {
 
   const isBooked = session.state === "BOOKED";
   const isActive = session.state === "ACTIVE";
+  const isUnpaid = session.state === "UNPAID";
 
   const stateColors = isBooked
     ? "border-blue-300 bg-blue-50"
@@ -133,6 +134,27 @@ export default function SessionCard({ session }: { session: Session }) {
           <p>
             <span className="font-medium">Time until 100%:</span>{" "}
             {formatNumeric(session.estimatedMinutesRemaining, " min")}
+          </p>
+        </div>
+      )}
+
+      {isUnpaid && (
+        <div className="mb-3 grid gap-1 text-sm text-slate-700 sm:grid-cols-2">
+          <p>
+            <span className="font-medium">Started at:</span>{" "}
+            {formatDate(session.startedAt)}
+          </p>
+          <p>
+            <span className="font-medium">Ended at:</span>{" "}
+            {formatDate(session.endedAt)}
+          </p>
+          <p>
+            <span className="font-medium">Current Cost:</span>{" "}
+            {formatNumeric(session.currentCost)}
+          </p>
+          <p>
+            <span className="font-medium">Energy consumed:</span>{" "}
+            {formatNumeric(session.energyConsumedKwh, " kWh")}
           </p>
         </div>
       )}

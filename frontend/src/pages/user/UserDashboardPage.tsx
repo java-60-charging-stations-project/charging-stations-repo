@@ -17,6 +17,8 @@ const UserDashboardPage = () => {
     data?.sessions.filter((s) => s.state === "BOOKED") ?? [];
   const activeSessions =
     data?.sessions.filter((s) => s.state === "ACTIVE") ?? [];
+  const unpaidSessions =
+    data?.sessions.filter((s) => s.state === "UNPAID") ?? [];
 
   return (
     <div className="space-y-6">
@@ -46,7 +48,16 @@ const UserDashboardPage = () => {
             </p>
           ))}
 
-          {(bookedSessions.length > 0 || activeSessions.length > 0) && (
+          {unpaidSessions.map((s) => (
+            <p key={s.sessionId} className="text-sm text-amber-700">
+              You have an unpaid session at the &lsquo;{s.entityKey}&rsquo;
+              station
+            </p>
+          ))}
+
+          {(bookedSessions.length > 0 ||
+            activeSessions.length > 0 ||
+            unpaidSessions.length > 0) && (
             <Link
               to="session"
               className="inline-block rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
