@@ -1,8 +1,8 @@
 import { type FC } from "react";
 import { useCallback, useEffect, useState, } from "react";
 import { getLogger } from "@/services/logging";
-import { createStation } from "@/services/api/adminApi";
-import type { AdminCreateStationRequest, StationBase } from "@/types/stations";
+import { createStation, updateStation } from "@/services/api/adminApi";
+import type { AdminCreateStationRequest, AdminUpdateStationRequest, StationBase } from "@/types/stations";
 import { useForm, useWatch, type SubmitHandler } from "react-hook-form";
 import { config } from "@/config/env";
 import StationStateActions from "@/components/stations/StationStateActions";
@@ -40,7 +40,8 @@ const StationEditForm: FC<StationEditFormProps> = ({
     const [submitSuccess, setSubmitSuccess] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
     const isSupportUser = userRole === "SUPPORT";
-    const [station, setStation] = useState <StationBase | null>(null);
+    const [station, setStation] = useState<StationBase | null>(null);
+    const [canEdit, setCanEdit] = useState(false);
     const navigate = useNavigate();
     const from = useFromParam();
     // Watched values
@@ -49,6 +50,7 @@ const StationEditForm: FC<StationEditFormProps> = ({
     const watchedOffPeakRate = useWatch({control, name: "ratePlan.offPeakRate"});
 
     const isLocked = !!stationId || isSubmitting || submitSuccess;
+    const isEditableFieldLocked = !canEdit || isSubmitting || submitSuccess;
     const fromPath = from ? encodeURIComponent(from) : "";    
 
     const loadStation = useCallback(async () => {
@@ -58,7 +60,7 @@ const StationEditForm: FC<StationEditFormProps> = ({
         try {
             const loadedStation = await fetchStationMethod(stationId);
             setStation(loadedStation);
-            
+            setCanEdit(userRole === "ADMIN" && loadedStation.state === "INACTIVE");
             reset({
                 name: loadedStation.name,
                 owner: loadedStation.owner,
@@ -74,7 +76,7 @@ const StationEditForm: FC<StationEditFormProps> = ({
         } catch (err) {
             setLoadError(err instanceof Error ? err.message : "Failed to load station");
         }
-    }, [stationId, reset, fetchStationMethod]);
+    }, [stationId, userRole, fetchStationMethod, reset]);
 
     useEffect(() => {
         void loadStation();
@@ -84,6 +86,28 @@ const StationEditForm: FC<StationEditFormProps> = ({
         logger.debug('Form submitted', data);
         setSubmitError(null);
         try {
+            if (stationId && canEdit) {
+                const updatePayload: AdminUpdateStationRequest = {
+                    address: data.address,
+                    ratePlan: {
+                        ...data.ratePlan,
+                        currencyCode: config.currency.code,
+                        currencyName: config.currency.name,
+                    },
+                    email: data.email || null,
+                    phone: data.phone || null,
+                    siteTechnician: data.siteTechnician || null,
+                    maxPowerKw: data.maxPowerKw,
+                    location: data.location,
+                };
+                logger.debug('Update station payload', updatePayload);
+                await updateStation(stationId, updatePayload);
+                setSubmitSuccess(true);
+                await loadStation();
+                setTimeout(() => setSubmitSuccess(false), 2000);
+                return;
+            }
+
             const code = `${data.owner}=+=${data.city}=+=${data.address}`;
             const createPayload: AdminCreateStationRequest = {
                 ...data,
@@ -113,7 +137,7 @@ const StationEditForm: FC<StationEditFormProps> = ({
                     <input className="w-full" disabled={isLocked} {...register("city", { required: "City is required" })} />
                 </FieldRow>
                 <FieldRow label="Address" error={errors.address?.message}>
-                    <input className="w-full" disabled={isLocked} {...register("address", { required: "Address is required" })} />
+                    <input className="w-full" disabled={isEditableFieldLocked} {...register("address", { required: "Address is required" })} />
                 </FieldRow>
                 <div className="mb-1 flex items-center flex-wrap ">
                     <label className={LABEL}>Coordinates</label>
@@ -124,7 +148,7 @@ const StationEditForm: FC<StationEditFormProps> = ({
                                 type="number"
                                 step="any"
                                 className="w-full"
-                                disabled={isLocked}
+                                disabled={isEditableFieldLocked}
                                 {...register("location.latitude", {
                                     valueAsNumber: true,
                                     required: "Latitude is required",
@@ -140,7 +164,7 @@ const StationEditForm: FC<StationEditFormProps> = ({
                                 type="number"
                                 step="any"
                                 className="w-full"
-                                disabled={isLocked}
+                                disabled={isEditableFieldLocked}
                                 {...register("location.longitude", {
                                     valueAsNumber: true,
                                     required: "Longitude is required",
@@ -168,7 +192,7 @@ const StationEditForm: FC<StationEditFormProps> = ({
                                 step="0.01"
                                 min={0}
                                 className="w-full"
-                                disabled={isLocked}
+                                disabled={isEditableFieldLocked}
                                 {...register("ratePlan.peakRate", { valueAsNumber: true, required: "High rate is required" })}
                             />
                             {errors.ratePlan?.peakRate?.message && (
@@ -182,7 +206,7 @@ const StationEditForm: FC<StationEditFormProps> = ({
                                 step="0.01"
                                 min={0}
                                 className="w-full"
-                                disabled={isLocked}
+                                disabled={isEditableFieldLocked}
                                 {...register("ratePlan.offPeakRate", { valueAsNumber: true, required: "Low rate is required" })}
                             />
                             {errors.ratePlan?.offPeakRate?.message && (
@@ -197,7 +221,7 @@ const StationEditForm: FC<StationEditFormProps> = ({
                         step="1"
                         min={1}
                         className="w-full"
-                        disabled={isLocked}
+                        disabled={isEditableFieldLocked}
                         {...register("maxPowerKw", {
                             valueAsNumber: true,
                             required: "Max power is required",
@@ -206,7 +230,10 @@ const StationEditForm: FC<StationEditFormProps> = ({
                     />
                 </FieldRow>
                 <FieldRow label="Technician Name">
-                    <input className="w-full" disabled={isLocked} {...register("siteTechnician")} />
+                    <input
+                    className="w-full"
+                    {...register("siteTechnician")}
+                    disabled={isEditableFieldLocked} />
                 </FieldRow>
                 <FieldRow label="Technician Phone" error={errors.phone?.message}>
                     <input
@@ -214,17 +241,17 @@ const StationEditForm: FC<StationEditFormProps> = ({
                         inputMode="numeric"
                         pattern="[0-9]*"
                         className="w-full"
-                        disabled={isLocked}
                         {...register("phone", {
                             pattern: {
                                 value: /^0[0-9]{9}$/,
                                 message: "Phone must start with 0 and contain exactly 10 digits",
                             },
                         })}
+                        disabled={isEditableFieldLocked}
                     />
                 </FieldRow>
                 <FieldRow label="Technician Email">
-                    <input className="w-full" disabled={isLocked} {...register("email")} />
+                    <input className="w-full" disabled={isEditableFieldLocked} {...register("email")} />
                 </FieldRow>
                 {
                     stationId && (
@@ -246,16 +273,22 @@ const StationEditForm: FC<StationEditFormProps> = ({
                         </FieldRow>
                     )
                 }
-                {!stationId && (
+                {(!stationId || canEdit) && (
                     <>
                         <input
                             type="submit"
                             className="mt-1 bg-blue-500 text-white px-4 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
-                            disabled={isLocked}
-                            value={isSubmitting ? "Submitting..." : "Submit"}
+                            disabled={isSubmitting || submitSuccess}
+                            value={isSubmitting
+                                ? (stationId ? "Saving..." : "Submitting...")
+                                : (stationId ? "Save changes" : "Submit")}
                         />
                         {submitError && <p className="text-red-500 text-xs mt-2">{submitError}</p>}
-                        {submitSuccess && <p className="text-green-500 text-xs mt-2">Station created successfully!</p>}
+                        {submitSuccess && (
+                            <p className="text-green-500 text-xs mt-2">
+                                {stationId ? "Station updated successfully!" : "Station created successfully!"}
+                            </p>
+                        )}
                     </>
                 )}
             </form>
