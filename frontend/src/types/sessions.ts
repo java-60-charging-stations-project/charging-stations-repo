@@ -10,6 +10,18 @@ export type Session = {
     userId: string;
     createdAt: string;
     updatedAt: string;
+    timeBookedAt?: string | null;
+    timeBookedBefore?: string | null;
+    startedAt?: string | null;
+    stoppedAt?: string | null;
+    endedAt?: string | null;
+    tariff?: number | string | null;
+    currentCost?: number | string | null;
+    energyConsumedKwh?: number | string | null;
+    estimatedMinutesRemaining?: number | null;
+    durationMinutes?: number | null;
+    bookingDurationMinutes?: number | null;
+    chargeLevelPercent?: number | null;
 };
 
 export type UserSessionsResponse = {
