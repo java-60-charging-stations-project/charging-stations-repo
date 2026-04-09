@@ -1,0 +1,168 @@
+import type { Session, UserSessionPortUpdateRequest } from "@/types/sessions";
+import {
+  useCancelBookingMutation,
+  useStartChargingMutation,
+  useStopChargingMutation,
+} from "@/store/apiSlice";
+
+function formatDate(value?: string | null): string {
+  if (!value) return "—";
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString();
+}
+
+function formatNumeric(value?: number | string | null, suffix = ""): string {
+  if (value == null) return "—";
+  return `${value}${suffix}`;
+}
+
+function ActionButton({
+  label,
+  onClick,
+  isLoading,
+  variant,
+}: {
+  label: string;
+  onClick: () => void;
+  isLoading: boolean;
+  variant: "danger" | "primary";
+}) {
+  const base = "rounded px-3 py-1.5 text-sm font-medium disabled:opacity-50";
+  const colors =
+    variant === "danger"
+      ? "bg-red-600 text-white hover:bg-red-700"
+      : "bg-blue-600 text-white hover:bg-blue-700";
+
+  return (
+    <button
+      type="button"
+      className={`${base} ${colors}`}
+      onClick={onClick}
+      disabled={isLoading}
+    >
+      {isLoading ? "Processing…" : label}
+    </button>
+  );
+}
+
+export default function SessionCard({ session }: { session: Session }) {
+  const [cancelBooking, { isLoading: isCancelling }] = useCancelBookingMutation();
+  const [startCharging, { isLoading: isStarting }] = useStartChargingMutation();
+  const [stopCharging, { isLoading: isStopping }] = useStopChargingMutation();
+
+  const req: UserSessionPortUpdateRequest = {
+    stationId: session.stationId,
+    portCode: session.portCode,
+    oldState: session.state === "BOOKED" ? "BOOKED" : "OCCUPIED",
+  };
+
+  const isBooked = session.state === "BOOKED";
+  const isActive = session.state === "ACTIVE";
+
+  const stateColors = isBooked
+    ? "border-blue-300 bg-blue-50"
+    : isActive
+      ? "border-green-300 bg-green-50"
+      : "border-amber-300 bg-amber-50";
+
+  const badgeColors = isBooked
+    ? "bg-blue-100 text-blue-800 border-blue-300"
+    : isActive
+      ? "bg-green-100 text-green-800 border-green-300"
+      : "bg-amber-100 text-amber-800 border-amber-300";
+
+  return (
+    <article className={`rounded-lg border p-4 shadow-sm ${stateColors}`}>
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div>
+          <p className="font-semibold text-slate-900">
+            Station: {session.entityKey}
+          </p>
+          <p className="text-sm text-slate-600">Port: {session.portCode}</p>
+        </div>
+        <span
+          className={`inline-flex rounded border px-2 py-0.5 text-xs font-medium ${badgeColors}`}
+        >
+          {session.state}
+        </span>
+      </div>
+
+      {isBooked && (
+        <div className="mb-3 space-y-1 text-sm text-slate-700">
+          <p>
+            <span className="font-medium">Booked at:</span>{" "}
+            {formatDate(session.timeBookedAt)}
+          </p>
+          <p>
+            <span className="font-medium">Booked until:</span>{" "}
+            {formatDate(session.timeBookedBefore)}
+          </p>
+        </div>
+      )}
+
+      {isActive && (
+        <div className="mb-3 grid gap-1 text-sm text-slate-700 sm:grid-cols-2">
+          <p>
+            <span className="font-medium">Started at:</span>{" "}
+            {formatDate(session.startedAt)}
+          </p>
+          <p>
+            <span className="font-medium">Stopped at:</span>{" "}
+            {formatDate(session.stoppedAt)}
+          </p>
+          <p>
+            <span className="font-medium">Tariff:</span>{" "}
+            {formatNumeric(session.tariff)}
+          </p>
+          <p>
+            <span className="font-medium">Current Cost:</span>{" "}
+            {formatNumeric(session.currentCost)}
+          </p>
+          <p>
+            <span className="font-medium">Energy consumed:</span>{" "}
+            {formatNumeric(session.energyConsumedKwh, " kWh")}
+          </p>
+          <p>
+            <span className="font-medium">Charge:</span>{" "}
+            {formatNumeric(session.chargeLevelPercent, "%")}
+          </p>
+          <p>
+            <span className="font-medium">Duration:</span>{" "}
+            {formatNumeric(session.durationMinutes, " min")}
+          </p>
+          <p>
+            <span className="font-medium">Time until 100%:</span>{" "}
+            {formatNumeric(session.estimatedMinutesRemaining, " min")}
+          </p>
+        </div>
+      )}
+
+      <div className="flex gap-2">
+        {isBooked && (
+          <>
+            <ActionButton
+              label="Stop booking"
+              variant="danger"
+              isLoading={isCancelling}
+              onClick={() => cancelBooking(req)}
+            />
+            <ActionButton
+              label="Start charging"
+              variant="primary"
+              isLoading={isStarting}
+              onClick={() => startCharging(req)}
+            />
+          </>
+        )}
+        {isActive && (
+          <ActionButton
+            label="Stop charging"
+            variant="danger"
+            isLoading={isStopping}
+            onClick={() => stopCharging(req)}
+          />
+        )}
+      </div>
+    </article>
+  );
+}
