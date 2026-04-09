@@ -1,6 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
-import { fetchUserSessions } from "@/services/api/userApi";
 import type { Session, SessionState } from "@/types/sessions";
+import { useGetSessionsQuery } from "@/store/apiSlice";
+import EasySpinner from "@/components/EasySpinner";
+import { getLogger } from "@/services/logging";
+
+const logger = getLogger("User.Dashboard");
 
 function formatDate(value: string): string {
   const parsed = new Date(value);
@@ -73,52 +76,19 @@ function SessionsSection({
 }
 
 const UserDashboardPage = () => {
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadSessions() {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const data = await fetchUserSessions();
-        if (!cancelled) {
-          setSessions(data);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to load sessions");
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      }
+  const { data, isLoading, error } = useGetSessionsQuery(
+    undefined,
+    {
+      pollingInterval: 5000,
+      skipPollingIfUnfocused: true,
     }
-
-    void loadSessions();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const bookedSessions = useMemo(
-    () => sessions.filter((session) => session.state === "BOOKED"),
-    [sessions],
   );
-  const activeSessions = useMemo(
-    () => sessions.filter((session) => session.state === "ACTIVE"),
-    [sessions],
-  );
-  const unpaidSessions = useMemo(
-    () => sessions.filter((session) => session.state === "UNPAID"),
-    [sessions],
-  );
+  logger.debug("Data from hook: ", data);
+
+
+  const bookedSessions = data?.sessions.filter((session) => session.state === "BOOKED") ?? [];
+  const activeSessions = data?.sessions.filter((session) => session.state === "ACTIVE") ?? [];
+  const unpaidSessions = data?.sessions.filter((session) => session.state === "UNPAID") ?? [];
 
   return (
     <div className="space-y-6">
@@ -127,12 +97,12 @@ const UserDashboardPage = () => {
       </div>
 
       {isLoading && (
-        <p className="text-center text-slate-500">Loading sessions...</p>
+        <EasySpinner />
       )}
 
       {error && (
         <p className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
-          {error}
+          {error.message}
         </p>
       )}
 

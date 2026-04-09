@@ -1,5 +1,6 @@
 import type { BaseQueryFn } from '@reduxjs/toolkit/query';
 import { apiClient } from './api';
+import type { ApiResponse } from '@/types/apiTypes';
 
 type ClientArgs = {
     url: string;
@@ -15,7 +16,7 @@ type ClientErrorShape = {
 
 export const clientBaseQuery: BaseQueryFn<ClientArgs, unknown, ClientErrorShape> = async (args, api) => {
     try {  
-        const data = await apiClient.request(args, api.signal);
+        const {data} = await apiClient.request <ApiResponse<unknown>>(args, api.signal);
         return { data };
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
