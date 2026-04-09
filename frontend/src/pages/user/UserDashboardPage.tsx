@@ -31,11 +31,9 @@ function SessionStatusBadge({ state }: { state: SessionState }) {
 function SessionsSection({
   title,
   sessions,
-  emptyMessage,
 }: {
   title: string;
   sessions: Session[];
-  emptyMessage: string;
 }) {
   return (
     <section className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
@@ -44,33 +42,34 @@ function SessionsSection({
         <span className="text-sm text-slate-500">{sessions.length}</span>
       </div>
 
-      {sessions.length === 0 ? (
-        <p className="text-sm text-slate-500">{emptyMessage}</p>
-      ) : (
-        <div className="space-y-3">
-          {sessions.map((session) => (
-            <article key={session.sessionId} className="rounded-md border border-slate-200 bg-slate-50 p-3">
-              <div className="mb-2 flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">Session {session.sessionId}</p>
-                  <p className="text-xs text-slate-500">Station {session.stationId}</p>
-                </div>
-                <SessionStatusBadge state={session.state} />
-              </div>
-
-              <div className="grid gap-2 text-sm text-slate-700 md:grid-cols-2">
-                <p><span className="font-medium">Port:</span> {session.portCode}</p>
-                <p><span className="font-medium">User:</span> {session.userId}</p>
-                <p><span className="font-medium">Created:</span> {formatDate(session.createdAt)}</p>
-                <p><span className="font-medium">Updated:</span> {formatDate(session.updatedAt)}</p>
-                <p className="md:col-span-2 break-all">
-                  <span className="font-medium">Entity key:</span> {session.entityKey}
+      <div className="space-y-3">
+        {sessions.map((session) => (
+          <article key={session.sessionId} className="rounded-md border border-slate-200 bg-slate-50 p-3">
+            <div className="mb-2 flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-900">
+                  {session.state === "BOOKED"
+                    ? `You have a booked session at the '${session.entityKey}' station`
+                    : `Session ${session.sessionId}`
+                  }
                 </p>
+                <p className="text-xs text-slate-500">Station {session.stationId}</p>
               </div>
-            </article>
-          ))}
-        </div>
-      )}
+              <SessionStatusBadge state={session.state} />
+            </div>
+
+            <div className="grid gap-2 text-sm text-slate-700 md:grid-cols-2">
+              <p><span className="font-medium">Port:</span> {session.portCode}</p>
+              <p><span className="font-medium">User:</span> {session.userId}</p>
+              <p><span className="font-medium">Created:</span> {formatDate(session.createdAt)}</p>
+              <p><span className="font-medium">Updated:</span> {formatDate(session.updatedAt)}</p>
+              <p className="md:col-span-2 break-all">
+                <span className="font-medium">Entity key:</span> {session.entityKey}
+              </p>
+            </div>
+          </article>
+        ))}
+      </div>
     </section>
   );
 }
@@ -81,6 +80,7 @@ const UserDashboardPage = () => {
     {
       pollingInterval: 5000,
       skipPollingIfUnfocused: true,
+      refetchOnReconnect: true,
     }
   );
   logger.debug("Data from hook: ", data);
@@ -108,21 +108,24 @@ const UserDashboardPage = () => {
 
       {!isLoading && !error && (
         <div className="grid gap-4">
-          <SessionsSection
-            title="My booked sessions"
-            sessions={bookedSessions}
-            emptyMessage="You don't have booked sessions"
-          />
-          <SessionsSection
-            title="My active sessions"
-            sessions={activeSessions}
-            emptyMessage="You don't have active sessions"
-          />
-          <SessionsSection
-            title="My unpaid sessions"
-            sessions={unpaidSessions}
-            emptyMessage="You don't have unpaid sessions"
-          />
+          {bookedSessions.length > 0 && (
+            <SessionsSection
+              title="Booked sessions"
+              sessions={bookedSessions}
+            />
+          )}
+          {activeSessions.length > 0 && (
+            <SessionsSection
+              title="Active sessions"
+              sessions={activeSessions}
+            />
+          )}
+          {unpaidSessions.length > 0 && (
+            <SessionsSection
+              title="Unpaid sessions"
+              sessions={unpaidSessions}
+            />
+          )}
         </div>
       )}
     </div>
