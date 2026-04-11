@@ -11,8 +11,6 @@ export interface BookingDto {
 
 export interface CreateBookingRequest {
   stationId: string;
-  /** ISO 8601 */
   slotFrom: string;
-  /** ISO 8601, должно быть позже slotFrom */
   slotTo: string;
 }

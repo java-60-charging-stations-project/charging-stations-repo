@@ -287,6 +287,22 @@ export interface LambdaUpdateDynamoPortsData {
   newState: LambdaPortState;
 }
 
+/** `supportUpdateStationPorts` — `write_ports_sessions_dynamo.py` */
+export interface LambdaSupportUpdateStationPortsData {
+  stationId: string;
+  portCode: string;
+  oldState: LambdaPortState;
+  newState: LambdaPortState;
+}
+
+/** Success payload (snake_case from Lambda) */
+export interface LambdaSupportUpdateStationPortsSuccessData {
+  station_id: string;
+  entity_key: string;
+  new_state: string;
+  updated_at: string;
+}
+
 export interface LambdaDeleteStationPortsData {
   stationId: string;
   portKey: string;

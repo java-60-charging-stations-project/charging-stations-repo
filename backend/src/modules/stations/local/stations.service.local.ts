@@ -2,20 +2,15 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { BadRequestError, ConflictError, ResourceNotFoundError } from '../../../common/serviceErrors';
 import { DEFAULT_PAGE_SIZE } from '../../../common/constants';
-import { randomUUID } from 'node:crypto';
 import type {
-  AddPortsRequest,
   AdminCreateStationRequest,
   AdminCreateStationResponse,
   AdminDeleteStationResponse,
-  AdminUpdateStationRequest,
-  AdminUpdateStationResponse,
   AdminUpdateStationStateResponse,
   AdminUpdateStationPortsResponse,
-  ApiPort,
   StationBase,
   StationBaseCollectionResponse,
-  StationLifecycleState,
+  StationState,
 } from '../stations.types';
 import type { ListStationsParams, StationsService } from '../stations.interface';
 
@@ -36,7 +31,7 @@ export function findStationById(stationId: string): StationBase | undefined {
   return STATIONS.find((s) => s.id === stationId);
 }
 
-export function updateStationStateLocal(stationId: string, newState: StationLifecycleState): StationBase {
+export function updateStationStateLocal(stationId: string, newState: StationState): StationBase {
   const station = findStationById(stationId);
   if (!station) throw new ResourceNotFoundError('Station not found');
   station.state = newState;
@@ -50,7 +45,7 @@ export function updateStationPortsLocal(stationId: string, deltaPorts: number): 
   if (deltaPorts <= 0) {
     throw new BadRequestError('deltaPorts must be positive');
   }
-  station.portsCount += deltaPorts;
+  station.ports += deltaPorts;
   station.occupiedPorts = station.occupiedPorts ?? 0;
   station.updatedAt = new Date().toISOString();
   return station;
@@ -93,36 +88,23 @@ export class StationsServiceLocal implements StationsService {
     const totalItems = stations.length;
     const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
     const start = (page - 1) * pageSize;
-    const paged = stations.slice(start, start + pageSize).map(({ ports: _ports, ...s }) => ({
+    const paged = stations.slice(start, start + pageSize).map((s) => ({
       ...s,
-      hasFreePorts: (s.portsCount - (s.occupiedPorts ?? 0)) > 0,
+      hasFreePorts: (s.ports - (s.occupiedPorts ?? 0)) > 0,
     }));
 
     return { data: paged, meta: { page, pageSize, totalItems, totalPages } };
   }
 
-  async getById(stationId: string, _callerId: string, includePorts?: boolean): Promise<StationBase> {
+  async getById(stationId: string, _callerId: string): Promise<StationBase> {
     const station = STATIONS.find((s) => s.id === stationId);
     if (!station) {
       throw new ResourceNotFoundError('Station not found');
     }
-    const { ports: storedPorts, ...rest } = station;
-    const result: StationBase = {
-      ...rest,
-      hasFreePorts: (rest.portsCount - (rest.occupiedPorts ?? 0)) > 0,
+    return {
+      ...station,
+      hasFreePorts: (station.ports - (station.occupiedPorts ?? 0)) > 0,
     };
-    if (includePorts) {
-      result.ports = storedPorts ?? [];
-    }
-    return result;
-  }
-
-  async getPorts(stationId: string, _callerId: string): Promise<ApiPort[]> {
-    const station = STATIONS.find((s) => s.id === stationId);
-    if (!station) {
-      throw new ResourceNotFoundError('Station not found');
-    }
-    return station.ports ?? [];
   }
 
   async create(
@@ -143,7 +125,7 @@ export class StationsServiceLocal implements StationsService {
       email: payload.email,
       siteTechnician: payload.siteTechnician,
       maxPowerKw: 0,
-      portsCount: 0,
+      ports: 0,
       occupiedPorts: 0,
       blockedUntil: null,
       state: 'INACTIVE',
@@ -151,7 +133,6 @@ export class StationsServiceLocal implements StationsService {
       createdAt: now,
       updatedAt: now,
       location: payload.location,
-      ports: [],
     };
 
     STATIONS.push(newStation);
@@ -160,8 +141,8 @@ export class StationsServiceLocal implements StationsService {
 
   async updateStationState(
     stationId: string,
-    oldState: StationLifecycleState,
-    newState: StationLifecycleState,
+    oldState: StationState,
+    newState: StationState,
     _callerId: string
   ): Promise<AdminUpdateStationStateResponse> {
     const station = STATIONS.find((s) => s.id === stationId);
@@ -193,108 +174,15 @@ export class StationsServiceLocal implements StationsService {
       throw new ResourceNotFoundError('Station not found');
     }
 
-    station.portsCount = (station.portsCount ?? 0) + deltaPorts;
+    station.ports = (station.ports ?? 0) + deltaPorts;
     station.occupiedPorts = station.occupiedPorts ?? 0;
     station.updatedAt = new Date().toISOString();
 
     return {
       updatedAt: station.updatedAt,
-      portsCount: station.portsCount,
+      ports: station.ports,
       occupiedPorts: station.occupiedPorts,
     };
-  }
-
-  async updateStation(
-    stationId: string,
-    patch: AdminUpdateStationRequest,
-    _callerId: string
-  ): Promise<AdminUpdateStationResponse> {
-    const station = STATIONS.find((s) => s.id === stationId);
-    if (!station) {
-      throw new ResourceNotFoundError('Station not found');
-    }
-
-    if (patch.name !== undefined) station.name = patch.name;
-    if (patch.owner !== undefined) station.owner = patch.owner;
-    if (patch.city !== undefined) station.city = patch.city;
-    if (patch.address !== undefined) station.address = patch.address;
-    if (patch.ratePlan !== undefined) station.ratePlan = patch.ratePlan;
-    if (patch.email !== undefined) station.email = patch.email;
-    if (patch.phone !== undefined) station.phone = patch.phone;
-    if (patch.siteTechnician !== undefined) station.siteTechnician = patch.siteTechnician;
-    if (patch.maxPowerKw !== undefined) station.maxPowerKw = patch.maxPowerKw;
-
-    const nextLocation = patch.location
-      ? patch.location
-      : (patch.longitude !== undefined || patch.latitude !== undefined)
-        ? {
-            latitude: patch.latitude ?? (station.location?.latitude ?? 0),
-            longitude: patch.longitude ?? (station.location?.longitude ?? 0),
-          }
-        : undefined;
-
-    if (nextLocation) {
-      station.location = nextLocation;
-    }
-
-    station.updatedAt = new Date().toISOString();
-    return { stationId };
-  }
-
-  async addPorts(stationId: string, payload: AddPortsRequest, _callerId: string): Promise<ApiPort[]> {
-    const station = STATIONS.find((s) => s.id === stationId);
-    if (!station) {
-      throw new ResourceNotFoundError('Station not found');
-    }
-
-    if (station.state !== 'INACTIVE' && station.state !== 'OUT_OF_SERVICE') {
-      throw new ConflictError(`Cannot add ports while station is in ${station.state} state`);
-    }
-
-    const existingCodes = new Set((station.ports ?? []).map((p) => p.portCode));
-    for (const item of payload.ports) {
-      if (existingCodes.has(item.portCode)) {
-        throw new ConflictError(`Port code ${item.portCode} already exists on this station`);
-      }
-    }
-
-    const now = new Date().toISOString();
-    const created: ApiPort[] = payload.ports.map((item) => ({
-      portId: randomUUID(),
-      portCode: item.portCode,
-      status: 'DISABLED',
-      lastMeterKw: 0,
-      createdAt: now,
-      updatedAt: now,
-    }));
-
-    station.ports = [...(station.ports ?? []), ...created];
-    station.portsCount = station.ports.length;
-    station.updatedAt = now;
-
-    return created;
-  }
-
-  async deletePort(stationId: string, portId: string, _callerId: string): Promise<void> {
-    const station = STATIONS.find((s) => s.id === stationId);
-    if (!station) {
-      throw new ResourceNotFoundError('Station not found');
-    }
-
-    if (station.state !== 'INACTIVE' && station.state !== 'OUT_OF_SERVICE') {
-      throw new ConflictError(`Cannot delete port while station is in ${station.state} state`);
-    }
-
-    const ports = station.ports ?? [];
-    const idx = ports.findIndex((p) => p.portId === portId);
-    if (idx === -1) {
-      throw new ResourceNotFoundError('Port not found');
-    }
-
-    ports.splice(idx, 1);
-    station.ports = ports;
-    station.portsCount = ports.length;
-    station.updatedAt = new Date().toISOString();
   }
 
   async deleteStation(

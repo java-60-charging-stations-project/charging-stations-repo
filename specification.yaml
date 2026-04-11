@@ -1391,15 +1391,53 @@ paths:
           $ref: '#/components/responses/ErrorResponse'
         '500':
           $ref: '#/components/responses/ErrorResponse'
+    patch:
+      operationId: patchSupportStation
+      summary: Partially update station metadata (support)
+      description: |
+        Same body and behavior as `PATCH /admin/stations/{stationId}` — partial update via stations write Lambda (`updateStation`).
+        Requires Cognito JWT and **SUPPORT** group.
+      security:
+        - bearerAuth: []
+      x-roles: [SUPPORT]
+      parameters:
+        - name: stationId
+          in: path
+          required: true
+          description: Station identifier
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminUpdateStationRequest'
+      responses:
+        '200':
+          description: Station updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateStationGatewayResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestResponse'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          $ref: '#/components/responses/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
 
   /support/stations/{stationId}/state:
     patch:
       operationId: updateSupportStationState
       summary: Change charging station state as support
       description: |
-        **Not implemented** on current gateway (no `PATCH /support/stations/{stationId}/state` route).
-        Use `PATCH /admin/stations/{stationId}/state` for admins, or add this route on the gateway.
-        Requires technical support privileges. The updatedAt field must match the server value to prevent concurrent modification conflicts.
+        Changes station lifecycle state via `changeStationState` (RDS). Same contract as admin `PATCH .../state`.
+        Requires Cognito JWT and **SUPPORT** group. Body includes `oldState`, `newState`, and `updatedAt` for optimistic concurrency.
       x-roles: [TECH_SUPPORT]
       parameters:
         - name: stationId
@@ -1435,6 +1473,58 @@ paths:
           $ref: '#/components/responses/ErrorResponse'
         '503':
           $ref: '#/components/responses/ServiceUnavailableResponse'
+
+  /support/stations/{stationId}/ports/state:
+    patch:
+      operationId: supportUpdateStationPortState
+      summary: Set port operational state (support)
+      description: |
+        Invokes Dynamo write Lambda action `supportUpdateStationPorts` (optimistic `oldState` → `newState`).
+        Typical use: enable a new port (`DISABLED` → `FREE`) or take a port offline (`FREE` → `DISABLED`).
+        Forbidden transitions include `BOOKED` → `FREE` and `OCCUPIED` → `FREE` (same rules as Lambda).
+        Requires Cognito JWT and **SUPPORT** group.
+      security:
+        - bearerAuth: []
+      x-roles: [SUPPORT]
+      parameters:
+        - name: stationId
+          in: path
+          required: true
+          description: Station identifier
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupportUpdatePortStateRequest'
+      responses:
+        '200':
+          description: Port state updated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, data]
+                properties:
+                  code:
+                    type: integer
+                    example: 200
+                  data:
+                    $ref: '#/components/schemas/SupportUpdatePortStateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestResponse'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          $ref: '#/components/responses/ErrorResponse'
+        '409':
+          $ref: '#/components/responses/ConflictResponse'
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
 
   /support/stations/{stationId}/ports:
     get:
@@ -2384,6 +2474,38 @@ components:
           nullable: true
         location:
           $ref: '#/components/schemas/Location'
+
+    SupportUpdatePortStateRequest:
+      type: object
+      additionalProperties: false
+      required: [portCode, oldState, newState]
+      properties:
+        portCode:
+          type: string
+          description: Port code on the station (Lambda builds sort key `PORT#<code>`)
+        oldState:
+          type: string
+          enum: [FREE, OCCUPIED, ERROR, DISABLED, BOOKED]
+          description: Expected current Dynamo `state` (must match or update fails)
+        newState:
+          type: string
+          enum: [FREE, DISABLED]
+          description: Target state for support (`supportUpdateStationPorts` in write Lambda)
+
+    SupportUpdatePortStateResponse:
+      type: object
+      required: [stationId, entityKey, newState, updatedAt]
+      properties:
+        stationId:
+          type: string
+        entityKey:
+          type: string
+          description: Port row key prefix form, e.g. `PORT#PORT-A1`
+        newState:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
 
     UpdateStationGatewayResponse:
       type: object
