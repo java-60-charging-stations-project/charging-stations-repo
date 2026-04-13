@@ -98,3 +98,33 @@ export type StationsListParams = {
     page?: number;
     pageSize?: number;
 };
+
+export type AdminUpdateStationRequest = {
+    name?: string;
+    owner?: string;
+    city?: string;
+    address?: string;
+    ratePlan?: RatePlan;
+    email?: string | null;
+    phone?: string | null;
+    siteTechnician?: string | null;
+    maxPowerKw?: number | null;
+    location?: GeoLocation;
+};
+
+export type UpdateStationResponse = {
+    stationId: string;
+};
+
+export type SupportUpdatePortStateRequest = {
+    portCode: string;
+    oldState: PortState;
+    newState: 'FREE' | 'DISABLED';
+};
+
+export type SupportUpdatePortStateResponse = {
+    stationId: string;
+    entityKey: string;
+    newState: string;
+    updatedAt: string;
+};

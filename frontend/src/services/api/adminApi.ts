@@ -10,9 +10,11 @@ import type {
     ChangeStationStateRequest,
     AdminCreateStationRequest,
     AdminCreateStationResponse,
+    AdminUpdateStationRequest,
     ChangeStationStateResponse,
     StationBase,
     StationsListParams,
+    UpdateStationResponse,
 } from '@/types/stations';
 import { getLogger } from '@/services/logging';
 
@@ -88,6 +90,14 @@ export async function createStation(stationCreateRequest: AdminCreateStationRequ
     const response = await apiClient.post<ApiResponse<AdminCreateStationResponse>>(
         '/admin/stations',
         stationCreateRequest,
+    );
+    return response.data;
+};
+
+export async function updateStation(stationId: string, request: AdminUpdateStationRequest): Promise<UpdateStationResponse> {
+    const response = await apiClient.patch<ApiResponse<UpdateStationResponse>>(
+        `/admin/stations/${stationId}`,
+        request,
     );
     return response.data;
 };

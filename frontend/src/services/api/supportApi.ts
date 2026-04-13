@@ -1,4 +1,5 @@
 import type {
+    AdminUpdateStationRequest,
     ChangeStationStateRequest,
     ChangeStationStateResponse,
     StationBase,
@@ -7,7 +8,10 @@ import type {
     StationPortsCreateRequest,
     StationPortsCreateResponse,
     StationPortsListResponse,
-    StationsListParams
+    StationsListParams,
+    SupportUpdatePortStateRequest,
+    SupportUpdatePortStateResponse,
+    UpdateStationResponse,
 } from '@/types/stations';
 import { apiClient } from './api';
 import type { ApiArrayResponse, ApiResponse } from '@/types/apiTypes';
@@ -25,6 +29,22 @@ export async function fetchStationById(stationId: string, includePorts: boolean 
     const response = await apiClient.get<ApiResponse<StationBase>>(
         `/support/stations/${stationId}`,
         { params: { includePorts } },
+    );
+    return response.data;
+};
+
+export async function updateStation(stationId: string, request: AdminUpdateStationRequest): Promise<UpdateStationResponse> {
+    const response = await apiClient.patch<ApiResponse<UpdateStationResponse>>(
+        `/support/stations/${stationId}`,
+        request,
+    );
+    return response.data;
+};
+
+export async function updateStationPortState(stationId: string, request: SupportUpdatePortStateRequest): Promise<SupportUpdatePortStateResponse> {
+    const response = await apiClient.patch<ApiResponse<SupportUpdatePortStateResponse>>(
+        `/support/stations/${stationId}/ports/state`,
+        request,
     );
     return response.data;
 };
