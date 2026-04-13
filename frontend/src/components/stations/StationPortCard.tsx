@@ -8,8 +8,10 @@ export interface StationPortCardProps {
     port: StationPort;
     isUpdating: boolean;
     isLocked: boolean;
-    canDelete?: boolean;
+    canEdit?: boolean;
     onDelete?: () => void;
+    onTurnOn?: () => void;
+    onTurnOff?: () => void;
 }
 
 function formatDateTime(iso: string): string {
@@ -24,7 +26,7 @@ const DetailLine = ({ label, value }: { label: string; value: string | number })
     </div>
 );
 
-const StationPortCard: FC<StationPortCardProps> = ({ port, isUpdating, isLocked, canDelete, onDelete }) => {
+const StationPortCard: FC<StationPortCardProps> = ({ port, isUpdating, isLocked, canEdit, onDelete, onTurnOn, onTurnOff }) => {
     const [detailsOpen, setDetailsOpen] = useState(false);
     const panelId = useId();
     const toggleDetails = useCallback(() => setDetailsOpen((v) => !v), []);
@@ -64,13 +66,22 @@ const StationPortCard: FC<StationPortCardProps> = ({ port, isUpdating, isLocked,
                         <DetailLine label="Last meter (kW)" value={port.lastMeterKw} />
                         <DetailLine label="Created" value={formatDateTime(port.createdAt)} />
                         <DetailLine label="Updated" value={formatDateTime(port.updatedAt)} />
-                        <div className="flex items-center justify-between">
-                            {canDelete && onDelete && (
+                        <div className="flex items-center justify-between gap-2">
+                            {canEdit && onDelete && (
                                 <SimpleButton
                                     caption="Delete port"
                                     handleClick={onDelete}
                                     size="xs"
                                     color="tertiary"
+                                    isDisabled={isLocked}
+                                />
+                            )}
+                            {canEdit && (
+                                <SimpleButton
+                                    caption={port.status === "DISABLED" ? "Turn on" : "Turn off"}
+                                    handleClick={port.status === "DISABLED" ? onTurnOn ?? (() => {}) : onTurnOff ?? (() => {})}
+                                    size="xs"
+                                    color="secondary"
                                     isDisabled={isLocked}
                                 />
                             )}

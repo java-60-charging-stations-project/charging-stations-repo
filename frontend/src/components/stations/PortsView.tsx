@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FC } from "react";
 import type { StationPort, StationPortCreate, StationState } from "@/types/stations";
 import StationPortCard from "./StationPortCard";
+import { updateStationPortState } from "@/services/api/supportApi";
 import { getLogger } from "@/services/logging/logger";
 import { config } from "@/config/env";
 import EasySpinner from "../EasySpinner";
@@ -120,7 +121,26 @@ const PortsView: FC<PortsViewProps> = ({
         }
     }, [stationId, deletePortFn]);
 
-    const canDeletePort: boolean = enabled && stationState === "OUT_OF_SERVICE";
+    const updatePortState = useCallback(async (port: StationPort, newState: "FREE" | "DISABLED") => {
+        logger.debug(`Updating port ${port.portId} state to ${newState}`);
+        setEditState({ portId: port.portId, isUpdating: true, error: null });
+        try {
+            await updateStationPortState(stationId, {
+                portCode: port.portCode,
+                oldState: port.status,
+                newState,
+            });
+            logger.debug(`Port ${port.portId} state updated to ${newState}`);
+            setPorts((prev: StationPort[]) =>
+                prev.map((p: StationPort) => p.portId === port.portId ? { ...p, status: newState } : p)
+            );
+            setEditState(null);
+        } catch (err) {
+            setEditState({ portId: port.portId, isUpdating: false, error: err instanceof Error ? err.message : String(err) });
+        }
+    }, [stationId]);
+
+    const canEditPort: boolean = enabled && stationState === "OUT_OF_SERVICE";
     const isLocked = isLoading || (editState?.isUpdating ?? false);
     
     if (error) {
@@ -158,8 +178,10 @@ const PortsView: FC<PortsViewProps> = ({
                         port={port}
                         isUpdating={editState?.portId === port.portId && editState.isUpdating}
                         isLocked={isLocked}
-                        canDelete={canDeletePort}
+                        canEdit={canEditPort}
                         onDelete={() => deletePort(port.portId)}
+                        onTurnOn={() => void updatePortState(port, "FREE")}
+                        onTurnOff={() => void updatePortState(port, "DISABLED")}
                     />
                     {editState?.portId === port.portId && editState.error && (
                         <p className="w-full text-right text-red-500 text-xs mt-0.5 pr-0">
