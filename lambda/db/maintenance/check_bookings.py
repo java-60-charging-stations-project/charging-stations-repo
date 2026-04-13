@@ -74,9 +74,6 @@ def process_expired(items):
     return queued, queue_failed
 
 def handler(event, context) -> SuccessResponsePayload | ErrorResponsePayload:
-    table = get_dynamo_stations_table()
-    expired = get_expired_bookings(table)
-    ok, failed = process_expired(expired)
     audit_base = {
         "caller_id": "eventbridge",
         "service": context.function_name,
@@ -84,11 +81,19 @@ def handler(event, context) -> SuccessResponsePayload | ErrorResponsePayload:
         "request_id": context.aws_request_id,
         "trigger": "cron",
     }
-    result = {
-        "checked": len(expired),
-        "released": ok,
-        "failed": failed,
-    }
-    log_audit("INFO", message="overbooked bookings checked and released", status="SUCCESS", **audit_base)
-    logger.info(f"Bookings result: {result}")
-    return SuccessResponsePayload(data=result, meta={})
+    try:
+        table = get_dynamo_stations_table()
+        expired = get_expired_bookings(table)
+        ok, failed = process_expired(expired)
+
+        result = {
+            "checked": len(expired),
+            "released": ok,
+            "failed": failed,
+        }
+        log_audit("INFO", message="overbooked bookings checked and released", status="SUCCESS", **audit_base)
+        logger.info(f"Bookings result: {result}")
+        return SuccessResponsePayload(data=result, meta={})
+    except Exception as e:
+        log_audit("ERROR", message=f"error checking overbooked bookings", status="ERROR", errorMessage=str(e), **audit_base)
+        return ErrorResponsePayload(error=f"unhandled error checking overbooked bookings: {e}", code="UNHANDLED_ERROR")

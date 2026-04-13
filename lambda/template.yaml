@@ -10,6 +10,11 @@ Globals:
 
 Parameters:
 
+  BookingTimeoutMinutes:
+    Type: Number
+    Default: 15
+    Description: Booking timeout used by session pricing/booking flows
+
   DynamoDBRouteTable1Id:
     Type: String
     Description: Route table id (rtb-...) used by private subnet 1 for DynamoDB gateway endpoint
@@ -53,7 +58,6 @@ Parameters:
     Type: String
     Default: "20"
     Description: Allocated storage for RDS PostgreSQL
-
   DBSecretArn:
     Type: String
     Description: ARN of existing DB secret
@@ -661,6 +665,12 @@ Resources:
             NonKeyAttributes:
               - entity_key
               - updated_at
+              - tariff
+              - energy_consumed_kwh
+              - time_booked_at
+              - started_at
+              - stopped_at
+              - charge_level_percent
         - IndexName: booking-state-time-index
           KeySchema:
             - AttributeName: state
@@ -719,6 +729,47 @@ Resources:
           Properties:
             Schedule: rate(5 minutes)
             Enabled: true
+
+  ChargeSimPriceCalcFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: charging-stations-charge-sim-price-calc
+      Handler: charge_sim_price_calc.handler
+      CodeUri: db/maintenance
+      Layers:
+        - !Ref CommonToolsLayer
+      Description: Recalculates BOOKED/ACTIVE session costs and charging simulation
+      Timeout: 60
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds:
+          - !Ref PrivateSubnet1Id
+          - !Ref PrivateSubnet2Id
+      Environment:
+        Variables:
+          STATIONS_DYNAMO_TABLE: !Ref StationEntitiesTable
+          SESSION_STATE_INDEX_NAME: state-station-index
+          BOOKING_TIMEOUT_MINUTES: !Ref BookingTimeoutMinutes
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:Query
+              Resource:
+                - !Sub "${StationEntitiesTable.Arn}/index/state-station-index"
+            - Effect: Allow
+              Action:
+                - dynamodb:UpdateItem
+              Resource:
+                - !GetAtt StationEntitiesTable.Arn
+      Events:
+        ChargeSimPriceCalcSchedule:
+          Type: Schedule
+          Properties:
+            Schedule: rate(1 minute)   # or 5 minutes
+            Enabled: true
   # Allows private-subnet Lambdas to reach DynamoDB via gateway endpoint (no NAT required)
   DynamoDBGatewayEndpoint:
     Type: AWS::EC2::VPCEndpoint
@@ -753,7 +804,7 @@ Resources:
           STATIONS_DYNAMO_TABLE: !Ref StationEntitiesTable
           AWS_LAMBDA_HOST_ACCOUNT: !Ref AWS::AccountId
           GET_STATION_FUNCTION_NAME: !Ref GetStationInfoFunction
-          BOOKING_TIMEOUT_MINUTES: "15"
+          BOOKING_TIMEOUT_MINUTES: !Ref BookingTimeoutMinutes
           GET_PORTS_SESSIONS_FUNCTION_NAME: !Ref GetPortsSessionsFunction
 
       Policies:
@@ -819,7 +870,6 @@ Resources:
               Resource: 
                 - !GetAtt WriteStationRDSFunction.Arn
                 - !GetAtt WriteStationPortsFunction.Arn
-              
       Description: Consumes DynamoDB stream records from station entities table
       VpcConfig:
         SecurityGroupIds:
@@ -894,7 +944,6 @@ Resources:
       - DynamoDBGatewayEndpoint
       - ChargingStationsRDSPostgresDB
     Properties:
-      Runtime: python3.12
       FunctionName: charging-stations-reconcile-free-ports
       Handler: reconcile_free_ports.handler
       CodeUri: db/maintenance

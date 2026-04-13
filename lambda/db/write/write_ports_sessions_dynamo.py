@@ -11,6 +11,7 @@ from data_types.contract_types import SuccessResponsePayload, ErrorResponsePaylo
 from data_types.db_instance_types import PortInstance, PortSessionInstance
 from botocore.exceptions import ClientError
 from boto3.dynamodb.types import TypeSerializer, TypeDeserializer
+import random
 
 AWS_REGION = os.environ["AWS_REGION"]
 STATIONS_DYNAMO_TABLE = os.environ["STATIONS_DYNAMO_TABLE"]
@@ -163,6 +164,31 @@ def get_session_by_user(user_id: str) -> dict:
         raise LambdaResponseError({"error": f"error getting session by user: {response_json.get('error')}", "code": "INVALID_REQUEST"})
     return response_json["data"]["session"][0]
 
+def get_session_by_port(entity_key: str) -> dict:
+    try:
+        client = boto3.client("lambda", region_name=AWS_REGION)
+    except Exception as e:
+        logger.error(f"error getting lambda client: {e}")
+        raise LambdaResponseError({"error": f"error getting lambda client: {e}", "code": "DATABASE_ERROR"})
+    payload = {
+        "service": {"action": "get_session_by_port", "callerId": "script"},
+        "data": {"entity_key": entity_key},
+    }
+    resp = client.invoke(
+        FunctionName=f"arn:aws:lambda:{AWS_REGION}:{AWS_LAMBDA_HOST_ACCOUNT}:function:{GET_PORTS_SESSIONS_FUNCTION_NAME}",
+        InvocationType="RequestResponse",
+        Payload=json.dumps(payload).encode("utf-8"),
+    )
+    if resp.get("StatusCode") != 200:
+        raise LambdaResponseError({"error": f"error getting session by port: {resp.get('error')}", "code": "DATABASE_ERROR"})
+    if resp.get("FunctionError"):
+        raise LambdaResponseError({"error": f"error getting session by port: {resp['FunctionError']}", "code": "DATABASE_ERROR"})
+    raw = resp["Payload"].read().decode("utf-8") or "{}"
+    response_json = json.loads(raw)
+    if response_json.get("error"):
+        raise LambdaResponseError({"error": f"error getting session by port: {response_json.get('error')}", "code": "INVALID_REQUEST"})
+    return response_json["data"]["session"][0]
+
 def calculate_price(session: dict, now: datetime) -> tuple[Decimal, Decimal, Decimal, Decimal]:
     tariff = Decimal(str(session["tariff"]))
     booking_price = Decimal(0)
@@ -210,7 +236,7 @@ def _transact_update_session_close_unpaid(session: dict, now: datetime) -> dict:
         }
     }
 
-def _transact_update_session_booked_to_active(session: dict, ts_iso: str) -> dict:
+def _transact_update_session_booked_to_active(session: dict, ts_iso: str, charge_level_percent: str) -> dict:
     return {
         "Update": {
             "TableName": STATIONS_DYNAMO_TABLE,
@@ -218,13 +244,14 @@ def _transact_update_session_booked_to_active(session: dict, ts_iso: str) -> dic
                 "station_id": {"S": str(session["station_id"])},
                 "entity_key": {"S": session["entity_key"]},
             },
-            "UpdateExpression": "SET #st = :active, updated_at = :ts, started_at = :ts",
+            "UpdateExpression": "SET #st = :active, updated_at = :ts, started_at = :ts, charge_level_percent = :charge_level_percent",
             "ConditionExpression": "attribute_exists(station_id) AND #st = :booked",
             "ExpressionAttributeNames": {"#st": "state"},
             "ExpressionAttributeValues": {
                 ":booked": {"S": "BOOKED"},
                 ":active": {"S": "ACTIVE"},
                 ":ts": {"S": ts_iso},
+                ":charge_level_percent": {"N": charge_level_percent},
             },
         }
     }
@@ -305,6 +332,8 @@ def update_station_ports(action: str, port_data: dict, user_id: str| None = None
                     update_info["time_booked_before"] = booked_by.isoformat()
                 elif new_state == "OCCUPIED":
                     update_info["time_started_at"] = now.isoformat()
+                    random_charge_level_percent = random.randint(20, 95)
+                    update_info["charge_level_percent"] = Decimal(str(random_charge_level_percent))
                 session_object = build_session_object(update_info)
                 session_lock_item = {
                     "station_id": user_id,
@@ -327,9 +356,15 @@ def update_station_ports(action: str, port_data: dict, user_id: str| None = None
                 update_info["entity_key"] = port_key
                 if new_state == "OCCUPIED" and old_state == "BOOKED":
                     ts_iso = now.isoformat()
-                    transact_items.append(_transact_update_session_booked_to_active(session, ts_iso))
+                    random_charge_level_percent = random.randint(20, 95)
+                    update_info["charge_level_percent"] = str(random_charge_level_percent)
+                    transact_items.append(_transact_update_session_booked_to_active(session, ts_iso, random_charge_level_percent))
                 elif old_state in ["BOOKED", "OCCUPIED"] and new_state == "FREE":
                     transact_items.append(_transact_update_session_close_unpaid(session, now))
+        elif new_state == "DISABLED":
+            session = get_session_by_port(update_info["station_id"], entity_key)
+            if session:
+                transact_items.append(_transact_update_session_close_unpaid(session, now))
         response = client.transact_write_items(TransactItems=transact_items)
         logger.info(f"transaction response: {response}")
         return update_info
@@ -463,6 +498,7 @@ def build_session_object(session_data: dict) -> dict:
         timestamp = datetime.now(timezone.utc).isoformat()
         tariff = get_tariff(session_data["station_id"])
         port_booked = session_data.get("time_booked_at")
+        charge_level_percent = session_data.get("charge_level_percent")
         session_object: PortSessionInstance = {
             "session_id": session_id,
             "station_id": session_data["station_id"],
@@ -475,7 +511,7 @@ def build_session_object(session_data: dict) -> dict:
             "final_cost": Decimal(0),
             "estimated_minutes_remaining": None,
             "duration_minutes": None,
-            "charge_level_percent": None,
+            "charge_level_percent": charge_level_percent,
             "created_at": timestamp,
             "updated_at": timestamp,
             "time_booked_at": session_data.get("time_booked_at"),

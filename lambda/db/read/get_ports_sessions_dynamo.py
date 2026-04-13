@@ -52,24 +52,28 @@ def get_ports_by_station(station_id: str) -> list[PortInstance]:
         logger.error(f"error getting station ports: {e}")
         raise LambdaResponseError({"error": f"error getting station ports: {e}", "code": "DATABASE_ERROR"})
 
-def get_session_by_user(user_id: str) -> list[dict]:
+def get_session_by_user(user_id: str, latest: bool = False) -> list[dict]:
     try:
         table = get_dynamo_stations_table()
     except Exception as e:
         logger.error(f"error getting dynamo stations table: {e}")
         raise LambdaResponseError({"error": f"error getting dynamo stations table: {e}", "code": "DATABASE_ERROR"})
-    try:
-        resp = table.query(
-            IndexName="user_id-index",
-            KeyConditionExpression=Key("user_id").eq(user_id),
-            FilterExpression="#s IN (:booked, :active, :unpaid)",
-            ExpressionAttributeNames={"#s": "state"},
-            ExpressionAttributeValues={
+    query_params = {
+        "IndexName": "user_id-index",
+        "KeyConditionExpression": Key("user_id").eq(user_id)
+    }
+    if not latest:
+        query_params.update({
+            "FilterExpression": "#s IN (:booked, :active, :unpaid)",
+            "ExpressionAttributeNames": {"#s": "state"},
+            "ExpressionAttributeValues": {
                 ":booked": "BOOKED",
                 ":active": "ACTIVE",
                 ":unpaid": "UNPAID",
-                },
-            )
+            }
+        })
+    try:
+        resp = table.query(**query_params)
         items = resp.get("Items", [])
         sessions: list[dict] = []
         for item in items:
@@ -79,6 +83,22 @@ def get_session_by_user(user_id: str) -> list[dict]:
     except Exception as e:
         logger.error(f"error getting session by user: {e}")
         raise LambdaResponseError({"error": f"error getting session by user: {e}", "code": "DATABASE_ERROR"})
+
+def get_session_by_port(station_id: str, entity_key: str) -> dict | None:
+    try:
+        table = get_dynamo_stations_table()
+    except Exception as e:
+        logger.error(f"error getting dynamo stations table: {e}")
+        raise LambdaResponseError({"error": f"error getting dynamo stations table: {e}", "code": "DATABASE_ERROR"})
+    try:
+        resp = table.query(
+            KeyConditionExpression=Key("station_id").eq(station_id) & Key("entity_key").begins_with(entity_key)
+        )
+        item = resp.get("Items", [])
+        return item[0] if item else None
+    except Exception as e:
+        logger.error(f"error getting session by port: {e}")
+        raise LambdaResponseError({"error": f"error getting session by port: {e}", "code": "UNHANDLED_ERROR"})
 
 def get_has_free_ports_by_station(station_id: str) -> bool:
     try:
@@ -130,7 +150,8 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                 return SuccessResponsePayload(data={"has_free_ports": has_free_ports}, meta={})
             case "getSessionByUser":
                 user_id = event["data"]["userId"]
-                session = get_session_by_user(user_id)
+                latest = event.get("data", {}).get("latest", False)
+                session = get_session_by_user(user_id, latest=latest)
                 log_audit("INFO", message="session retrieved successfully", status="SUCCESS", **audit_base)
                 return SuccessResponsePayload(data={"session": session}, meta={})
             case _:
