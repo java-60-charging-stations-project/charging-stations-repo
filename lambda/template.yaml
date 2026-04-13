@@ -636,6 +636,8 @@ Resources:
           AttributeType: S
         - AttributeName: state
           AttributeType: S
+        - AttributeName: time_booked_before
+          AttributeType: S
       KeySchema:
         - AttributeName: station_id
           KeyType: HASH
@@ -659,10 +661,64 @@ Resources:
             NonKeyAttributes:
               - entity_key
               - updated_at
+        - IndexName: booking-state-time-index
+          KeySchema:
+            - AttributeName: state
+              KeyType: HASH
+            - AttributeName: time_booked_before
+              KeyType: RANGE
+          Projection:
+            ProjectionType: INCLUDE
+            NonKeyAttributes:
+              - station_id
+              - entity_key
+              - user_id
       SSESpecification:
         SSEEnabled: true
       StreamSpecification:
         StreamViewType: NEW_AND_OLD_IMAGES
+  
+  CheckBookingsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: charging-stations-check-bookings
+      Handler: check_bookings.handler
+      CodeUri: db/maintenance
+      Layers:
+        - !Ref CommonToolsLayer
+      Description: Checks expired BOOKED sessions and releases booked ports
+      Timeout: 60
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds:
+          - !Ref PrivateSubnet1Id
+          - !Ref PrivateSubnet2Id
+      Environment:
+        Variables:
+          STATIONS_DYNAMO_TABLE: !Ref StationEntitiesTable
+          WRITE_PORTS_FUNCTION_NAME: !Ref WriteStationPortsFunction
+          BOOKING_TIME_INDEX_NAME: booking-state-time-index
+          MAX_WORKERS: "10"
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:Query
+              Resource:
+                - !Sub "${StationEntitiesTable.Arn}/index/booking-state-time-index"
+            - Effect: Allow
+              Action:
+                - lambda:InvokeFunction
+              Resource:
+                - !GetAtt WriteStationPortsFunction.Arn
+      Events:
+        CheckBookingsSchedule:
+          Type: Schedule
+          Properties:
+            Schedule: rate(5 minutes)
+            Enabled: true
   # Allows private-subnet Lambdas to reach DynamoDB via gateway endpoint (no NAT required)
   DynamoDBGatewayEndpoint:
     Type: AWS::EC2::VPCEndpoint

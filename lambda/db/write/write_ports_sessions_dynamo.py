@@ -168,13 +168,14 @@ def calculate_price(session: dict, now: datetime) -> tuple[Decimal, Decimal, Dec
     booking_price = Decimal(0)
     idle_price = Decimal(0)
     price = Decimal(0)
+    max_booking_price = tariff * Decimal(str(BOOKING_TIMEOUT_MINUTES))
     if session.get("time_booked_at"):
         booked_at = datetime.fromisoformat(session["time_booked_at"])
         started_charging = session.get("started_at")
         finished_booking = datetime.fromisoformat(started_charging) if started_charging else now
         booking_seconds = Decimal(str((finished_booking - booked_at).total_seconds()))
         booking_minutes = booking_seconds / Decimal(60)
-        booking_price = booking_minutes * tariff
+        booking_price = min(booking_minutes * tariff, max_booking_price)
         price += booking_price
     energy_consumed_price = session["energy_consumed_kwh"] * tariff
     price += energy_consumed_price
