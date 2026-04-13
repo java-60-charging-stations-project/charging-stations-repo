@@ -1,8 +1,10 @@
 import type { BookingDto, CreateBookingRequest } from './bookings.types';
-import { updateStationStateLocal, findStationById } from '../stations/local/stations.service.local';
+import { findStationById } from '../stations/local/stations.service.local';
 
 export interface BookingsService {
   listForUser(userId: string): Promise<BookingDto[]>;
+  /** Одна бронь пользователя по id; чужая или несуществующая → `null` */
+  getForUser(userId: string, bookingId: string): Promise<BookingDto | null>;
   create(userId: string, req: CreateBookingRequest): Promise<BookingDto>;
   cancel(userId: string, bookingId: string): Promise<boolean>;
   processExpiredBookings(): Promise<void>;
@@ -22,6 +24,12 @@ export class MockBookingsService implements BookingsService {
   async listForUser(userId: string): Promise<BookingDto[]> {
     await this.processExpiredBookings();
     return this.bookings.filter((b) => b.userId === userId);
+  }
+
+  async getForUser(userId: string, bookingId: string): Promise<BookingDto | null> {
+    await this.processExpiredBookings();
+    const b = this.bookings.find((x) => x.userId === userId && x.bookingId === bookingId);
+    return b ?? null;
   }
 
   async create(userId: string, req: CreateBookingRequest): Promise<BookingDto> {
