@@ -2,7 +2,8 @@ import { type FC } from "react";
 import { useCallback, useEffect, useState, } from "react";
 import { getLogger } from "@/services/logging";
 import { createStation, updateStation } from "@/services/api/adminApi";
-import type { AdminCreateStationRequest, AdminUpdateStationRequest, StationBase } from "@/types/stations";
+import { updateStation as supportUpdateStation } from "@/services/api/supportApi";
+import type { AdminCreateStationRequest, AdminUpdateStationRequest, StationBase, StationState } from "@/types/stations";
 import { useForm, useWatch, type SubmitHandler } from "react-hook-form";
 import { config } from "@/config/env";
 import StationStateActions from "@/components/stations/StationStateActions";
@@ -11,6 +12,11 @@ import { useNavigate } from "react-router";
 import useFromParam from "@/hooks/useFromParam";
 
 const logger = getLogger("StationEditForm");
+
+function canEditStation(userRole: string, stationState: StationState): boolean {
+    return (userRole === "ADMIN" && stationState === "INACTIVE") ||
+        (userRole === "SUPPORT" && stationState === "OUT_OF_SERVICE");
+};
 
 type StationFormData = Omit<AdminCreateStationRequest, 'code'>;
 
@@ -35,9 +41,9 @@ const StationEditForm: FC<StationEditFormProps> = ({
     stationId,
     fetchStationMethod,
 }) => {
-   const { register, handleSubmit, reset, control, formState: { errors, isSubmitting } } = useForm<StationFormData>();
+    const { register, handleSubmit, reset, control, formState: { errors, isSubmitting } } = useForm<StationFormData>();
     const [submitError, setSubmitError] = useState<string | null>(null);
-    const [submitSuccess, setSubmitSuccess] = useState(false);
+    const [createSuccess, setCreateSuccess] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
     const isSupportUser = userRole === "SUPPORT";
     const [station, setStation] = useState<StationBase | null>(null);
@@ -49,8 +55,10 @@ const StationEditForm: FC<StationEditFormProps> = ({
     const watchedPeakRate = useWatch({ control, name: "ratePlan.peakRate" });
     const watchedOffPeakRate = useWatch({control, name: "ratePlan.offPeakRate"});
 
-    const isLocked = !!stationId || isSubmitting || submitSuccess;
-    const isEditableFieldLocked = !canEdit || isSubmitting || submitSuccess;
+    const isEditing = stationId !== undefined;
+    const isLocked = !isEditing && (isSubmitting || createSuccess);
+    const isEditableFieldLocked = isLocked || (isEditing && (!canEdit || isSubmitting));
+
     const fromPath = from ? encodeURIComponent(from) : "";    
 
     const loadStation = useCallback(async () => {
@@ -60,7 +68,7 @@ const StationEditForm: FC<StationEditFormProps> = ({
         try {
             const loadedStation = await fetchStationMethod(stationId);
             setStation(loadedStation);
-            setCanEdit(userRole === "ADMIN" && loadedStation.state === "INACTIVE");
+            setCanEdit(canEditStation(userRole, loadedStation.state));
             reset({
                 name: loadedStation.name,
                 owner: loadedStation.owner,
@@ -101,26 +109,34 @@ const StationEditForm: FC<StationEditFormProps> = ({
                     location: data.location,
                 };
                 logger.debug('Update station payload', updatePayload);
-                await updateStation(stationId, updatePayload);
-                setSubmitSuccess(true);
+                if (isSupportUser) {
+                    logger.debug('Support user updating station...');
+                    await supportUpdateStation(stationId, updatePayload);
+                }
+                else {
+                    logger.debug('Admin user updating station...');
+                    await updateStation(stationId, updatePayload);
+                }
+                logger.debug('Station updated successfully');
                 await loadStation();
-                setTimeout(() => setSubmitSuccess(false), 2000);
+                logger.debug('Station loaded successfully');
                 return;
             }
-
-            const code = `${data.owner}=+=${data.city}=+=${data.address}`;
-            const createPayload: AdminCreateStationRequest = {
-                ...data,
-                code,
-                ratePlan: {
-                    ...data.ratePlan,
-                    currencyCode: config.currency.code,
-                    currencyName: config.currency.name,
-                },
-            };
-            logger.debug('Create station payload', createPayload);
-            await createStation(createPayload);
-            setSubmitSuccess(true);
+            else {
+                const code = `${data.owner}=+=${data.city}=+=${data.address}`;
+                const createPayload: AdminCreateStationRequest = {
+                    ...data,
+                    code,
+                    ratePlan: {
+                        ...data.ratePlan,
+                        currencyCode: config.currency.code,
+                        currencyName: config.currency.name,
+                    },
+                };
+                logger.debug('Create station payload', createPayload);
+                await createStation(createPayload);
+                setCreateSuccess(true);
+            }
         } catch (err) {
             const message = err instanceof Error ? err.message : "An unexpected error occurred";
             setSubmitError(message);
@@ -134,10 +150,10 @@ const StationEditForm: FC<StationEditFormProps> = ({
             {loadError && <p className="text-red-500 text-xs">{loadError}</p>}
             <form onSubmit={handleSubmit(onSubmit)} className="w-full text-xs">
                 <FieldRow label="City" error={errors.city?.message}>
-                    <input className="w-full" disabled={isLocked} {...register("city", { required: "City is required" })} />
+                    <input className="w-full" disabled={isLocked || isEditing} {...register("city", { required: "City is required" })} />
                 </FieldRow>
                 <FieldRow label="Address" error={errors.address?.message}>
-                    <input className="w-full" disabled={isEditableFieldLocked} {...register("address", { required: "Address is required" })} />
+                    <input className="w-full" disabled={isLocked || isEditing} {...register("address", { required: "Address is required" })} />
                 </FieldRow>
                 <div className="mb-1 flex items-center flex-wrap ">
                     <label className={LABEL}>Coordinates</label>
@@ -148,7 +164,7 @@ const StationEditForm: FC<StationEditFormProps> = ({
                                 type="number"
                                 step="any"
                                 className="w-full"
-                                disabled={isEditableFieldLocked}
+                                disabled={isLocked || isEditing}
                                 {...register("location.latitude", {
                                     valueAsNumber: true,
                                     required: "Latitude is required",
@@ -164,7 +180,7 @@ const StationEditForm: FC<StationEditFormProps> = ({
                                 type="number"
                                 step="any"
                                 className="w-full"
-                                disabled={isEditableFieldLocked}
+                                disabled={isLocked || isEditing}
                                 {...register("location.longitude", {
                                     valueAsNumber: true,
                                     required: "Longitude is required",
@@ -180,7 +196,7 @@ const StationEditForm: FC<StationEditFormProps> = ({
                     <input className="w-full" disabled={isLocked} {...register("name", { required: "Station name is required" })} />
                 </FieldRow>
                 <FieldRow label="Owner" error={errors.owner?.message}>
-                    <input className="w-full" disabled={isLocked} {...register("owner", { required: "Owner is required" })} />
+                    <input className="w-full" disabled={isLocked || isEditing} {...register("owner", { required: "Owner is required" })} />
                 </FieldRow>
                 <div className="mb-1 flex items-center flex-wrap">
                     <label className={LABEL}>{ratesTitle}</label>
@@ -278,13 +294,13 @@ const StationEditForm: FC<StationEditFormProps> = ({
                         <input
                             type="submit"
                             className="mt-1 bg-blue-500 text-white px-4 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
-                            disabled={isSubmitting || submitSuccess}
+                            disabled={isSubmitting || createSuccess}
                             value={isSubmitting
                                 ? (stationId ? "Saving..." : "Submitting...")
                                 : (stationId ? "Save changes" : "Submit")}
                         />
                         {submitError && <p className="text-red-500 text-xs mt-2">{submitError}</p>}
-                        {submitSuccess && (
+                        {createSuccess && (
                             <p className="text-green-500 text-xs mt-2">
                                 {stationId ? "Station updated successfully!" : "Station created successfully!"}
                             </p>
