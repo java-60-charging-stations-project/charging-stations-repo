@@ -13,6 +13,8 @@ import type {
   AdminUpdateStationStateResponse,
   AdminUpdateStationPortsResponse,
   ApiPort,
+  SupportUpdatePortStateRequest,
+  SupportUpdatePortStateResponse,
   StationBase,
   StationBaseCollectionResponse,
   StationLifecycleState,
@@ -204,6 +206,46 @@ export class StationsServiceLocal implements StationsService {
     };
   }
 
+  async updatePortState(
+    stationId: string,
+    payload: SupportUpdatePortStateRequest,
+    _callerId: string
+  ): Promise<SupportUpdatePortStateResponse> {
+    if (
+      payload.newState === 'FREE' &&
+      (payload.oldState === 'BOOKED' || payload.oldState === 'OCCUPIED')
+    ) {
+      throw new BadRequestError('Invalid transition to FREE from BOOKED or OCCUPIED');
+    }
+
+    const station = STATIONS.find((s) => s.id === stationId);
+    if (!station) {
+      throw new ResourceNotFoundError('Station not found');
+    }
+    const ports = station.ports ?? [];
+    const port = ports.find((p) => p.portCode === payload.portCode);
+    if (!port) {
+      throw new ResourceNotFoundError('Port not found');
+    }
+    if (port.status !== payload.oldState) {
+      throw new ConflictError('Port state has changed; please refresh and try again');
+    }
+    if (payload.oldState === payload.newState) {
+      throw new BadRequestError('Old state and new state are the same');
+    }
+
+    port.status = payload.newState;
+    port.updatedAt = new Date().toISOString();
+    station.updatedAt = port.updatedAt;
+
+    return {
+      stationId,
+      entityKey: port.portId,
+      newState: payload.newState,
+      updatedAt: port.updatedAt,
+    };
+  }
+
   async updateStation(
     stationId: string,
     patch: AdminUpdateStationRequest,
@@ -228,9 +270,9 @@ export class StationsServiceLocal implements StationsService {
       ? patch.location
       : (patch.longitude !== undefined || patch.latitude !== undefined)
         ? {
-            latitude: patch.latitude ?? (station.location?.latitude ?? 0),
-            longitude: patch.longitude ?? (station.location?.longitude ?? 0),
-          }
+          latitude: patch.latitude ?? (station.location?.latitude ?? 0),
+          longitude: patch.longitude ?? (station.location?.longitude ?? 0),
+        }
         : undefined;
 
     if (nextLocation) {

@@ -14,6 +14,7 @@ import {
   type LambdaInsertStationPortsData,
   type LambdaInsertStationPortsSuccessData,
   type LambdaPortDynamoRow,
+  type LambdaSupportUpdateStationPortsSuccessData,
 } from '../../common/lambdaContracts';
 import { type LambdaErrorResponse } from '../../common/wrapperTypes';
 import { env } from '../../config/env';
@@ -40,6 +41,8 @@ import type {
   StationBase,
   StationBaseCollectionResponse,
   StationLifecycleState,
+  SupportUpdatePortStateRequest,
+  SupportUpdatePortStateResponse,
 } from './stations.types';
 import {
   mapLambdaAdminCreateStationResponse,
@@ -245,6 +248,39 @@ export class StationsServiceLambda implements StationsService {
     };
   }
 
+  async updatePortState(
+    stationId: string,
+    payload: SupportUpdatePortStateRequest,
+    callerId: string
+  ): Promise<SupportUpdatePortStateResponse> {
+    logger.debug('Invoking ports write lambda: supportUpdateStationPorts', {
+      stationId,
+      portCode: payload.portCode,
+      callerId,
+    });
+    const result = await LAMBDA_INVOKER.invokeJson<
+      { data: LambdaSupportUpdateStationPortsSuccessData } | LambdaErrorResponse
+    >(
+      env.stationsPortsWriteLambdaFunctionName,
+      wrapLambdaRequest('supportUpdateStationPorts', callerId, {
+        stationId,
+        portCode: payload.portCode,
+        oldState: payload.oldState,
+        newState: payload.newState,
+      })
+    );
+    if (isLambdaErrorPayload(result)) {
+      throwFromStationsLambdaError(result);
+    }
+    const d = result.data;
+    return {
+      stationId: d.station_id,
+      entityKey: d.entity_key,
+      newState: d.new_state,
+      updatedAt: d.updated_at,
+    };
+  }
+
   async updateStation(
     stationId: string,
     patch: AdminUpdateStationRequest,
@@ -258,9 +294,9 @@ export class StationsServiceLambda implements StationsService {
       patch.longitude == null && patch.latitude == null
         ? undefined
         : {
-            longitude: patch.longitude ?? undefined,
-            latitude: patch.latitude ?? undefined,
-          };
+          longitude: patch.longitude ?? undefined,
+          latitude: patch.latitude ?? undefined,
+        };
     const location = patch.location ?? locationFromFlat;
     if (location) {
       payload.location = location;

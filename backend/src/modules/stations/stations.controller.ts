@@ -58,6 +58,18 @@ const updateStationPortsSchema = z.object({
   deltaPorts: z.number().int().min(1)
 });
 
+const portOperationalStateSchema = z.enum(['FREE', 'OCCUPIED', 'ERROR', 'DISABLED', 'BOOKED']);
+const updatePortStateSchema = z
+  .object({
+    portCode: z.string().min(1),
+    oldState: portOperationalStateSchema,
+    newState: z.enum(['FREE', 'DISABLED']),
+  })
+  .refine(
+    (b) => !(b.newState === 'FREE' && (b.oldState === 'BOOKED' || b.oldState === 'OCCUPIED')),
+    { message: 'Invalid transition to FREE from BOOKED or OCCUPIED', path: ['newState'] }
+  );
+
 const addPortsSchema = z.object({
   ports: z.array(z.object({ portCode: z.string().min(1) })).min(1),
 });
@@ -92,7 +104,7 @@ function canChangeStatus(
 }
 
 export class StationsController {
-  constructor(private readonly service: StationsService) {}
+  constructor(private readonly service: StationsService) { }
 
   list = async (req: Request, res: Response) => {
     const params = listQuerySchema.parse(req.query);
@@ -145,6 +157,15 @@ export class StationsController {
 
     const result = await this.service.updateStationPorts(stationId, deltaPorts, callerId);
     res.json({ code: 200, data: result });
+  };
+
+  updatePortState = async (req: Request, res: Response) => {
+    const stationId = idSchema.parse(req.params.stationId);
+    const payload = updatePortStateSchema.parse(req.body);
+    const callerId = req.user?.sub ?? '';
+
+    const result = await this.service.updatePortState(stationId, payload, callerId);
+    res.status(200).json({ code: 200, data: result });
   };
 
   updateStation = async (req: Request, res: Response) => {
