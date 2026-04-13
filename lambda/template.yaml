@@ -806,7 +806,7 @@ Resources:
           GET_STATION_FUNCTION_NAME: !Ref GetStationInfoFunction
           BOOKING_TIMEOUT_MINUTES: !Ref BookingTimeoutMinutes
           GET_PORTS_SESSIONS_FUNCTION_NAME: !Ref GetPortsSessionsFunction
-
+          PAYMENT_SUCCESS_RATE: "80" # 80% chance of successful payment
       Policies:
         - Version: '2012-10-17'
           Statement:

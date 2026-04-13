@@ -20,6 +20,7 @@ GET_STATION_FUNCTION_NAME = os.environ["GET_STATION_FUNCTION_NAME"]
 GET_PORTS_SESSIONS_FUNCTION_NAME = os.environ["GET_PORTS_SESSIONS_FUNCTION_NAME"]
 PORT_STATES = ["FREE", "OCCUPIED", "ERROR", "DISABLED", "BOOKED"]
 BOOKING_TIMEOUT_MINUTES = int(os.environ["BOOKING_TIMEOUT_MINUTES"])
+PAYMENT_SUCCESS_RATE = int(os.environ["PAYMENT_SUCCESS_RATE"])
 
 _dynamo_client = None
 _serializer = TypeSerializer()
@@ -256,7 +257,7 @@ def _transact_update_session_booked_to_active(session: dict, ts_iso: str, charge
         }
     }
 
-def update_station_ports(action: str, port_data: dict, user_id: str| None = None) -> dict:
+def update_station_ports(action: str, port_data: dict, user_id: str| None = None, cron_caller: bool = False) -> dict:
     if not port_data["port_key"]:
         logger.error(f"port key is required for {action}")
         raise LambdaResponseError({"error": f"port key is required for {action}", "code": "INVALID_REQUEST"})
@@ -327,13 +328,12 @@ def update_station_ports(action: str, port_data: dict, user_id: str| None = None
             update_info["user_id"] = user_id
             if old_state == "FREE" and new_state != "FREE": 
                 if new_state == "BOOKED":
-                    booked_by = now - timedelta(minutes=BOOKING_TIMEOUT_MINUTES)
+                    booked_by = now + timedelta(minutes=BOOKING_TIMEOUT_MINUTES)
                     update_info["time_booked_at"] = now.isoformat()
                     update_info["time_booked_before"] = booked_by.isoformat()
                 elif new_state == "OCCUPIED":
                     update_info["time_started_at"] = now.isoformat()
-                    random_charge_level_percent = random.randint(20, 95)
-                    update_info["charge_level_percent"] = Decimal(str(random_charge_level_percent))
+                    update_info["charge_level_percent"] = random.randint(20, 95)
                 session_object = build_session_object(update_info)
                 session_lock_item = {
                     "station_id": user_id,
@@ -356,8 +356,7 @@ def update_station_ports(action: str, port_data: dict, user_id: str| None = None
                 update_info["entity_key"] = port_key
                 if new_state == "OCCUPIED" and old_state == "BOOKED":
                     ts_iso = now.isoformat()
-                    random_charge_level_percent = random.randint(20, 95)
-                    update_info["charge_level_percent"] = str(random_charge_level_percent)
+                    random_charge_level_percent = str(random.randint(20, 95))
                     transact_items.append(_transact_update_session_booked_to_active(session, ts_iso, random_charge_level_percent))
                 elif old_state in ["BOOKED", "OCCUPIED"] and new_state == "FREE":
                     transact_items.append(_transact_update_session_close_unpaid(session, now))
@@ -445,6 +444,10 @@ def get_tariff(station_id: str) -> Decimal:
     return tariff
 
 def pay_session(session_data: dict) -> dict:
+    random_chance = random.randint(1, 100)
+    success = random_chance >= PAYMENT_SUCCESS_RATE
+    if not success:
+        raise LambdaResponseError({"error": f"session payment failed", "code": "Failed attempt"})
     try:
         client = get_dynamo_client()
     except Exception as e:
@@ -567,8 +570,11 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                 return SuccessResponsePayload(data=updated_port_data, meta={})
             case "userUpdateStationPorts":
                 user_id = event["data"]["userId"]
+                cron_caller = False
+                if caller_id == "expire-bookings-cron":
+                    cron_caller = True
                 update_data = get_update_data_from_event(event)
-                updated_port_data = update_station_ports(action, update_data, user_id)
+                updated_port_data = update_station_ports(action, update_data, user_id, cron_caller)
                 log_audit("INFO", message="station ports updated successfully", status="SUCCESS", **audit_base)
                 return SuccessResponsePayload(data=updated_port_data, meta={})
             case "deleteStationPorts":

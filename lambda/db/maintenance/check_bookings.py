@@ -27,9 +27,8 @@ def get_expired_bookings(table):
     items = []
     params = {
         "IndexName": BOOKING_INDEX,
-        "KeyConditionExpression": Key("#st").eq("BOOKED") & Key("time_booked_before").lte(now_iso),
+        "KeyConditionExpression": Key("state").eq("BOOKED") & Key("time_booked_before").lte(now_iso),
         "ProjectionExpression": "station_id, entity_key, user_id, time_booked_before",
-        "ExpressionAttributeNames": {"#st": "state"}
     }
 
     while True:
@@ -43,7 +42,7 @@ def get_expired_bookings(table):
     return items
 
 def release_booking(item):
-    port_code = item["entity_key"].split("#", 1)[1]
+    port_code = item["entity_key"].split("#")[1]
     payload = {
         "service": {"action": "userUpdateStationPorts", "callerId": "expire-bookings-cron"},
         "data": {

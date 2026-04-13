@@ -31,7 +31,7 @@ def _query_sessions_by_state(table, state: str) -> list[dict]:
         "IndexName": SESSION_STATE_INDEX,
         "KeyConditionExpression": Key("state").eq(state),
         "ProjectionExpression": (
-            "station_id, entity_key, #st, user_id, tariff, energy_consumed_kwh, "
+            "station_id, entity_key, #st, tariff, energy_consumed_kwh, "
             "time_booked_at, started_at, stopped_at, charge_level_percent"
         ),
         "FilterExpression": "contains(entity_key, :session_marker)",
@@ -93,7 +93,7 @@ def handler(event, context) -> SuccessResponsePayload | ErrorResponsePayload:
                             session["stopped_at"] = now.isoformat()
                             new_charge_percent = 100
                             additional_charge_percent = 100 - charge_level_percent
-                        additional_charge_kwh = Decimal(str(additional_charge_percent * 10))
+                        additional_charge_kwh = Decimal(str(additional_charge_percent * 1))
                         session["charge_level_percent"] = new_charge_percent
                         session["energy_consumed_kwh"] = energy_consumed_kwh + additional_charge_kwh
                         session["estimated_minutes_remaining"] = Decimal(str(100 - new_charge_percent))
