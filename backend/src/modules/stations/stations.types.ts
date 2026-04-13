@@ -199,6 +199,22 @@ export interface AdminUpdateStationPortsResponse {
   occupiedPorts: number;
 }
 
+/** Состояние порта в Dynamo — `PATCH /support/stations/:stationId/ports/state` */
+export type PortOperationalState = 'FREE' | 'OCCUPIED' | 'ERROR' | 'DISABLED' | 'BOOKED';
+
+export interface SupportUpdatePortStateRequest {
+  portCode: string;
+  oldState: PortOperationalState;
+  newState: 'FREE' | 'DISABLED';
+}
+
+export interface SupportUpdatePortStateResponse {
+  stationId: string;
+  entityKey: string;
+  newState: string;
+  updatedAt: string;
+}
+
 export interface LambdaAdminUpdateStationStateResponse {
   updated_at: string;
 }

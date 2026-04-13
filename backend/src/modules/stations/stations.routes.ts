@@ -25,17 +25,18 @@ export function stationsRouter(): Router {
   router.use('/support', verifyCognitoJwt, requireGroups([SUPPORT_GROUP]));
   router.get('/support/stations', controller.list);
   router.get('/support/stations/:stationId/ports', controller.getPorts);
+  router.patch('/support/stations/:stationId/ports/state', controller.updatePortState);
   router.post('/support/stations/:stationId/ports', controller.addPorts);
   router.delete('/support/stations/:stationId/ports/:portId', controller.deletePort);
   router.get('/support/stations/:stationId', controller.getById);
+  router.patch('/support/stations/:stationId', controller.updateStation);
   router.patch('/support/stations/:stationId/state', controller.updateStationState);
   router.patch('/support/stations/:stationId/ports', controller.updateStationPorts);
 
-  // Admin endpoints
+  // Admin endpoints — правка полей станции и lifecycle; операции с портами (счётчик/состояния) только у support
   router.use('/admin', verifyCognitoJwt, requireGroups([ADMIN_GROUP]));
   router.get('/admin/stations', controller.list);
   router.get('/admin/stations/:stationId/ports', controller.getPorts);
-  router.patch('/admin/stations/:stationId/ports', controller.updateStationPorts);
   router.get('/admin/stations/:stationId', controller.getById);
   router.post('/admin/stations', controller.create);
   router.patch('/admin/stations/:stationId', controller.updateStation);

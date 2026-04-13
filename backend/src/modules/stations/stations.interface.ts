@@ -8,6 +8,8 @@ import type {
   AdminUpdateStationStateResponse,
   AdminUpdateStationPortsResponse,
   ApiPort,
+  SupportUpdatePortStateRequest,
+  SupportUpdatePortStateResponse,
   StationBase,
   StationBaseCollectionResponse,
   StationLifecycleState,
@@ -40,6 +42,12 @@ export interface StationsService {
   ): Promise<AdminUpdateStationStateResponse>;
 
   updateStationPorts(stationId: string, deltaPorts: number, callerId: string): Promise<AdminUpdateStationPortsResponse>;
+
+  updatePortState(
+    stationId: string,
+    payload: SupportUpdatePortStateRequest,
+    callerId: string
+  ): Promise<SupportUpdatePortStateResponse>;
 
   updateStation(
     stationId: string,
