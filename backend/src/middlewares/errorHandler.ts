@@ -17,7 +17,7 @@ function formatZodError(error: ZodError): string {
 
 export function errorHandler(
   error: unknown,
-  _req: Request,
+  req: Request,
   res: Response,
   _next: NextFunction
 ): void {
@@ -31,6 +31,21 @@ export function errorHandler(
   }
 
   if (error instanceof ServiceError) {
+    if (error.statusCode === 403) {
+      logger.warn('Forbidden response returned', {
+        errorCode: error.errorCode,
+        message: error.message,
+        method: req.method,
+        path: req.path,
+        userId: req.user?.sub,
+        userGroups: req.user?.groups ?? [],
+        query: req.query,
+        params: req.params,
+        ip: req.ip,
+        userAgent: req.get('user-agent'),
+      });
+    }
+
     res.status(error.statusCode).json({
       error: {
         code: error.errorCode,

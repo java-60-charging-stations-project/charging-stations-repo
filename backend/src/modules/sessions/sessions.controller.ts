@@ -135,6 +135,18 @@ export class SessionsController {
     const viewer = resolveViewerRole(groups);
 
     if (viewer === 'USER' && userId !== sub) {
+      logger.warn('Forbidden: user attempted to list another user sessions', {
+        method: req.method,
+        path: req.path,
+        requesterUserId: sub,
+        requestedUserId: userId,
+        viewerRole: viewer,
+        userGroups: groups,
+        query: req.query,
+        params: req.params,
+        ip: req.ip,
+        userAgent: req.get('user-agent'),
+      });
       return res.status(403).json({ code: 403, error: { message: 'Forbidden: can only list your own sessions' } });
     }
 

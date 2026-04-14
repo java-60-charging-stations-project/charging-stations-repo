@@ -124,10 +124,15 @@ export function requireGroups(allowed: string[]) {
     if (!ok) {
       logger.error('Access denied: insufficient role', {
         path: req.path,
+        originalUrl: req.originalUrl,
         method: req.method,
         userId: req.user?.sub,
         userGroups: groups,
-        requiredGroups: allowed
+        requiredGroups: allowed,
+        query: req.query,
+        params: req.params,
+        ip: req.ip,
+        userAgent: req.get('user-agent')
       });
       return res.status(403).json({ code: 403, error: { message: 'Forbidden' } });
     }
