@@ -67,6 +67,13 @@ export async function verifyCognitoJwt(req: Request, res: Response, next: NextFu
   try {
     const { payload } = await jwtVerify(token, getJwks(), { issuer });
 
+    const tokenIssuer = typeof payload.iss === 'string' ? payload.iss : '';
+    const expectedUserPoolId = env.cognitoUserPoolId;
+    const tokenUserPoolId = tokenIssuer.split('/').pop();
+    if (!tokenIssuer || !tokenUserPoolId || tokenUserPoolId !== expectedUserPoolId) {
+      throw new UnauthorizedError('Token user pool does not match configured user pool', 'INVALID_USER_POOL');
+    }
+
     if (payload.token_use !== 'access') {
       throw new UnauthorizedError('Invalid token_use, expected "access"', 'INVALID_TOKEN_USE');
     }
