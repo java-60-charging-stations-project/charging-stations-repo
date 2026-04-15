@@ -47,6 +47,11 @@ export const env = {
       'arn:aws:lambda:il-central-1:852215679994:function:charging-stations-get-ports-sessions-dynamo'
   ),
 
+  sessionsReadLambdaFunctionName: String(
+    process.env.SESSIONS_READ_LAMBDA_FUNCTION_NAME ??
+      'arn:aws:lambda:il-central-1:852215679994:function:charging-stations-get-session-rds-info'
+  ),
+
   stationsPortsWriteLambdaFunctionName: String(
     process.env.STATIONS_PORTS_WRITE_LAMBDA_FUNCTION_NAME ??
       'arn:aws:lambda:il-central-1:852215679994:function:charging-stations-write-station-ports-dynamo'

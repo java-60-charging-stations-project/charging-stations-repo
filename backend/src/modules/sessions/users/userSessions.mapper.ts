@@ -10,7 +10,7 @@ export function mapLambdaUserSession(row: LambdaUserSessionRow): UserSession {
   return {
     sessionId: row.session_id,
     stationId: row.station_id,
-    entityKey: row.entity_key,
+    entityKey: row.entity_key ?? '',
     portCode: row.port_code,
     state: row.state,
     userId: row.user_id,
@@ -28,11 +28,25 @@ export function mapLambdaUserSession(row: LambdaUserSessionRow): UserSession {
     durationMinutes: row.duration_minutes,
     bookingDurationMinutes: row.booking_duration_minutes,
     chargeLevelPercent: row.charge_level_percent,
+    finalCost: row.final_cost,
+    paidAt: row.paid_at,
   };
 }
 
 export function mapLambdaUserSessions(data: LambdaGetUserSessionsSuccessData): UserSession[] {
   return data.session.map(mapLambdaUserSession);
+}
+
+export function mapLambdaUserSessionsByStation(rows: unknown[]): UserSession[] {
+  return rows
+    .filter(
+      (row): row is LambdaUserSessionRow =>
+        typeof row === 'object' &&
+        row !== null &&
+        'session_id' in row &&
+        typeof (row as { session_id?: unknown }).session_id === 'string'
+    )
+    .map(mapLambdaUserSession);
 }
 
 export function mapLambdaUserStationPortUpdate(

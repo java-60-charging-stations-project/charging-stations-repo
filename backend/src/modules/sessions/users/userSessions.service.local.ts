@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import type { UserSessionsIService } from './userSessions.service.interface';
 import type {
+  UserSessionHistoryPage,
+  UserSessionHistoryQuery,
   UserSession,
   UserSessionPortState,
   UserSessionPortUpdateResponse,
@@ -21,8 +23,44 @@ const LOCAL_USER_SESSIONS: UserSession[] = [
 ];
 
 export class UserSessionsServiceLocal implements UserSessionsIService {
-  async getUserSessions(userId: string): Promise<UserSession[]> {
+  async getUserSessions(userId: string, _latest?: boolean): Promise<UserSession[]> {
     return LOCAL_USER_SESSIONS.filter((session) => session.userId === userId);
+  }
+
+  async getSessionsByStation(stationId: string): Promise<UserSession[]> {
+    return LOCAL_USER_SESSIONS.filter((session) => session.stationId === stationId);
+  }
+
+  async getUserHistory(query: UserSessionHistoryQuery): Promise<UserSessionHistoryPage> {
+    const dateFromMs = query.dateFrom ? Date.parse(query.dateFrom) : undefined;
+    const dateToMs = query.dateTo ? Date.parse(query.dateTo) : undefined;
+
+    const filtered = LOCAL_USER_SESSIONS.filter((session) => {
+      if (session.userId !== query.userId) return false;
+      if (query.sessionId && session.sessionId !== query.sessionId) return false;
+      if (query.stationId && session.stationId !== query.stationId) return false;
+      if (query.state && session.state !== query.state) return false;
+
+      const startedAtSource = session.startedAt ?? session.createdAt;
+      const startedAtMs = Date.parse(startedAtSource);
+      if (Number.isNaN(startedAtMs)) return false;
+      if (dateFromMs !== undefined && startedAtMs < dateFromMs) return false;
+      if (dateToMs !== undefined && startedAtMs > dateToMs) return false;
+      return true;
+    });
+
+    const totalItems = filtered.length;
+    const totalPages = totalItems === 0 ? 0 : Math.ceil(totalItems / query.pageSize);
+    const safePage = totalPages === 0 ? 1 : Math.min(query.page, totalPages);
+    const offset = (safePage - 1) * query.pageSize;
+
+    return {
+      sessions: filtered.slice(offset, offset + query.pageSize),
+      totalItems,
+      totalPages,
+      page: safePage,
+      pageSize: query.pageSize,
+    };
   }
 
   async createBooking(

@@ -1,15 +1,44 @@
 import type { Request, Response } from 'express';
 import { z } from 'zod';
-import { wrapResponse } from '../../common/wrappers';
+import { wrapResponse, wrapResponseList } from '../../common/wrappers';
 import type { SessionsService } from './sessions.service';
 import { projectSession, resolveViewerRole, type ViewerRole } from './sessions.types';
 import type { UserSessionsIService } from './users/userSessions.service.interface';
 import { createLogger } from '../../utils/logger';
-import { ForbiddenError, ResourceNotFoundError } from '../../common/serviceErrors';
+import { BadRequestError, ForbiddenError, ResourceNotFoundError } from '../../common/serviceErrors';
 
 const sessionIdParam = z.string().min(1);
+const userIdParam = z.string().min(1);
+const stationIdParam = z.string().min(1);
+const dateParam = z.string().datetime({ offset: true });
+const pageParam = z.coerce.number().int().min(1).default(1);
+const pageSizeParam = z.coerce.number().int().min(1).max(200).default(50);
+const userSessionStateParam = z.enum(['BOOKED', 'ACTIVE', 'UNPAID']);
 
 const logger = createLogger('SessionsController');
+
+function parseOptionalBooleanQueryParam(value: unknown, paramName: string): boolean | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== 'string') {
+    throw new BadRequestError(`Query parameter ${paramName} must be a boolean`, 'INVALID_REQUEST');
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return undefined;
+  if (normalized === 'true' || normalized === '1') return true;
+  if (normalized === 'false' || normalized === '0') return false;
+
+  throw new BadRequestError(
+    `Query parameter ${paramName} must be one of: true, false, 1, 0`,
+    'INVALID_REQUEST'
+  );
+}
+
+function parseOptionalDateQueryParam(value: unknown): string | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== 'string' || !value.trim()) return undefined;
+  return dateParam.parse(value.trim());
+}
 
 const startSessionSchema = z.object({
   stationId: z.string().min(1),
@@ -40,17 +69,139 @@ const stopChargingSchema = z.object({
   oldState: z.literal('OCCUPIED'),
 });
 
+const supportSessionsCurrentQuerySchema = z
+  .object({
+    userId: z.string().trim().min(1).optional(),
+    stationId: z.string().trim().min(1).optional(),
+  })
+  .superRefine((value, ctx) => {
+    const hasUserId = Boolean(value.userId);
+    const hasStationId = Boolean(value.stationId);
+
+    if (!hasUserId && !hasStationId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['userId'],
+        message: 'Either userId or stationId must be provided',
+      });
+      return;
+    }
+
+    if (hasUserId && hasStationId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['userId'],
+        message: 'Provide only one parameter: userId or stationId',
+      });
+    }
+  });
+
 export class SessionsController {
   constructor(
     private readonly service: SessionsService,
     private readonly userSessionsService: UserSessionsIService,
-  ) {}
+  ) { }
   // User Sessions routes
   getUserSessions = async (req: Request, res: Response) => {
     logger.info('Getting user sessions');
     const callerId = req.user!.sub!;
-    const sessions = await this.userSessionsService.getUserSessions(callerId);
-    logger.info('User sessions fetched successfully', { sessions });
+    const groups = req.user?.groups ?? [];
+    const viewer = resolveViewerRole(groups);
+    const queryUserId = typeof req.query.userId === 'string' ? req.query.userId.trim() : '';
+    const targetUserId = queryUserId || callerId;
+    const latest = parseOptionalBooleanQueryParam(req.query.latest, 'latest');
+
+    if (viewer === 'USER' && targetUserId !== callerId) {
+      logger.warn('Forbidden: user attempted to fetch sessions for another user', {
+        method: req.method,
+        path: req.path,
+        requesterUserId: callerId,
+        requestedUserId: targetUserId,
+        viewerRole: viewer,
+        userGroups: groups,
+        query: req.query,
+        params: req.params,
+        ip: req.ip,
+        userAgent: req.get('user-agent'),
+      });
+      throw new ForbiddenError('Forbidden: can only list your own sessions', 'FORBIDDEN');
+    }
+
+    const sessions = await this.userSessionsService.getUserSessions(targetUserId, latest);
+    logger.info('User sessions fetched successfully', {
+      requesterUserId: callerId,
+      targetUserId,
+      latest,
+      count: sessions.length,
+    });
+    res.status(200).json(wrapResponse({ sessions }));
+  };
+
+  getUserHistory = async (req: Request, res: Response) => {
+    const callerId = req.user!.sub!;
+    const groups = req.user?.groups ?? [];
+    const viewer = resolveViewerRole(groups);
+    const queryUserId = typeof req.query.userId === 'string' ? req.query.userId.trim() : '';
+    const targetUserId = queryUserId || callerId;
+    const dateFromIso = parseOptionalDateQueryParam(req.query.date_from);
+    const dateToIso = parseOptionalDateQueryParam(req.query.date_to);
+    const page = pageParam.parse(req.query.page);
+    const pageSize = pageSizeParam.parse(req.query.pageSize);
+
+    if (viewer === 'USER' && targetUserId !== callerId) {
+      throw new ForbiddenError('Forbidden: can only list your own history', 'FORBIDDEN');
+    }
+
+    const dateFromMs = dateFromIso ? new Date(dateFromIso).getTime() : undefined;
+    const dateToMs = dateToIso ? new Date(dateToIso).getTime() : undefined;
+    if (dateFromMs !== undefined && dateToMs !== undefined && dateFromMs > dateToMs) {
+      throw new BadRequestError('date_from must be less than or equal to date_to', 'INVALID_REQUEST');
+    }
+
+    const qSessionId = typeof req.query.sessionId === 'string' ? req.query.sessionId.trim() : '';
+    const qStationId = typeof req.query.stationId === 'string' ? req.query.stationId.trim() : '';
+    const qStateRaw = typeof req.query.state === 'string' ? req.query.state.trim() : '';
+    const qState = qStateRaw ? userSessionStateParam.parse(qStateRaw) : undefined;
+    const qOrderBy = typeof req.query.orderBy === 'string' ? req.query.orderBy.trim() : '';
+
+    const history = await this.userSessionsService.getUserHistory({
+      userId: targetUserId,
+      ...(qSessionId ? { sessionId: qSessionId } : {}),
+      ...(qStationId ? { stationId: qStationId } : {}),
+      ...(qState ? { state: qState } : {}),
+      ...(qOrderBy ? { orderBy: qOrderBy } : {}),
+      ...(dateFromIso ? { dateFrom: dateFromIso } : {}),
+      ...(dateToIso ? { dateTo: dateToIso } : {}),
+      page,
+      pageSize,
+    });
+
+    res.status(200).json(wrapResponseList(
+      history.sessions,
+      history.totalItems,
+      history.pageSize,
+      history.page,
+      history.totalPages
+    ));
+  };
+
+  getSupportUserSessions = async (req: Request, res: Response) => {
+    const userId = userIdParam.parse(req.params.userId);
+    const sessions = await this.userSessionsService.getUserSessions(userId);
+    res.status(200).json(wrapResponse({ sessions }));
+  };
+
+  getSupportStationSessions = async (req: Request, res: Response) => {
+    const stationId = stationIdParam.parse(req.params.stationId);
+    const sessions = await this.userSessionsService.getSessionsByStation(stationId);
+    res.status(200).json(wrapResponse({ sessions }));
+  };
+
+  getSupportCurrentSessions = async (req: Request, res: Response) => {
+    const query = supportSessionsCurrentQuerySchema.parse(req.query);
+    const sessions = query.userId
+      ? await this.userSessionsService.getUserSessions(query.userId, false)
+      : await this.userSessionsService.getSessionsByStation(query.stationId!);
     res.status(200).json(wrapResponse({ sessions }));
   };
 

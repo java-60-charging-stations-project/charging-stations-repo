@@ -1,11 +1,15 @@
 import type {
+  UserSessionHistoryPage,
+  UserSessionHistoryQuery,
   UserSession,
   UserSessionPortState,
   UserSessionPortUpdateResponse,
 } from './userSessions.types';
 
 export interface UserSessionsIService {
-  getUserSessions(userId: string): Promise<UserSession[]>;
+  getUserSessions(userId: string, latest?: boolean): Promise<UserSession[]>;
+  getUserHistory(query: UserSessionHistoryQuery): Promise<UserSessionHistoryPage>;
+  getSessionsByStation(stationId: string): Promise<UserSession[]>;
 
   createBooking(
     userId: string,

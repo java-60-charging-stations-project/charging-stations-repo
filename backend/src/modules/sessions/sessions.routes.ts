@@ -19,16 +19,49 @@ export function sessionsRouter(): Router {
 
   // User sessions routes
   router.get('/user', verifyCognitoJwt, controller.getUserSessions);
+  router.get('/user/history', verifyCognitoJwt, controller.getUserHistory);
+  router.get(
+    '/support/sessions-current',
+    verifyCognitoJwt,
+    requireGroups([ADMIN_GROUP, SUPPORT_GROUP]),
+    controller.getSupportCurrentSessions
+  );
   router.post('/user/booking', verifyCognitoJwt, controller.createBooking);
   router.post('/user/charging', verifyCognitoJwt, controller.startChargingSession);
   router.post('/user/booking/stop', verifyCognitoJwt, controller.stopBooking);
   router.post('/user/charging/stop', verifyCognitoJwt, controller.stopChargingSession);
+  router.get(
+    '/support/user/:userId',
+    verifyCognitoJwt,
+    requireGroups([ADMIN_GROUP, SUPPORT_GROUP]),
+    controller.getSupportUserSessions
+  );
+  router.get(
+    '/support/station/:stationId',
+    verifyCognitoJwt,
+    requireGroups([ADMIN_GROUP, SUPPORT_GROUP]),
+    controller.getSupportStationSessions
+  );
 
   router.get('/', verifyCognitoJwt, controller.listByUser);
   router.post('/', verifyCognitoJwt, controller.startSession);
   router.post('/:sessionId/stop', verifyCognitoJwt, controller.stopSession);
 
   router.get('/:sessionId', verifyCognitoJwt, controller.getById);
+
+  return router;
+}
+
+export function supportSessionsRouter(): Router {
+  const router = Router();
+  const controller = new SessionsController(buildSessionsService(), buildUserSessionsService());
+
+  router.get(
+    '/sessions-current',
+    verifyCognitoJwt,
+    requireGroups([ADMIN_GROUP, SUPPORT_GROUP]),
+    controller.getSupportCurrentSessions
+  );
 
   return router;
 }
