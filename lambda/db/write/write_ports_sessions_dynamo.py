@@ -166,7 +166,7 @@ def get_session_by_user(user_id: str) -> dict:
         raise LambdaResponseError({"error": f"error getting session by user: {response_json.get('error')}", "code": "INVALID_REQUEST"})
     return response_json["data"]["session"][0]
 
-def get_session_by_port(entity_key: str) -> dict:
+def get_session_by_port(station_id: str, entity_key: str) -> dict:
     try:
         client = boto3.client("lambda", region_name=AWS_REGION)
     except Exception as e:
@@ -174,7 +174,7 @@ def get_session_by_port(entity_key: str) -> dict:
         raise LambdaResponseError({"error": f"error getting lambda client: {e}", "code": "DATABASE_ERROR"})
     payload = {
         "service": {"action": "get_session_by_port", "callerId": "script"},
-        "data": {"entity_key": entity_key},
+        "data": {"station_id": station_id, "entity_key": entity_key},
     }
     resp = client.invoke(
         FunctionName=f"arn:aws:lambda:{AWS_REGION}:{AWS_LAMBDA_HOST_ACCOUNT}:function:{GET_PORTS_SESSIONS_FUNCTION_NAME}",
@@ -189,7 +189,7 @@ def get_session_by_port(entity_key: str) -> dict:
     response_json = json.loads(raw)
     if response_json.get("error"):
         raise LambdaResponseError({"error": f"error getting session by port: {response_json.get('error')}", "code": "INVALID_REQUEST"})
-    return response_json["data"]["session"][0]
+    return response_json["data"]["session"] if response_json["data"].get("session") else None
 
 def calculate_price(session: dict, now: datetime) -> tuple[Decimal, Decimal, Decimal, Decimal]:
     tariff = Decimal(str(session["tariff"]))
@@ -377,8 +377,8 @@ def update_station_ports(action: str, port_data: dict, user_id: str| None = None
             "code": "INVALID_REQUEST"})
         if err_code == "TransactionCanceledException":
             reasons = e.response.get("CancellationReasons") or []
-            logger.error(f"session not created due to transaction cancellation: {reasons}")
-            raise LambdaResponseError({"error": f"session not created due to transaction cancellation: {reasons}",
+            logger.error(f"station port update transaction cancelled: {reasons}")
+            raise LambdaResponseError({"error": f"station port update transaction cancelled: {reasons}",
              "code": "DATABASE_ERROR"})
         logger.error(f"error updating station ports: {e}")
         raise LambdaResponseError({"error": f"error updating station ports: {e}", "code": "DATABASE_ERROR"})
