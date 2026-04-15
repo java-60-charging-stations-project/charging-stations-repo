@@ -1,6 +1,7 @@
 import { useGetSessionsQuery } from "@/store/apiSlice";
 import EasySpinner from "@/components/EasySpinner";
 import SessionCard from "@/components/SessionCard";
+import { isFreshUnpaidSession } from "@/utils/sessionStatus";
 
 const UserCurrentSessionPage = () => {
   const { data, isLoading, error, refetch } = useGetSessionsQuery(undefined, {
@@ -13,8 +14,10 @@ const UserCurrentSessionPage = () => {
     data?.sessions.filter((s) => s.state === "BOOKED") ?? [];
   const activeSessions =
     data?.sessions.filter((s) => s.state === "ACTIVE") ?? [];
+  const freshUnpaidSessions =
+    data?.sessions.filter((s) => isFreshUnpaidSession(s)) ?? [];
   const unpaidSessions =
-    data?.sessions.filter((s) => s.state === "UNPAID") ?? [];
+    data?.sessions.filter((s) => s.state === "UNPAID" && !isFreshUnpaidSession(s)) ?? [];
 
   return (
     <div className="space-y-6">
@@ -66,6 +69,19 @@ const UserCurrentSessionPage = () => {
             </section>
           )}
 
+          {freshUnpaidSessions.length > 0 && (
+            <section>
+              <h2 className="mb-3 text-lg font-semibold text-slate-900">
+                Processing payment
+              </h2>
+              <div className="space-y-3">
+                {freshUnpaidSessions.map((s) => (
+                  <SessionCard key={s.sessionId} session={s} />
+                ))}
+              </div>
+            </section>
+          )}
+
           {unpaidSessions.length > 0 && (
             <section>
               <h2 className="mb-3 text-lg font-semibold text-slate-900">
@@ -81,6 +97,7 @@ const UserCurrentSessionPage = () => {
 
           {bookedSessions.length === 0 &&
             activeSessions.length === 0 &&
+            freshUnpaidSessions.length === 0 &&
             unpaidSessions.length === 0 && (
               <p className="text-center text-sm text-slate-500">
                 No active sessions

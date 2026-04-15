@@ -15,4 +15,6 @@ export const config = {
     defaultPageSize: Number(import.meta.env.VITE_DEFAULT_PAGE_SIZE ?? "10") || 10,
     maxPortsPerStation: Number(import.meta.env.VITE_MAX_PORTS_PER_STATION ?? "22") || 22,
     pollingIntervalMs: import.meta.env.VITE_POLLING_INTERVAL_MS,
+    unpaidSessionGracePeriodMs:
+        Number(import.meta.env.VITE_UNPAID_SESSION_GRACE_PERIOD_MS ?? "15000") || 15_000,
 }
