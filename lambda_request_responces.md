@@ -567,6 +567,8 @@ Use `userUpdateStationPorts` with the same `data` shape and include `data.userId
 
 `userUpdateStationPorts` requires `userId`. Valid **`oldState`** values include **`OCCUPIED`** (e.g. ending a charging session and returning the port to `FREE`).
 
+**Support occupied -> disabled behavior:** `supportUpdateStationPorts` allows `oldState = OCCUPIED` with `newState = DISABLED`. In that path, the write lambda attempts to locate the active session by port and close it as `UNPAID` with `ended_at` and `final_cost` in the same transaction as the port-state update.
+
 **Session lock:** the **session lock** item uses sort key `SESSION_LOCK` and stores the user id in the table’s **`station_id`** attribute (overload in the single-table design). A conditional `Put` ensures **at most one lock per user** everywhere, so a user cannot open a second session on another port/station until the first flow completes and the lock is cleared as designed.
 
 **Transactional updates:** for **`FREE` → `BOOKED`** or **`FREE` → `OCCUPIED`** with `userId`, one **`TransactWriteItems`** call typically includes: (1) port state update, (2) new session row `Put`, (3) session lock `Put`. All succeed or all roll back.
@@ -683,6 +685,7 @@ Implementation notes:
 
 - Requires an existing user lock row (`station_id = <user_id>`, `entity_key = "SESSION_LOCK"`); payment is rejected if lock is missing.
 - Uses conditional update/idempotency guards on `paid_at` and `last_event_id` to prevent duplicate payment state updates from stream retries.
+- Payment success is intentionally probabilistic in this stack: `PAYMENT_SUCCESS_RATE` is set to `80` in `template.yaml`, and the code succeeds when `random(1..100) >= PAYMENT_SUCCESS_RATE`, resulting in ~**80% success / 20% simulated failure**.
 
 ---
 
@@ -773,6 +776,15 @@ Request:
 }
 ```
 
+Latest-history variant (same action, includes all states available on `user_id-index`):
+
+```json
+{
+  "service": { "action": "getSessionByUser", "callerId": "string" },
+  "data": { "userId": "user-uuid", "latest": true }
+}
+```
+
 Response (success):
 
 ```json
@@ -810,6 +822,7 @@ Response (success):
 Implementation notes:
 
 - Query uses GSI **`user_id-index`** with `KeyConditionExpression = user_id` and filter **`state IN (BOOKED, ACTIVE, UNPAID)`**.
+- With `data.latest = true`, the state filter is skipped, so the response may include additional historical states (for example `PAID`) present for the user in DynamoDB.
 - Numeric fields are JSON numbers when returned through the API (they may be stored as `Decimal` in Dynamo).
 
 ---
@@ -894,3 +907,46 @@ All forward paths use **`lambda:InvokeFunction`** with **`InvocationType: Event`
 Scheduled **hourly** (`rate(1 hour)`). Compares DynamoDB port states (GSI `state-station-index`) with RDS `stations.has_free_ports` for active stations and batch-updates rows where values differ (`IS DISTINCT FROM`). Serves as a safety net next to stream-driven updates.
 
 Not part of the public HTTP API; invoked by EventBridge only.
+
+---
+
+## Maintenance — `charging-stations-check-bookings`
+
+Scheduled every **5 minutes** (`rate(5 minutes)`).
+
+Purpose: finds expired bookings (`state = BOOKED` and `time_booked_before <= now`) via GSI `booking-state-time-index`, then asynchronously invokes `charging-stations-write-station-ports-dynamo` action `userUpdateStationPorts` with `oldState=BOOKED`, `newState=FREE`.
+
+Response (success):
+
+```json
+{
+  "data": {
+    "checked": 12,
+    "released": 11,
+    "failed": 1
+  },
+  "meta": {}
+}
+```
+
+---
+
+## Maintenance — `charging-stations-charge-sim-price-calc`
+
+Scheduled every **1 minute** (`rate(1 minute)`).
+
+Purpose: queries `BOOKED` and `ACTIVE` session rows on GSI `state-station-index`, recalculates `current_cost` using the shared `utils.price_calculator.calculate_price(...)`, and for `ACTIVE` sessions also simulates charging progress (`charge_level_percent`, `energy_consumed_kwh`, `estimated_minutes_remaining`, optional `stopped_at` at 100%).
+
+Response (success):
+
+```json
+{
+  "data": {
+    "checked": 40,
+    "updated": 39,
+    "skipped": 0,
+    "failed": 1
+  },
+  "meta": {}
+}
+```

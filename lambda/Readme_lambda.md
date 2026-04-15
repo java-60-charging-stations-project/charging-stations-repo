@@ -147,8 +147,9 @@ The template provisions **RDS** (PostgreSQL, IAM auth), **VPC endpoints** (RDS A
 
 **WriteStationPortsDynamo** – Action-based (`callerId` in `service`):
 - `insertStationPorts`: `data.stationId`, `data.ports` (array of `code`). Atomic batch via DynamoDB `TransactWriteItems`; response includes `data.created_ports`.
-- `supportUpdateStationPorts` / `userUpdateStationPorts`: optimistic state updates using `oldState`/`newState`; `userUpdateStationPorts` requires `userId` and creates a session item in the same transaction.
+- `supportUpdateStationPorts` / `userUpdateStationPorts`: optimistic state updates using `oldState`/`newState`; `userUpdateStationPorts` requires `userId` and creates a session item in the same transaction. Support flow allows `OCCUPIED -> DISABLED` and closes the active session as `UNPAID` (`ended_at`, `final_cost`) in the same transaction when a session row is found.
 - `deleteStationPorts`: delete one disabled port by `portKey`.
+- `pay_session` (internal from stream consumer): uses probabilistic simulation via `PAYMENT_SUCCESS_RATE` (currently `80` in `template.yaml`, so about 80% success / 20% failure simulation).
 See **`lambda_request_responces.md`** for exact request/response payloads.
 
 
@@ -163,7 +164,13 @@ See **`lambda_request_responces.md`** for full shapes. Summary:
 - **WriteStationRDS** – Success `data` uses **snake_case**: `station_id`, `updated_at`, `deleted_at` (ISO strings where applicable).
 - **GetStationInfo** – Station objects in **snake_case**; `location` as GeoJSON when selected.
 - **WriteStationPortsDynamo** – `insertStationPorts`, port updates, `deleteStationPorts` (see **`lambda_request_responces.md`**).
+- **GetPortsSessionsDynamo** – `getSessionByUser` supports `data.latest=true` to skip the active-state filter and return latest/history rows available for the user on `user_id-index`.
 - **StationEntitiesStreamConsumer** – Dynamo stream: forwards port insert/remove to RDS `update_station_ports` (details in **`lambda_request_responces.md`**).
+
+### Maintenance cron Lambdas
+
+- **charging-stations-check-bookings** (`rate(5 minutes)`) — queries `BOOKED` sessions whose `time_booked_before <= now` (GSI `booking-state-time-index`) and asynchronously invokes `userUpdateStationPorts` with `BOOKED -> FREE`.
+- **charging-stations-charge-sim-price-calc** (`rate(1 minute)`) — queries `BOOKED` + `ACTIVE` sessions (GSI `state-station-index`), recalculates `current_cost` with shared `utils.price_calculator.calculate_price(...)`, and simulates charging progress for ACTIVE sessions (`charge_level_percent`, `energy_consumed_kwh`, remaining time, optional `stopped_at`).
 
 ### Run scripts
 
