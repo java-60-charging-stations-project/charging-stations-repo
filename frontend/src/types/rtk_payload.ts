@@ -1,5 +1,5 @@
 import type { UserRole } from ".";
-import type { AdminUpdateStationRequest, ChangeStationStateRequest } from "./stations";
+import type { AdminUpdateStationRequest, ChangeStationStateRequest, StationPortsCreateRequest } from "./stations";
 
 export type GetStationPayload = {
     stationId: string;
@@ -16,4 +16,14 @@ export type ChangeStationStatePayload = {
     stationId: string;
     role: UserRole;
     body: ChangeStationStateRequest;
-}
+};
+
+export type AddStationPortsPayload = {
+    stationId: string;
+    body: StationPortsCreateRequest;
+};
+
+export type DeleteStationPortPayload = {
+    stationId: string;
+    portId: string;
+};
