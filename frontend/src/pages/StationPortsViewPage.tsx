@@ -1,46 +1,24 @@
-import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { fetchStationById, fetchStationPorts, deleteStationPort, addStationPorts } from "@/services/api/supportApi";
-import type { StationState } from "@/types/stations";
 import NavButton from "@/components/NavButton";
 import PortsView from "@/components/stations/PortsView";
-import { useAuth } from "@/hooks/useAuth";
 import useFromParam from "@/hooks/useFromParam";
+import { useGetStationQuery } from "@/store/apiSlice";
+import EasySpinner from "@/components/EasySpinner";
 
 const StationPortsViewPage = () => {
     const { stationId } = useParams<{ stationId: string }>();
-    const { userRole } = useAuth();
-    const [stationState, setStationState] = useState<StationState | null>(null);
-    const [loadError, setLoadError] = useState<string | null>(null);
     const from = useFromParam();
-
     const fromPath = from ? encodeURIComponent(from) : "";
 
-    useEffect(() => {
-        if (!stationId) return;
-        let cancelled = false;
-        (async () => {
-            try {
-                const station = await fetchStationById(stationId);
-                if (!cancelled) {
-                    setStationState(station.state);
-                    setLoadError(null);
-                }
-            } catch (err) {
-                if (!cancelled) {
-                    setStationState(null);
-                    setLoadError(
-                        err instanceof Error
-                            ? err.message
-                            : "Failed to load station",
-                    );
-                }
-            }
-        })();
-        return () => {
-            cancelled = true;
-        };
-    }, [stationId]);
+    const {
+            data: station,
+            isLoading,
+            isError,
+            error: loadError,
+        } = useGetStationQuery(
+            { stationId: stationId!, role: "SUPPORT"},
+            { skip: !stationId }
+        );
 
     if (!stationId) {
         return (
@@ -58,17 +36,18 @@ const StationPortsViewPage = () => {
                 <NavButton to={backToStationPath} caption="← Back to station" />
             </div>
             <h2 className="text-center text-lg font-bold">Station ports</h2>
-            {loadError && (
-                <p className="text-red-500 text-xs">{loadError}</p>
+            {
+                isLoading && (
+                    <EasySpinner />
+                )
+            }
+            {isError && (
+                <p className="text-red-500 text-xs">{loadError.message ?? "Unable to load station"}</p>
             )}
-            {stationState && (
+            {station && (
                 <PortsView
                     stationId={stationId}
-                    stationState={stationState}
-                    enabled={userRole === "SUPPORT"}
-                    fetchPortsFn={fetchStationPorts}
-                    deletePortFn={deleteStationPort}
-                    addPortsFn={addStationPorts}
+                    stationState={station.state}
                 />
             )}
         </div>
