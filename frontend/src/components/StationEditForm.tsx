@@ -193,7 +193,7 @@ const StationEditForm: FC<StationEditFormProps> = ({
                     </div>
                 </div>
                 <FieldRow label="Station Name" error={errors.name?.message}>
-                    <input className="w-full" disabled={isLocked} {...register("name", { required: "Station name is required" })} />
+                    <input className="w-full" disabled={isLocked || isEditing} {...register("name", { required: "Station name is required" })} />
                 </FieldRow>
                 <FieldRow label="Owner" error={errors.owner?.message}>
                     <input className="w-full" disabled={isLocked || isEditing} {...register("owner", { required: "Owner is required" })} />
