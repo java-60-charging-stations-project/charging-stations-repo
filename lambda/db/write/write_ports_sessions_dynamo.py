@@ -21,6 +21,7 @@ GET_PORTS_SESSIONS_FUNCTION_NAME = os.environ["GET_PORTS_SESSIONS_FUNCTION_NAME"
 PORT_STATES = ["FREE", "OCCUPIED", "ERROR", "DISABLED", "BOOKED"]
 BOOKING_TIMEOUT_MINUTES = int(os.environ["BOOKING_TIMEOUT_MINUTES"])
 PAYMENT_SUCCESS_RATE = int(os.environ["PAYMENT_SUCCESS_RATE"])
+WRITE_STATION_RDS_FUNCTION_NAME = os.environ["WRITE_STATION_RDS_FUNCTION_NAME"]
 
 _dynamo_client = None
 _serializer = TypeSerializer()
@@ -335,6 +336,7 @@ def update_station_ports(action: str, port_data: dict, user_id: str| None = None
                     update_info["time_started_at"] = now.isoformat()
                     update_info["charge_level_percent"] = random.randint(20, 95)
                 session_object = build_session_object(update_info)
+                session_object = {k: v for k, v in session_object.items() if v is not None}
                 session_lock_item = {
                     "station_id": user_id,
                     "entity_key": "SESSION_LOCK",
@@ -443,9 +445,23 @@ def get_tariff(station_id: str) -> Decimal:
     tariff = str((response_json.get("data", {}).get("rate_plan", {}).get("offPeakRate", 0.0)))
     return tariff
 
+def archive_session_to_rds(session: dict) -> None:
+    payload = {
+        "service": {"action": "archive_session", "callerId": "write-station-ports-dynamo"},
+        "data": session,
+    }
+    client = boto3.client("lambda", region_name=AWS_REGION)
+    resp = client.invoke(
+        FunctionName=f"arn:aws:lambda:{AWS_REGION}:{AWS_LAMBDA_HOST_ACCOUNT}:function:{WRITE_STATION_RDS_FUNCTION_NAME}",
+        InvocationType="Event",
+        Payload=json.dumps(payload).encode("utf-8"),
+    )
+    if resp.get("StatusCode") != 202:
+        raise LambdaResponseError({"error": f"archive invoke failed: {resp}", "code": "DATABASE_ERROR"})
+
 def pay_session(session_data: dict) -> dict:
     random_chance = random.randint(1, 100)
-    success = random_chance >= PAYMENT_SUCCESS_RATE
+    success = random_chance <= PAYMENT_SUCCESS_RATE
     if not success:
         raise LambdaResponseError({"error": f"session payment failed", "code": "Failed attempt"})
     try:
@@ -466,8 +482,9 @@ def pay_session(session_data: dict) -> dict:
         "Update": {"TableName": STATIONS_DYNAMO_TABLE,
         "Key": {"station_id": {"S": str(session_data["station_id"])}, "entity_key": {"S": entity_key}},
         "UpdateExpression": "SET #st = :paid, updated_at = :ts, paid_at = :ts, last_event_id = :last_event_id",
-        "ConditionExpression": """attribute_exists(station_id) AND attribute_exists(entity_key) AND attribute_type(paid_at, :type_null) 
-        AND (attribute_type(last_event_id, :type_null) OR last_event_id <> :last_event_id)""",
+        "ConditionExpression": """attribute_exists(station_id) AND attribute_exists(entity_key) AND 
+        (attribute_not_exists(paid_at) OR attribute_type(paid_at, :type_null))
+        AND (attribute_not_exists(last_event_id) OR attribute_type(last_event_id, :type_null) OR last_event_id <> :last_event_id)""",
         "ExpressionAttributeNames": {"#st": "state"},
         "ExpressionAttributeValues": {":paid": {"S": "PAID"}, ":ts": {"S": now}, ":last_event_id": {"S": event_id}, ":type_null": {"S": "NULL"}}},
     })
@@ -591,6 +608,16 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                     log_audit("INFO", message="session paid successfully", status="SUCCESS", **audit_base)
                 log_audit("INFO", message="all sessions paid successfully", status="SUCCESS", **audit_base)
                 return SuccessResponsePayload(data={"paid_sessions": paid_sessions}, meta={})
+            case "paySessionUser":
+                session_data = {
+                    "event_id": audit_base["request_id"],
+                    "station_id": event["data"]["stationId"],
+                    "entity_key": event["data"]["entityKey"],
+                    "user_id": event["data"]["userId"],
+                }
+                paid_session = pay_session(session_data)
+                log_audit("INFO", message="session paid successfully", status="SUCCESS", **audit_base)
+                return SuccessResponsePayload(data={"paid_session": paid_session}, meta={})
             case _:
                 log_audit("ERROR", message=f"invalid action {action}", status="ERROR", errorMessage=f"invalid action {action}", **audit_base)
                 return ErrorResponsePayload(error=f"invalid action {action}", code="INVALID_REQUEST")

@@ -807,6 +807,7 @@ Resources:
           BOOKING_TIMEOUT_MINUTES: !Ref BookingTimeoutMinutes
           GET_PORTS_SESSIONS_FUNCTION_NAME: !Ref GetPortsSessionsFunction
           PAYMENT_SUCCESS_RATE: "80" # 80% chance of successful payment
+          WRITE_STATION_RDS_FUNCTION_NAME: !Ref WriteStationRDSFunction
       Policies:
         - Version: '2012-10-17'
           Statement:
@@ -861,6 +862,7 @@ Resources:
           WRITE_STATION_FUNCTION_NAME: charging-stations-write-station-rds
           AWS_LAMBDA_HOST_ACCOUNT: !Ref AWS::AccountId
           WRITE_SESSION_FUNCTION_NAME: charging-stations-write-station-ports-dynamo
+          WRITE_STATION_RDS_FUNCTION_NAME: !Ref WriteStationRDSFunction
       Policies:
         - Version: '2012-10-17'
           Statement:
