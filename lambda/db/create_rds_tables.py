@@ -79,6 +79,33 @@ def create_tables() -> None:
                     ports_state_event_id TEXT
                 );
             """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS sessions (
+                    session_id TEXT PRIMARY KEY,
+                    station_id TEXT NOT NULL,
+                    entity_key TEXT NOT NULL,
+                    state TEXT NOT NULL,
+                    user_id TEXT NOT NULL,
+                    energy_consumed_kwh NUMERIC NOT NULL DEFAULT 0,
+                    tariff NUMERIC NOT NULL DEFAULT 0,
+                    final_cost NUMERIC NOT NULL DEFAULT 0,
+                    duration_minutes NUMERIC,
+                    booking_duration_minutes NUMERIC,
+                    charge_level_percent NUMERIC,
+                    time_booked_at TIMESTAMPTZ,
+                    time_booked_before TIMESTAMPTZ,
+                    started_at TIMESTAMPTZ,
+                    stopped_at TIMESTAMPTZ,
+                    ended_at TIMESTAMPTZ,
+                    paid_at TIMESTAMPTZ,
+                    created_at TIMESTAMPTZ NOT NULL,
+                    updated_at TIMESTAMPTZ NOT NULL
+                );
+            """)
+            cur.execute("""CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions (user_id);""")
+            cur.execute("""CREATE INDEX IF NOT EXISTS idx_sessions_station_id ON sessions (station_id);""")
+            cur.execute("""CREATE INDEX IF NOT EXISTS idx_sessions_paid_at ON sessions (paid_at DESC);""")
+            cur.execute("""CREATE INDEX IF NOT EXISTS idx_sessions_state ON sessions (state);""")
             cur.execute("""CREATE INDEX IF NOT EXISTS idx_stations_location ON stations USING GIST (location);""")
             cur.execute("""CREATE INDEX IF NOT EXISTS idx_stations_active_free_true ON stations (id) WHERE state IN 
             ('ACTIVE','INACTIVE','OUT_OF_SERVICE') AND has_free_ports = TRUE;""")

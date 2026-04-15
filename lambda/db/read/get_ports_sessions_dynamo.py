@@ -5,7 +5,8 @@ from utils.logger import logger, log_audit
 from utils.error_handlers import LambdaResponseError
 from data_types.contract_types import SuccessResponsePayload, ErrorResponsePayload
 from data_types.db_instance_types import PortInstance
-from boto3.dynamodb.conditions import Key
+from boto3.dynamodb.conditions import Key, Attr
+from decimal import Decimal
 
 
 AWS_REGION = os.environ["AWS_REGION"]
@@ -14,6 +15,9 @@ PORT_STATES = ["FREE", "OCCUPIED", "ERROR", "DISABLED", "BOOKED"]
 
 _dynamo = None
 _stations_table = None
+
+def from_av_map(av_map: dict) -> dict:
+    return {k: float(v) if isinstance(v, Decimal) else v for k, v in av_map.items()}
 
 def get_dynamo_stations_table():
     global _dynamo, _stations_table
@@ -30,23 +34,14 @@ def get_ports_by_station(station_id: str) -> list[PortInstance]:
         raise LambdaResponseError({"error": f"error getting dynamo stations table: {e}", "code": "DATABASE_ERROR"})
     try:
         resp = table.query(
-            KeyConditionExpression=Key("station_id").eq(station_id)
+            KeyConditionExpression=Key("station_id").eq(station_id),
+            FilterExpression=Attr("port_id").exists(),
         )
         items = resp.get("Items", [])
         ports: list[PortInstance] = []
         for item in items:
-            entity_key = item.get("entity_key") or ""
-            if len(entity_key.split("#")) != 2:
-                continue 
-            ports.append({
-                "station_id": item["station_id"],
-                "entity_key": item["entity_key"].split("#")[1],
-                "port_id": item["port_id"],
-                "state": item["state"],
-                "last_meter_kw": float(item["last_meter_kw"]),
-                "created_at": item["created_at"],
-                "updated_at": item["updated_at"],
-            })
+            item["entity_key"] = item["entity_key"].split("#", 1)[1]
+            ports.append(from_av_map(item))
         return ports
     except Exception as e:
         logger.error(f"error getting station ports: {e}")
@@ -84,7 +79,7 @@ def get_session_by_user(user_id: str, latest: bool = False) -> list[dict]:
         logger.error(f"error getting session by user: {e}")
         raise LambdaResponseError({"error": f"error getting session by user: {e}", "code": "DATABASE_ERROR"})
 
-def get_session_by_port(station_id: str, entity_key: str) -> dict | None:
+def get_sessions_by_station(station_id: str) -> list[dict]:
     try:
         table = get_dynamo_stations_table()
     except Exception as e:
@@ -92,13 +87,17 @@ def get_session_by_port(station_id: str, entity_key: str) -> dict | None:
         raise LambdaResponseError({"error": f"error getting dynamo stations table: {e}", "code": "DATABASE_ERROR"})
     try:
         resp = table.query(
-            KeyConditionExpression=Key("station_id").eq(station_id) & Key("entity_key").begins_with(entity_key)
+            KeyConditionExpression=Key("station_id").eq(station_id)
         )
-        item = resp.get("Items", [])
-        return item[0] if item else None
+        items = resp.get("Items", [])
+        sessions: list[dict] = []
+        for item in items:
+            item["port_code"] = item["entity_key"].split("#")[1]
+            sessions.append(item)
+        return sessions
     except Exception as e:
-        logger.error(f"error getting session by port: {e}")
-        raise LambdaResponseError({"error": f"error getting session by port: {e}", "code": "UNHANDLED_ERROR"})
+        logger.error(f"error getting sessions by station: {e}")
+        raise LambdaResponseError({"error": f"error getting sessions by station: {e}", "code": "UNHANDLED_ERROR"})
 
 def get_has_free_ports_by_station(station_id: str) -> bool:
     try:
@@ -154,6 +153,11 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                 session = get_session_by_user(user_id, latest=latest)
                 log_audit("INFO", message="session retrieved successfully", status="SUCCESS", **audit_base)
                 return SuccessResponsePayload(data={"session": session}, meta={})
+            case "getSessionByStation":
+                station_id = event["data"]["stationId"]
+                sessions = get_sessions_by_station(station_id)
+                log_audit("INFO", message="sessions retrieved successfully", status="SUCCESS", **audit_base)
+                return SuccessResponsePayload(data={"sessions": sessions}, meta={})
             case _:
                 log_audit("ERROR", message=f"invalid action {action}", status="ERROR", errorMessage=f"invalid action {action}", **audit_base)
                 return ErrorResponsePayload(error=f"invalid action {action}", code="INVALID_REQUEST")

@@ -337,6 +337,62 @@ def delete_station(station_id: str) -> datetime:
         logger.error(f"Unhandled error deleting station: {e}")
         raise LambdaResponseError({"error": str(e), "code": "UNHANDLED_ERROR"})
 
+def archive_session_to_rds(session: dict) -> dict:
+    try:
+        conn = get_connection()
+    except Exception as e:
+        logger.error(f"Error getting connection: {e}")
+        raise LambdaResponseError({"error": f"Error getting connection: {e}", "code": "DATABASE_ERROR"})
+    try:
+        with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO sessions (
+                        session_id, station_id, entity_key, state, user_id,
+                        energy_consumed_kwh, tariff, final_cost,
+                        duration_minutes, booking_duration_minutes, charge_level_percent,
+                        time_booked_at, time_booked_before, started_at, stopped_at, ended_at, paid_at,
+                        created_at, updated_at
+                    ) VALUES (
+                        %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s,
+                        %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s
+                    )
+                    ON CONFLICT (session_id) DO NOTHING
+                    """,
+                    (
+                        session["session_id"],
+                        session["station_id"],
+                        session["entity_key"],
+                        session["state"],
+                        session["user_id"],
+                        session["energy_consumed_kwh"],
+                        session["tariff"],
+                        session["final_cost"],
+                        session.get("duration_minutes"),
+                        session.get("booking_duration_minutes"),
+                        session.get("charge_level_percent"),
+                        datetime.fromisoformat(session["time_booked_at"]) if session.get("time_booked_at") else None,
+                        datetime.fromisoformat(session["time_booked_before"]) if session.get("time_booked_before") else None,
+                        datetime.fromisoformat(session["started_at"]) if session.get("started_at") else None,
+                        datetime.fromisoformat(session["stopped_at"]) if session.get("stopped_at") else None,
+                        datetime.fromisoformat(session["ended_at"]),
+                        datetime.fromisoformat(session["paid_at"]),
+                        datetime.fromisoformat(session["created_at"]),
+                        datetime.fromisoformat(session["updated_at"]),
+                    ),
+                )
+        conn.commit()
+    except LambdaResponseError:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Error archiving session: {e}")
+        raise LambdaResponseError({"error": f"Error archiving session: {e}", "code": "DATABASE_ERROR"})
+
+
 def update_station_ports(station_id: str, delta: int, event_id: str) -> datetime | None:
     try:
         conn = get_connection()
@@ -513,6 +569,18 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                     logger.info(f"ports state updated for station {station_id} with operation {operation} and event {event_id}")
                 log_audit("INFO", message=f"ports state updated for {len(operations)} stations", status="SUCCESS", **audit_base)
                 return SuccessResponsePayload(data={"operations": operations}, meta={})
+            case "archive_session":
+                op_list = event["data"]
+                for op in op_list:
+                    session = op["session_object"]
+                    archive_session_to_rds(session)
+                    logger.info(f"session archived successfully: {session}")
+                result = {
+                    "archived_sessions": len(op_list),
+                    "received_sessions": len(op_list),
+                }
+                log_audit("INFO", message=f"archived session: {result}", status="SUCCESS", **audit_base)
+                return SuccessResponsePayload(data=result, meta={})
             case _:
                 log_audit("ERROR", message=f"invalid action {action}", status="ERROR", errorMessage=f"invalid action {action}", **audit_base)
                 return ErrorResponsePayload(error=f"invalid action {action}", code="INVALID_REQUEST")

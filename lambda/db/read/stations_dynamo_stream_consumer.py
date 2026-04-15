@@ -5,11 +5,13 @@ from typing import Any
 from boto3.dynamodb.types import TypeDeserializer
 from utils.logger import logger, log_audit
 from utils.error_handlers import LambdaResponseError
+from decimal import Decimal
 
 REGION = os.environ["AWS_REGION"]
 AWS_LAMBDA_HOST_ACCOUNT = os.environ["AWS_LAMBDA_HOST_ACCOUNT"]
 WRITE_STATION_FUNCTION_NAME = os.environ["WRITE_STATION_FUNCTION_NAME"]
 WRITE_SESSION_FUNCTION_NAME = os.environ["WRITE_SESSION_FUNCTION_NAME"]
+WRITE_STATION_RDS_FUNCTION_NAME = os.environ["WRITE_STATION_RDS_FUNCTION_NAME"]
 
 _deserializer = TypeDeserializer()
 
@@ -39,6 +41,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     insert_delete_port_ops = []
     change_free_state_port_ops = []
     unpaid_session_ops = []
+    paid_session_ops = []
     for record in records:
         logger.info(f"Processing record: {record}")
         ddb = record.get("dynamodb", {})
@@ -77,17 +80,25 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             elif _is_session_entity(old_image) and _is_session_entity(new_image):
                 if not old_state or not new_state:
                     continue
-                if old_state not in ["BOOKED", "ACTIVE"] or new_state != "UNPAID":
-                    continue
-                op = {
-                    "event_id": record["eventID"],
-                    "station_id": old_image["station_id"],
-                    "entity_key": new_image["entity_key"],
-                    "operation": "SESSION_UNPAID",
-                    "user_id": new_image["user_id"],
-                }
-                unpaid_session_ops.append(op)
-    operations = len(insert_delete_port_ops) + len(change_free_state_port_ops) + len(unpaid_session_ops)
+                if old_state in ["BOOKED", "ACTIVE"] and new_state == "UNPAID":
+                    op = {
+                        "event_id": record["eventID"],
+                        "station_id": old_image["station_id"],
+                        "entity_key": new_image["entity_key"],
+                        "operation": "SESSION_UNPAID",
+                        "user_id": new_image["user_id"],
+                    }
+                    unpaid_session_ops.append(op)
+                elif old_state == "UNPAID" and new_state == "PAID":
+                    op = {
+                        "event_id": record["eventID"],
+                        "station_id": old_image["station_id"],
+                        "entity_key": old_image["entity_key"],
+                        "operation": "SESSION_PAID",
+                        "session_object": {k: float(v) if isinstance(v, Decimal) else v for k, v in new_image.items()},
+                    }
+                    paid_session_ops.append(op)
+    operations = len(insert_delete_port_ops) + len(change_free_state_port_ops) + len(unpaid_session_ops) + len(paid_session_ops)
     logger.info(f"Found {operations} operations")
     if not operations:
         return {"data": {"operations": operations, "received": len(records)}}
@@ -162,6 +173,28 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 raise LambdaResponseError({"error": f"async invoke failed with status {status}", "code": "UNHANDLED_ERROR"})
             logger.info(f"Forwarded {len(unpaid_session_ops)} operations to update session state successfully")
             log_audit("INFO", message=f"Forwarded {len(unpaid_session_ops)} operations to update session state successfully", 
+            status="SUCCESS", **audit_base)
+        if paid_session_ops:
+            audit_base["event"] = "SESSION_PAID"
+            logger.info(f"Forwarding {len(paid_session_ops)} operations to {WRITE_STATION_RDS_FUNCTION_NAME}")
+            client = boto3.client("lambda", region_name=REGION)
+            payload = {
+                "service": { "action": "archive_session", "callerId": "DynamoDB Stream Consumer" },
+                "data": paid_session_ops,
+            }
+            response = client.invoke(
+                InvocationType="Event",
+                FunctionName=f"arn:aws:lambda:{REGION}:{AWS_LAMBDA_HOST_ACCOUNT}:function:{WRITE_STATION_RDS_FUNCTION_NAME}",
+                Payload=json.dumps(payload).encode("utf-8"),
+            )
+            status = response.get("StatusCode")
+            if status != 202:
+                logger.error(f"async invoke failed with status {status}")
+                log_audit("ERROR", message=f"async invoke failed with status {status}", status="ERROR", 
+                errorMessage=f"async invoke failed with status {status}", **audit_base)
+                raise LambdaResponseError({"error": f"async invoke failed with status {status}", "code": "UNHANDLED_ERROR"})
+            logger.info(f"Forwarded {len(paid_session_ops)} operations to archive session successfully")
+            log_audit("INFO", message=f"Forwarded {len(paid_session_ops)} operations to archive session successfully", 
             status="SUCCESS", **audit_base)
     except Exception as e:
         logger.error(f"Forwarded {operations} operations failed: {str(e)}")
