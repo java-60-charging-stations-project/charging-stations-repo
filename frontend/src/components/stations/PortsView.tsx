@@ -1,68 +1,41 @@
-import { useCallback, useEffect, useState, type FC } from "react";
+import { useCallback, useMemo, useState, type FC } from "react";
 import type { StationPort, StationPortCreate, StationState } from "@/types/stations";
 import StationPortCard from "./StationPortCard";
-import { updateStationPortState } from "@/services/api/supportApi";
 import { getLogger } from "@/services/logging/logger";
 import { config } from "@/config/env";
 import EasySpinner from "../EasySpinner";
 import Modal from "../Modal";
 import SimpleButton from "../SimpleButton";
+import { useAddStationPortsMutation, useDeleteStationPortMutation, useGetStationPortsQuery, useUpdateStationPortStateMutation } from "@/store/apiSlice";
 
 const MAX_PORTS = config.maxPortsPerStation;
 
 const logger = getLogger("PortsView");
 
-interface PortEditState {
-    portId: string;
-    isUpdating: boolean;
-    error?: string | null;
-}
-
-
 export interface PortsViewProps {
     stationId: string;
     stationState: StationState;
-    enabled: boolean;
-    fetchPortsFn: (stationId: string) => Promise<StationPort[]>;
-    deletePortFn?: (stationId: string, portId: string) => Promise<void>;
-    addPortsFn?: (stationId: string, ports: StationPortCreate[]) => Promise<StationPort[]>;
+    enabled?: boolean;
 }
 
 const PortsView: FC<PortsViewProps> = ({
     stationId,
     stationState,
-    enabled,
-    fetchPortsFn,
-    deletePortFn,
-    addPortsFn,
+    enabled = true,
 }) => {
-    const [ports, setPorts] = useState<StationPort[]>([]);
-    const [error, setError] = useState<string | null>(null);
-    const [addError, setAddError] = useState<string | null>(null);
     const [newPorts, setNewPorts] = useState<StationPortCreate[]>([]);
     const [newPortCode, setNewPortCode] = useState("");
-    const [editState, setEditState] = useState<PortEditState | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
+    const [editPortId, setEditPortId] = useState<string | null>(null);
+    const [deletePortId, setDeletePortId] = useState<string | null>(null);
+    
     const [modalError, setModalError] = useState<string | null>(null);
+    const [addPortsMutation, { isLoading: isAdding, error: addError, isError: isAddError }] = useAddStationPortsMutation();
+    const [deletePortMutation, { isLoading: isDeleting, error: deleteError, isError: isDeleteError }] = useDeleteStationPortMutation();
+    const [updatePortStateMutation, { isLoading: isUpdating, error: updateError, isError: isUpdateError }] = useUpdateStationPortStateMutation();
+    const {data: portsData, isLoading, error: loadError, refetch: refetchPorts} = useGetStationPortsQuery(stationId);
     
-    const loadPorts = useCallback(async () => {
-        setIsLoading(true);
-        setError(null);
-        try {
-            const nextPorts = await fetchPortsFn(stationId);
-            setPorts(nextPorts);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : String(err));
-        }
-        finally {
-            setIsLoading(false);
-        }
-    }, [fetchPortsFn, stationId]);
+    const ports = useMemo<StationPort[]>(() => portsData?.ports ?? [], [portsData]);
     
-    useEffect(() => {
-        void loadPorts();
-    }, [loadPorts]);
-
     const addPortCreateItem = useCallback(() => {
         const trimmedPortCode = newPortCode.trim();
         if (!trimmedPortCode) {
@@ -87,61 +60,51 @@ const PortsView: FC<PortsViewProps> = ({
     }, [newPortCode, ports, newPorts]);
 
     const addPorts = useCallback(async () => {
-        if (!addPortsFn) return;
         if (newPorts.length === 0) return;
-        logger.debug(`Adding ports`);
-        setIsLoading(true);
-        setAddError(null);
+        logger.debug(`Adding ports count: ${newPorts.length}`);
         try {
-            const response = await addPortsFn(stationId, newPorts);
-            logger.debug(`Ports successfully added: ${response.length}`);
-            //setPorts((prev) => [...prev, ...response.ports]);
+            const response = await addPortsMutation({ stationId, body: {ports: newPorts} }).unwrap();
+            const addedPorts = response.ports;
+            logger.debug(`Ports successfully added: ${addedPorts.length}`);
             setNewPorts([]);
-            loadPorts();
         } catch (err) {
-            setAddError(err instanceof Error ? err.message : String(err));
-        } finally {
-            setIsLoading(false);
+            console.error(err);
         }
-    }, [stationId, addPortsFn, loadPorts, newPorts]);
+    }, [stationId, newPorts, addPortsMutation]);
 
     const deletePort = useCallback(async (portId: string) => {
-        if (!deletePortFn) return;
         logger.debug(`Deleting port ${portId}`);
-        setEditState({ portId, isUpdating: true, error: null });
+        setDeletePortId(portId);
+        setEditPortId(null);
         try {
-            await deletePortFn(stationId, portId);
+            await deletePortMutation({ stationId, portId }).unwrap();
             logger.debug(`Port ${portId} deleted`);
-            //await loadPorts();
-            setPorts((prev: StationPort[]) => prev.filter((port: StationPort) => port.portId !== portId));
-            logger.debug(`Port ${portId} manually removed from list`);
-            setEditState(null);
+            setDeletePortId(null);
         } catch (err) {
-            setEditState({ portId, isUpdating: false, error: err instanceof Error ? err.message : String(err) });
+            console.error(err);
         }
-    }, [stationId, deletePortFn]);
+    }, [stationId, deletePortMutation]);
 
     const updatePortState = useCallback(async (port: StationPort, newState: "FREE" | "DISABLED") => {
         logger.debug(`Updating port ${port.portId} state to ${newState}`);
-        setEditState({ portId: port.portId, isUpdating: true, error: null });
+        setEditPortId(port.portId);
+        setDeletePortId(null);
         try {
-            await updateStationPortState(stationId, {
+            const response = await updatePortStateMutation({ stationId, body: {
                 portCode: port.portCode,
                 oldState: port.status,
                 newState,
-            });
-            logger.debug(`Port ${port.portId} state updated to ${newState}`);
-            setPorts((prev: StationPort[]) =>
-                prev.map((p: StationPort) => p.portId === port.portId ? { ...p, status: newState } : p)
-            );
-            setEditState(null);
+            } }).unwrap();
+            logger.debug(`Port ${port.portId} state updated to ${response.newState}`);
+            setEditPortId(null);
         } catch (err) {
-            setEditState({ portId: port.portId, isUpdating: false, error: err instanceof Error ? err.message : String(err) });
+            console.error(err);
         }
-    }, [stationId]);
+    }, [stationId, updatePortStateMutation]);
 
     const canEditPort: boolean = enabled && stationState === "OUT_OF_SERVICE";
-    const isLocked = isLoading || (editState?.isUpdating ?? false);
+    const isLocked = isLoading || isUpdating || isDeleting || isAdding;
+    const error = loadError?.message || addError?.message || deleteError?.message || updateError?.message;
     
     if (error) {
         return (
@@ -165,7 +128,7 @@ const PortsView: FC<PortsViewProps> = ({
                 <h3 className="text-sm font-bold">{`Ports: ${ports.length} of ${MAX_PORTS}`}</h3>
                 <SimpleButton
                     caption="Reload"
-                    handleClick={() => void loadPorts()}
+                    handleClick={() => void refetchPorts()}
                     size="xs"
                     color="secondary"
                     isDisabled={isLocked}
@@ -176,16 +139,18 @@ const PortsView: FC<PortsViewProps> = ({
                     <div key={port.portId} className="flex flex-col gap-2">
                     <StationPortCard
                         port={port}
-                        isUpdating={editState?.portId === port.portId && editState.isUpdating}
+                        isUpdating={editPortId === port.portId && isUpdating}
                         isLocked={isLocked}
                         canEdit={canEditPort}
-                        onDelete={() => deletePort(port.portId)}
+                        onDelete={() => void deletePort(port.portId)}
                         onTurnOn={() => void updatePortState(port, "FREE")}
                         onTurnOff={() => void updatePortState(port, "DISABLED")}
                     />
-                    {editState?.portId === port.portId && editState.error && (
+                    {(
+                        (editPortId === port.portId && isUpdateError) || (deletePortId === port.portId && isDeleteError)
+                    ) && (
                         <p className="w-full text-right text-red-500 text-xs mt-0.5 pr-0">
-                            {editState.error}
+                            {deletePortId === port.portId ? deleteError?.message : updateError?.message}
                         </p>
                     )}
                 </div>
@@ -244,9 +209,9 @@ const PortsView: FC<PortsViewProps> = ({
                         ))}
                     </>
                 )}
-                {addError && (
+                {isAddError && (
                     <p className="w-full text-right text-red-500 text-xs mt-0.5 pr-0">
-                        {addError}
+                        {addError?.message}
                     </p>
                 )}
             </div>

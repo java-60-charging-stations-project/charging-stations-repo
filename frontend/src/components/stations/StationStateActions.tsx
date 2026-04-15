@@ -1,100 +1,90 @@
-import { useState, type FC } from "react";
-import {
-    changeStationState as adminChangeStationState,
-    deleteStation,
-} from "@/services/api/adminApi";
-import { changeStationState as supportChangeStationState } from "@/services/api/supportApi";
-import type { StationState } from "@/types/stations";
+import { type FC } from "react";
+import type { StationBase, StationState } from "@/types/stations";
 import { StationStateBadge } from "@/components/StatusBadge";
+import { useDeleteStationMutation, useUpdateStationStateMutation } from "@/store/apiSlice";
+import type { UserRole } from "@/types";
 
 export interface StationStateActionsProps {
-    stationId: string;
-    stationState: StationState;
-    updatedAt: string;
-    userRole: string | null;
-    maxPowerKw: number;
-    peakRate: number;
-    offPeakRate: number;
-    onStateChanged: () => Promise<void>;
-    onDeleted: () => void;
+    station: StationBase;
+    userRole: UserRole;
 }
 
-const StationStateActions: FC<StationStateActionsProps> = ({
-    stationId, stationState, updatedAt, userRole,
-    maxPowerKw, peakRate, offPeakRate,
-    onStateChanged, onDeleted,
-}) => {
-    const [error, setError] = useState<string | null>(null);
-    const [isProcessing, setIsProcessing] = useState(false);
+const StationStateActions: FC<StationStateActionsProps> = ({station, userRole,}) => {
+    const [updateStationStateMutation, { isLoading: isUpdating, error: updateError }] = useUpdateStationStateMutation();
+    const [deleteStationMutation, { isLoading: isDeleting, error: deleteError }] = useDeleteStationMutation();
 
-    const changeStateFn = userRole === "ADMIN" ? adminChangeStationState : supportChangeStationState;
-
+    const isProcessing = isUpdating || isDeleting;
+    const error = updateError?.message || deleteError?.message;
+    
     const handleChangeState = async (newState: StationState) => {
-        setError(null);
-        setIsProcessing(true);
-        try {
-            await changeStateFn(stationId, { oldState: stationState, newState, updatedAt });
-            await onStateChanged();
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "Operation failed");
-        } finally {
-            setIsProcessing(false);
-        }
+        await updateStationStateMutation({
+                stationId: station.id,
+                role: userRole,
+                body: {
+                    oldState: station.state,
+                    newState,
+                    updatedAt: station.updatedAt,
+                },
+            });
     };
 
     const handleDelete = async () => {
-        setError(null);
-        setIsProcessing(true);
-        try {
-            await deleteStation(stationId);
-            onDeleted();
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "Delete failed");
-        } finally {
-            setIsProcessing(false);
-        }
-    };
-
-    const handleActivate = () => {
-        const issues: string[] = [];
-        if (!maxPowerKw || maxPowerKw <= 0) issues.push("Max power (kW) must be greater than 0");
-        if (!peakRate || peakRate <= 0) issues.push("High rate must be greater than 0");
-        if (!offPeakRate || offPeakRate <= 0) issues.push("Low rate must be greater than 0");
-        if (issues.length > 0) {
-            setError(issues.join(". "));
-            return;
-        }
-        void handleChangeState("ACTIVE");
+        await deleteStationMutation(station.id);
     };
 
     const renderActions = () => {
-        if (userRole === "ADMIN" && stationState === "INACTIVE") {
+        if (userRole === "ADMIN" && station.state === "INACTIVE") {
             return (
                 <>
-                    <button type="button" className="px-2 py-1 rounded-md bg-blue-500 text-white disabled:opacity-50 disabled:cursor-not-allowed" disabled={isProcessing} onClick={() => void handleChangeState("OUT_OF_SERVICE")}>
+                    <button
+                        type="button"
+                        className="px-2 py-1 rounded-md bg-blue-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={isProcessing}
+                        onClick={() => void handleChangeState("OUT_OF_SERVICE")}
+                    >
                         To support
                     </button>
-                    <button type="button" className="px-2 py-1 rounded-md bg-red-500 text-white disabled:opacity-50 disabled:cursor-not-allowed" disabled={isProcessing} onClick={() => void handleDelete()}>
+                    <button
+                        type="button"
+                        className="px-2 py-1 rounded-md bg-red-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={isProcessing}
+                        onClick={() => void handleDelete()}
+                    >
                         Delete
                     </button>
                 </>
             );
         }
-        if (userRole === "SUPPORT" && stationState === "OUT_OF_SERVICE") {
+        if (userRole === "SUPPORT" && station.state === "OUT_OF_SERVICE") {
             return (
                 <>
-                    <button type="button" className="px-2 py-1 rounded-md bg-blue-500 text-white disabled:opacity-50 disabled:cursor-not-allowed" disabled={isProcessing} onClick={() => void handleChangeState("INACTIVE")}>
+                    <button
+                        type="button"
+                        className="px-2 py-1 rounded-md bg-blue-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={isProcessing}
+                        onClick={() => void handleChangeState("INACTIVE")}
+                    >
                         To admin
                     </button>
-                    <button type="button" className="px-2 py-1 rounded-md bg-green-600 text-white disabled:opacity-50 disabled:cursor-not-allowed" disabled={isProcessing} onClick={handleActivate}>
+                    <button
+                        type="button"
+                        className="px-2 py-1 rounded-md bg-green-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={isProcessing}
+                        onClick={() => void handleChangeState("ACTIVE")}
+                    >
                         Activate
                     </button>
                 </>
             );
         }
-        if (userRole === "SUPPORT" && stationState === "ACTIVE") {
+        if (userRole === "SUPPORT" && station.state === "ACTIVE") {
             return (
-                <button type="button" className="px-2 py-1 rounded-md bg-amber-600 text-white disabled:opacity-50 disabled:cursor-not-allowed" disabled={isProcessing} onClick={() => void handleChangeState("OUT_OF_SERVICE")}>
+                <button
+                    type="button"
+                    className="px-2 py-1 rounded-md bg-amber-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={isProcessing}
+                    onClick={() => void handleChangeState("OUT_OF_SERVICE")}
+                >
                     Deactivate
                 </button>
             );
@@ -108,7 +98,7 @@ const StationStateActions: FC<StationStateActionsProps> = ({
         <div className="mt-3 border-t border-neutral-200 pt-3 text-xs">
             <div className="flex items-center gap-2 mb-2">
                 <span className="font-semibold">State:</span>
-                <StationStateBadge state={stationState} />
+                <StationStateBadge state={station.state} />
             </div>
             {actions && (
                 <div className="flex items-center gap-2">

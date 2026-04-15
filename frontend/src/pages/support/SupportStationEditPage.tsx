@@ -1,6 +1,5 @@
 import { useNavigate } from "react-router";
 import StationEditPage from "../StationEditPage";
-import { fetchStationById } from "@/services/api/supportApi";
 import useFromParam from "@/hooks/useFromParam";
 
 
@@ -18,7 +17,6 @@ const SupportStationEditPage = () => {
     
     return (
         <StationEditPage
-            fetchStationMethod={fetchStationById}
             navigateBack={navigateBack}
             userRole={"SUPPORT"}
         />

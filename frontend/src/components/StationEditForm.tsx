@@ -1,19 +1,19 @@
-import { type FC } from "react";
-import { useCallback, useEffect, useState, } from "react";
+import { useState, useEffect, type FC } from "react";
 import { getLogger } from "@/services/logging";
-import { createStation, updateStation } from "@/services/api/adminApi";
-import { updateStation as supportUpdateStation } from "@/services/api/supportApi";
-import type { AdminCreateStationRequest, AdminUpdateStationRequest, StationBase, StationState } from "@/types/stations";
-import { useForm, useWatch, type SubmitHandler } from "react-hook-form";
+import type { AdminCreateStationRequest, AdminUpdateStationRequest, StationState } from "@/types/stations";
+import { useForm, type SubmitHandler } from "react-hook-form";
 import { config } from "@/config/env";
 import StationStateActions from "@/components/stations/StationStateActions";
 import EasyButton from "@/components/EasyButton";
 import { useNavigate } from "react-router";
 import useFromParam from "@/hooks/useFromParam";
+import { useCreateStationMutation, useGetStationQuery, useUpdateStationMutation } from "@/store/apiSlice";
+import type { UserRole } from "@/types";
+import EasySpinner from "./EasySpinner";
 
 const logger = getLogger("StationEditForm");
 
-function canEditStation(userRole: string, stationState: StationState): boolean {
+function canEditStation(userRole: UserRole, stationState: StationState): boolean {
     return (userRole === "ADMIN" && stationState === "INACTIVE") ||
         (userRole === "SUPPORT" && stationState === "OUT_OF_SERVICE");
 };
@@ -31,71 +31,65 @@ const FieldRow = ({ label, error, children }: { label: string; error?: string; c
 );
 
 type StationEditFormProps = {
-    userRole: string;
+    userRole: UserRole;
     stationId: string | undefined;
-    fetchStationMethod: (stationId: string) => Promise<StationBase>;
 };
 
 const StationEditForm: FC<StationEditFormProps> = ({
-    userRole = "USER",
+    userRole = "ADMIN",
     stationId,
-    fetchStationMethod,
 }) => {
-    const { register, handleSubmit, reset, control, formState: { errors, isSubmitting } } = useForm<StationFormData>();
+    const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<StationFormData>();
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [createSuccess, setCreateSuccess] = useState(false);
-    const [loadError, setLoadError] = useState<string | null>(null);
     const isSupportUser = userRole === "SUPPORT";
-    const [station, setStation] = useState<StationBase | null>(null);
-    const [canEdit, setCanEdit] = useState(false);
+    
     const navigate = useNavigate();
     const from = useFromParam();
-    // Watched values
-    const watchedMaxPowerKw = useWatch({ control, name: "maxPowerKw" });
-    const watchedPeakRate = useWatch({ control, name: "ratePlan.peakRate" });
-    const watchedOffPeakRate = useWatch({control, name: "ratePlan.offPeakRate"});
+    const [updateStationMutation, { isLoading: isUpdating }] = useUpdateStationMutation();
+    const [createStationMutation, { isLoading: isCreating }] = useCreateStationMutation();
+    
+    const {
+        data: station,
+        isLoading,
+        isError,
+        error: loadError,
+    } = useGetStationQuery(
+        { stationId: stationId!, role: userRole},
+        { skip: !stationId }
+    );
 
     const isEditing = stationId !== undefined;
     const isLocked = !isEditing && (isSubmitting || createSuccess);
+    const canEdit = station? canEditStation(userRole, station.state): false;
+
     const isEditableFieldLocked = isLocked || (isEditing && (!canEdit || isSubmitting));
 
-    const fromPath = from ? encodeURIComponent(from) : "";    
-
-    const loadStation = useCallback(async () => {
-        if (!stationId) {
-            return;
-        }
-        try {
-            const loadedStation = await fetchStationMethod(stationId);
-            setStation(loadedStation);
-            setCanEdit(canEditStation(userRole, loadedStation.state));
-            reset({
-                name: loadedStation.name,
-                owner: loadedStation.owner,
-                city: loadedStation.city,
-                address: loadedStation.address,
-                location: loadedStation.location as AdminCreateStationRequest['location'],
-                maxPowerKw: loadedStation.maxPowerKw as number,
-                ratePlan: loadedStation.ratePlan as AdminCreateStationRequest['ratePlan'],
-                siteTechnician: loadedStation.siteTechnician,
-                phone: loadedStation.phone,
-                email: loadedStation.email,
-            });
-        } catch (err) {
-            setLoadError(err instanceof Error ? err.message : "Failed to load station");
-        }
-    }, [stationId, userRole, fetchStationMethod, reset]);
+    const fromPath = from ? encodeURIComponent(from) : "";
 
     useEffect(() => {
-        void loadStation();
-    }, [loadStation]);
+        if (station) {
+            reset({
+                name: station.name,
+                owner: station.owner,
+                city: station.city,
+                address: station.address,
+                location: station.location,
+                maxPowerKw: station.maxPowerKw ?? 0,
+                ratePlan: station.ratePlan,
+                siteTechnician: station.siteTechnician,
+                phone: station.phone,
+                email: station.email,
+            });
+        }
+    }, [station, reset]);
 
     const onSubmit: SubmitHandler<StationFormData> = async (data) => {
         logger.debug('Form submitted', data);
         setSubmitError(null);
         try {
             if (stationId && canEdit) {
-                const updatePayload: AdminUpdateStationRequest = {
+                const updateData: AdminUpdateStationRequest = {
                     address: data.address,
                     ratePlan: {
                         ...data.ratePlan,
@@ -108,23 +102,13 @@ const StationEditForm: FC<StationEditFormProps> = ({
                     maxPowerKw: data.maxPowerKw,
                     location: data.location,
                 };
-                logger.debug('Update station payload', updatePayload);
-                if (isSupportUser) {
-                    logger.debug('Support user updating station...');
-                    await supportUpdateStation(stationId, updatePayload);
-                }
-                else {
-                    logger.debug('Admin user updating station...');
-                    await updateStation(stationId, updatePayload);
-                }
+                logger.debug('Update station payload', updateData);
+                await updateStationMutation({stationId, role: userRole, body: updateData}).unwrap();
                 logger.debug('Station updated successfully');
-                await loadStation();
-                logger.debug('Station loaded successfully');
-                return;
             }
             else {
                 const code = `${data.owner}=+=${data.city}=+=${data.address}`;
-                const createPayload: AdminCreateStationRequest = {
+                const createData: AdminCreateStationRequest = {
                     ...data,
                     code,
                     ratePlan: {
@@ -133,8 +117,9 @@ const StationEditForm: FC<StationEditFormProps> = ({
                         currencyName: config.currency.name,
                     },
                 };
-                logger.debug('Create station payload', createPayload);
-                await createStation(createPayload);
+                logger.debug('Create station payload', createData);
+                await createStationMutation(createData).unwrap();
+                logger.debug('Station created successfully');
                 setCreateSuccess(true);
             }
         } catch (err) {
@@ -144,10 +129,22 @@ const StationEditForm: FC<StationEditFormProps> = ({
     };
 
     const ratesTitle = `Rates in ${config.currency.code}`;
+    const isBusy = isSubmitting || isUpdating || isCreating;
+
+    if (stationId && isLoading) {
+        return (
+            <>
+                <h1 className="text-center">Station details</h1>
+                <EasySpinner />
+                <p className="text-center text-gray-500 text-xs">Loading station details...</p>
+            </>
+        );
+    }
+
     return (
         <>
             <h1 className="text-center">{stationId ? "Station details" : "Create a new station"}</h1>
-            {loadError && <p className="text-red-500 text-xs">{loadError}</p>}
+            {isError && loadError?.message && <p className="text-red-500 text-xs">{loadError.message}</p>}
             <form onSubmit={handleSubmit(onSubmit)} className="w-full text-xs">
                 <FieldRow label="City" error={errors.city?.message}>
                     <input className="w-full" disabled={isLocked || isEditing} {...register("city", { required: "City is required" })} />
@@ -294,8 +291,8 @@ const StationEditForm: FC<StationEditFormProps> = ({
                         <input
                             type="submit"
                             className="mt-1 bg-blue-500 text-white px-4 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
-                            disabled={isSubmitting || createSuccess}
-                            value={isSubmitting
+                            disabled={isBusy || createSuccess}
+                            value={isBusy
                                 ? (stationId ? "Saving..." : "Submitting...")
                                 : (stationId ? "Save changes" : "Submit")}
                         />
@@ -308,19 +305,7 @@ const StationEditForm: FC<StationEditFormProps> = ({
                     </>
                 )}
             </form>
-            {station && (
-                <StationStateActions
-                    stationId={stationId!}
-                    stationState={station.state}
-                    updatedAt={station.updatedAt}
-                    userRole={userRole}
-                    maxPowerKw={watchedMaxPowerKw}
-                    peakRate={watchedPeakRate}
-                    offPeakRate={watchedOffPeakRate}
-                    onStateChanged={loadStation}
-                    onDeleted={loadStation}
-                />
-            )}
+            {station && <StationStateActions station={station} userRole={userRole}/>}
         </>
     );
 };

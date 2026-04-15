@@ -1,8 +1,8 @@
 import { clientBaseQuery } from "@/services/api/clientBaseQuery";
 import { createApi } from "@reduxjs/toolkit/query/react";
 import type { UserSessionsResponse, UserSessionPortUpdateRequest, UserSessionPortUpdateResponse } from '@/types/sessions';
-import type { AdminCreateStationRequest, AdminCreateStationResponse, ChangeStationStateResponse, StationBase, StationPortsCreateResponse, StationPortsListResponse, UpdateStationResponse } from "@/types/stations";
-import type { AddStationPortsPayload, ChangeStationStatePayload, DeleteStationPortPayload, GetStationPayload, UpdateStationPayload } from "@/types/rtk_payload";
+import type { AdminCreateStationRequest, AdminCreateStationResponse, ChangeStationStateResponse, StationBase, StationPortsCreateResponse, StationPortsListResponse, SupportUpdatePortStateResponse, UpdateStationResponse } from "@/types/stations";
+import type { AddStationPortsPayload, ChangeStationStatePayload, DeleteStationPortPayload, GetStationPayload, UpdateStationPayload, UpdateStationPortStatePayload } from "@/types/rtk_payload";
 import type { UserRole } from "@/types";
 
 function buildRolePath(role: UserRole): string {
@@ -85,7 +85,7 @@ export const apiSlice = createApi({
                 data: body,
             }),
         }),
-        deleteStation: builder.mutation<AdminCreateStationResponse, string>({
+        deleteStation: builder.mutation<void, string>({
             query: (stationId) => ({
                 url: `/admin/stations/${stationId}`,
                 method: "DELETE",
@@ -115,6 +115,14 @@ export const apiSlice = createApi({
             }),
             invalidatesTags: (_result, _error, { stationId }) => [{ type: 'Station', id: stationId }],
         }),
+        updateStationPortState: builder.mutation<SupportUpdatePortStateResponse, UpdateStationPortStatePayload>({
+            query: ({ stationId, body }) => ({
+                url: `/support/stations/${stationId}/ports/state`,
+                method: "PATCH",
+                data: body,
+            }),
+            invalidatesTags: (_result, _error, { stationId }) => [{ type: 'Station', id: stationId }],
+        }),
     }),
 });
 
@@ -132,4 +140,5 @@ export const {
     useGetStationPortsQuery,
     useAddStationPortsMutation,
     useDeleteStationPortMutation,
+    useUpdateStationPortStateMutation,
 } = apiSlice;

@@ -3,15 +3,13 @@ import StationEditForm from "@/components/StationEditForm";
 import { useParams } from "react-router";
 import { type FC } from "react";
 import type { UserRole } from "@/types";
-import type { StationBase } from "@/types/stations";
 
 type StationEditPageProps = {
     userRole: UserRole;
     navigateBack: () => void;
-    fetchStationMethod: (stationId: string) => Promise<StationBase>;
 }
 
-const StationEditPage: FC<StationEditPageProps> = ({ userRole, navigateBack, fetchStationMethod }) => {
+const StationEditPage: FC<StationEditPageProps> = ({ userRole, navigateBack }) => {
     const { stationId } = useParams<{ stationId: string }>();
     
     return (
@@ -22,7 +20,6 @@ const StationEditPage: FC<StationEditPageProps> = ({ userRole, navigateBack, fet
             <StationEditForm
                 stationId={stationId}
                 userRole={userRole ?? "USER"}
-                fetchStationMethod={fetchStationMethod}
             />
         </div>
     );
