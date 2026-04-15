@@ -85,7 +85,7 @@ export const apiSlice = createApi({
                 data: body,
             }),
         }),
-        deleteStation: builder.mutation<AdminCreateStationResponse, string>({
+        deleteStation: builder.mutation<void, string>({
             query: (stationId) => ({
                 url: `/admin/stations/${stationId}`,
                 method: "DELETE",
