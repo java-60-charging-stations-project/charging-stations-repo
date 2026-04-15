@@ -99,6 +99,24 @@ def get_sessions_by_station(station_id: str) -> list[dict]:
         logger.error(f"error getting sessions by station: {e}")
         raise LambdaResponseError({"error": f"error getting sessions by station: {e}", "code": "UNHANDLED_ERROR"})
 
+def get_session_by_port(station_id: str, entity_key: str) -> dict | None:
+    try:
+        table = get_dynamo_stations_table()
+    except Exception as e:
+        logger.error(f"error getting dynamo stations table: {e}")
+        raise LambdaResponseError({"error": f"error getting dynamo stations table: {e}", "code": "DATABASE_ERROR"})
+    session_key = f"{entity_key}#SESSION#"
+    try:
+        resp = table.query(
+            KeyConditionExpression=Key("station_id").eq(station_id) & Key("entity_key").begins_with(session_key),
+            FilterExpression=Attr("state").is_in(["ACTIVE", "BOOKED"]),
+        )
+        items = resp.get("Items", [])
+        return items[0] if items else None
+    except Exception as e:
+        logger.error(f"error getting session by port: {e}")
+        raise LambdaResponseError({"error": f"error getting session by port: {e}", "code": "UNHANDLED_ERROR"})
+
 def get_has_free_ports_by_station(station_id: str) -> bool:
     try:
         table = get_dynamo_stations_table()
@@ -158,6 +176,12 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                 sessions = get_sessions_by_station(station_id)
                 log_audit("INFO", message="sessions retrieved successfully", status="SUCCESS", **audit_base)
                 return SuccessResponsePayload(data={"sessions": sessions}, meta={})
+            case "get_session_by_port":
+                station_id = event["data"]["station_id"]
+                entity_key = event["data"]["entity_key"]
+                session = get_session_by_port(station_id, entity_key)
+                log_audit("INFO", message="session by port retrieved successfully", status="SUCCESS", **audit_base)
+                return SuccessResponsePayload(data={"session": session if session else None}, meta={})
             case _:
                 log_audit("ERROR", message=f"invalid action {action}", status="ERROR", errorMessage=f"invalid action {action}", **audit_base)
                 return ErrorResponsePayload(error=f"invalid action {action}", code="INVALID_REQUEST")

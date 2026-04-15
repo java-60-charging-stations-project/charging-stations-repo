@@ -13,12 +13,12 @@ _conn = None
 
 DEFAULT_PAGE_SIZE = 200
 STATIONS_SELECT = """
-    id, code, name, owner, city, address, email, site_technician, max_power_kw,
+    id, code, name, owner, city, address, email, phone, site_technician, max_power_kw,
     (ST_AsGeoJSON(location)::json) AS location,
     ports, rate_plan, state, has_free_ports, created_at, updated_at
 """
 SORTABLE_COLUMNS = {"code" : "code", "name" : "name", "owner" : "owner", "city" : "city", 
-"address" : "address", "email" : "email", "siteTechnician" : "site_technician", 
+"address" : "address", "email" : "email", "phone" : "phone", "siteTechnician" : "site_technician", 
 "maxPowerKw" : "max_power_kw", "ports" : "ports", "createdAt" : "created_at", "updatedAt" : "updated_at"}
 
 def datetime_to_json(v: Any) -> Any:

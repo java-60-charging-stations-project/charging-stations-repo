@@ -123,7 +123,9 @@ Response (error):
 }
 ```
 
-## Stations (RDS)
+## RDS
+
+### Stations
 
 **Read responses (`getAllStations`, `getStationById`):** objects follow **snake_case** (PostgreSQL column names). `location` is returned as GeoJSON.
 
@@ -445,7 +447,105 @@ Response (error):
 }
 ```
 
-## Station ports (DynamoDB single-table)
+### Sessions archive read
+
+Lambda: `charging-stations-get-session-info`
+
+### `getSessionById`
+
+Action: `getSessionById`
+
+Reads one archived session row from RDS `sessions` table by `session_id`.
+
+Request:
+
+```json
+{
+  "service": { "action": "getSessionById", "callerId": "string" },
+  "data": { "sessionId": "session-uuid" }
+}
+```
+
+Response (success):
+
+```json
+{
+  "data": {
+    "session_id": "session-uuid",
+    "station_id": "station-uuid",
+    "entity_key": "PORT#A1#SESSION#session-uuid",
+    "state": "PAID|UNPAID|ACTIVE|BOOKED",
+    "user_id": "user-uuid",
+    "energy_consumed_kwh": 0.0,
+    "tariff": 1.47,
+    "final_cost": 0.0,
+    "duration_minutes": null,
+    "booking_duration_minutes": null,
+    "charge_level_percent": null,
+    "time_booked_at": null,
+    "time_booked_before": null,
+    "started_at": "ISO timestamp",
+    "stopped_at": null,
+    "ended_at": "ISO timestamp",
+    "paid_at": "ISO timestamp",
+    "created_at": "ISO timestamp",
+    "updated_at": "ISO timestamp"
+  },
+  "meta": {}
+}
+```
+
+### `getSessions`
+
+Action: `getSessions`
+
+Reads archived sessions from RDS with optional filters and paging.
+
+Request:
+
+```json
+{
+  "service": { "action": "getSessions", "callerId": "string" },
+  "data": {
+    "sessionId": "session-uuid|null",
+    "stationId": "station-uuid|null",
+    "userId": "user-uuid|null",
+    "state": "BOOKED|ACTIVE|UNPAID|PAID|null",
+    "orderBy": "paidAt-,createdAt+|..."
+  },
+  "meta": {
+    "page": 1,
+    "pageSize": 20
+  }
+}
+```
+
+Response (success):
+
+```json
+{
+  "data": [
+    {
+      "session_id": "session-uuid",
+      "station_id": "station-uuid",
+      "entity_key": "PORT#A1#SESSION#session-uuid",
+      "state": "PAID",
+      "user_id": "user-uuid",
+      "paid_at": "ISO timestamp",
+      "created_at": "ISO timestamp",
+      "updated_at": "ISO timestamp"
+    }
+  ],
+  "meta": {
+    "total_items": 100,
+    "total_pages": 5,
+    "page": 1,
+    "page_size": 20
+  }
+}
+```
+
+## DynamoDB (station entities single-table)
 
 **Table:** `STATIONS_DYNAMO_TABLE` (e.g. `charging-stations-station-entities` from the SAM stack).
 
@@ -460,7 +560,7 @@ Key design:
 
 ---
 
-## Write — `charging-stations-write-station-ports-dynamo`
+### Write — `charging-stations-write-station-ports-dynamo`
 
 Action-based handler: `event.service.action` and `event.service.callerId`. Success responses include `"meta": {}` where applicable.
 
@@ -724,7 +824,7 @@ Response (success):
 
 ---
 
-## Read
+### Read — `charging-stations-get-ports-sessions-dynamo`
 
 ### `get_has_free_ports_by_station`  
 
@@ -862,21 +962,19 @@ Implementation notes:
 
 ---
 
-## Read (RDS sessions archive)
+### `getSessionByStation`
 
-### `getSessionById`
+Lambda: `charging-stations-get-ports-sessions-dynamo`  
+Action: `getSessionByStation`
 
-Lambda: `charging-stations-get-session-info`  
-Action: `getSessionById`
-
-Reads one archived session row from RDS `sessions` table by `session_id`.
+Reads session rows for a single station partition in DynamoDB.
 
 Request:
 
 ```json
 {
-  "service": { "action": "getSessionById", "callerId": "string" },
-  "data": { "sessionId": "session-uuid" }
+  "service": { "action": "getSessionByStation", "callerId": "string" },
+  "data": { "stationId": "station-uuid" }
 }
 ```
 
@@ -885,82 +983,21 @@ Response (success):
 ```json
 {
   "data": {
-    "session_id": "session-uuid",
-    "station_id": "station-uuid",
-    "entity_key": "PORT#A1#SESSION#session-uuid",
-    "state": "PAID|UNPAID|ACTIVE|BOOKED",
-    "user_id": "user-uuid",
-    "energy_consumed_kwh": 0.0,
-    "tariff": 1.47,
-    "final_cost": 0.0,
-    "duration_minutes": null,
-    "booking_duration_minutes": null,
-    "charge_level_percent": null,
-    "time_booked_at": null,
-    "time_booked_before": null,
-    "started_at": "ISO timestamp",
-    "stopped_at": null,
-    "ended_at": "ISO timestamp",
-    "paid_at": "ISO timestamp",
-    "created_at": "ISO timestamp",
-    "updated_at": "ISO timestamp"
+    "sessions": [
+      {
+        "session_id": "session-uuid",
+        "station_id": "station-uuid",
+        "entity_key": "PORT#A1#SESSION#session-uuid",
+        "state": "BOOKED|ACTIVE|UNPAID|PAID",
+        "user_id": "user-uuid",
+        "created_at": "ISO timestamp",
+        "updated_at": "ISO timestamp"
+      }
+    ]
   },
   "meta": {}
 }
 ```
-
-### `getSessions`
-
-Lambda: `charging-stations-get-session-info`  
-Action: `getSessions`
-
-Reads archived sessions from RDS with optional filters and paging.
-
-Request:
-
-```json
-{
-  "service": { "action": "getSessions", "callerId": "string" },
-  "data": {
-    "sessionId": "session-uuid|null",
-    "stationId": "station-uuid|null",
-    "userId": "user-uuid|null",
-    "state": "BOOKED|ACTIVE|UNPAID|PAID|null",
-    "orderBy": "paidAt-,createdAt+|..."
-  },
-  "meta": {
-    "page": 1,
-    "pageSize": 20
-  }
-}
-```
-
-Response (success):
-
-```json
-{
-  "data": [
-    {
-      "session_id": "session-uuid",
-      "station_id": "station-uuid",
-      "entity_key": "PORT#A1#SESSION#session-uuid",
-      "state": "PAID",
-      "user_id": "user-uuid",
-      "paid_at": "ISO timestamp",
-      "created_at": "ISO timestamp",
-      "updated_at": "ISO timestamp"
-    }
-  ],
-  "meta": {
-    "total_items": 100,
-    "total_pages": 5,
-    "page": 1,
-    "page_size": 20
-  }
-}
-```
-
----
 
 ## Stream consumer — `charging-stations-station-entities-stream-consumer`
 

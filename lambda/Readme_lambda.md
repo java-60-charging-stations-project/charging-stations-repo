@@ -171,7 +171,7 @@ See **`lambda_request_responces.md`** for full shapes. Summary:
 - **GetStationInfo** – Station objects in **snake_case**; `location` as GeoJSON when selected.
 - **GetSessionInfo** – archived session objects from RDS `sessions`, with ISO datetime strings in response.
 - **WriteStationPortsDynamo** – `insertStationPorts`, port updates, `deleteStationPorts` (see **`lambda_request_responces.md`**).
-- **GetPortsSessionsDynamo** – `getSessionByUser` supports `data.latest=true` to skip the active-state filter and return latest/history rows available for the user on `user_id-index`.
+- **GetPortsSessionsDynamo** – supports `getSessionByUser` (`data.latest=true` for history/all states on `user_id-index`) and `getSessionByStation` (sessions by station partition).
 - **StationEntitiesStreamConsumer** – Dynamo stream: forwards port insert/remove and free-state changes to station RDS updates, `UNPAID` transitions to payment, and `PAID` transitions to RDS session archive (details in **`lambda_request_responces.md`**).
 
 ### Maintenance cron Lambdas

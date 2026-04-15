@@ -203,7 +203,7 @@ def insert_station_to_rds(station: StationInstance) -> None:
                         site_technician, max_power_kw, location, ports, 
                         rate_plan, state, has_free_ports, created_at, updated_at, ports_number_event_id, ports_state_event_id
                     ) VALUES (
-                        %s, %s, %s, %s, %s, %s, %s, %s, %s, 
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 
                         ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography, 
                         %s, %s, %s, %s, %s, %s, %s, %s
                     )
@@ -216,6 +216,7 @@ def insert_station_to_rds(station: StationInstance) -> None:
                     station["city"],
                     station["address"],
                     station["email"],
+                    station["phone"],
                     station["site_technician"],
                     station["max_power_kw"],
                     station["longitude"],
