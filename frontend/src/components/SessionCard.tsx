@@ -1,4 +1,6 @@
 import type { Session, UserSessionPortUpdateRequest } from "@/types/sessions";
+import EasySpinner from "@/components/EasySpinner";
+import { isFreshUnpaidSession } from "@/utils/sessionStatus";
 import {
   useCancelBookingMutation,
   useStartChargingMutation,
@@ -59,16 +61,19 @@ export default function SessionCard({ session }: { session: Session }) {
   const isBooked = session.state === "BOOKED";
   const isActive = session.state === "ACTIVE";
   const isUnpaid = session.state === "UNPAID";
+  const isFreshUnpaid = isFreshUnpaidSession(session);
+  const usesActiveColors = isActive || isFreshUnpaid;
+  const displayState = isFreshUnpaid ? "PROCESS PAYMENT" : session.state;
 
   const stateColors = isBooked
     ? "border-blue-300 bg-blue-50"
-    : isActive
+    : usesActiveColors
       ? "border-green-300 bg-green-50"
       : "border-amber-300 bg-amber-50";
 
   const badgeColors = isBooked
     ? "bg-blue-100 text-blue-800 border-blue-300"
-    : isActive
+    : usesActiveColors
       ? "bg-green-100 text-green-800 border-green-300"
       : "bg-amber-100 text-amber-800 border-amber-300";
 
@@ -84,7 +89,7 @@ export default function SessionCard({ session }: { session: Session }) {
         <span
           className={`inline-flex rounded border px-2 py-0.5 text-xs font-medium ${badgeColors}`}
         >
-          {session.state}
+          {displayState}
         </span>
       </div>
 
@@ -139,24 +144,32 @@ export default function SessionCard({ session }: { session: Session }) {
       )}
 
       {isUnpaid && (
-        <div className="mb-3 grid gap-1 text-sm text-slate-700 sm:grid-cols-2">
-          <p>
-            <span className="font-medium">Started at:</span>{" "}
-            {formatDate(session.startedAt)}
-          </p>
-          <p>
-            <span className="font-medium">Ended at:</span>{" "}
-            {formatDate(session.endedAt)}
-          </p>
-          <p>
-            <span className="font-medium">Current Cost:</span>{" "}
-            {formatNumeric(session.currentCost)}
-          </p>
-          <p>
-            <span className="font-medium">Energy consumed:</span>{" "}
-            {formatNumeric(session.energyConsumedKwh, " kWh")}
-          </p>
-        </div>
+        <>
+          {isFreshUnpaid && (
+            <div className="mb-3 flex items-center gap-2 text-sm font-medium text-green-700">
+              <EasySpinner size="sm" />
+              <span>Payment is being processed</span>
+            </div>
+          )}
+          <div className="mb-3 grid gap-1 text-sm text-slate-700 sm:grid-cols-2">
+            <p>
+              <span className="font-medium">Started at:</span>{" "}
+              {formatDate(session.startedAt)}
+            </p>
+            <p>
+              <span className="font-medium">Ended at:</span>{" "}
+              {formatDate(session.endedAt)}
+            </p>
+            <p>
+              <span className="font-medium">Current Cost:</span>{" "}
+              {formatNumeric(session.currentCost)}
+            </p>
+            <p>
+              <span className="font-medium">Energy consumed:</span>{" "}
+              {formatNumeric(session.energyConsumedKwh, " kWh")}
+            </p>
+          </div>
+        </>
       )}
 
       <div className="flex gap-2">
