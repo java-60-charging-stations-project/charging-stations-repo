@@ -128,8 +128,9 @@ The template provisions **RDS** (PostgreSQL, IAM auth), **VPC endpoints** (RDS A
 | **charging-stations-confirm-console-created-admin** | Cognito auth (InitiateAuth, NEW_PASSWORD_REQUIRED with `name`). | Script or backend. |
 | **charging-stations-write-station-rds** | Write station to RDS; change state; delete (soft); update station `ports` count from stream-forwarded ops. | Admin, cross-account, or Dynamo stream consumer invoke. |
 | **charging-stations-get-station-info** | Read station(s) from RDS. | Backend or cross-account. |
+| **charging-stations-get-session-info** | Read archived session rows from RDS `sessions` table. | Backend or cross-account. |
 | **charging-stations-write-station-ports-dynamo** | Insert/update/delete ports in DynamoDB single-table; for user port updates it also creates a session item in the same transaction. | Support / backend. |
-| **charging-stations-station-entities-stream-consumer** | DynamoDB stream: forward port insert/remove to WriteStationRDS (`update_station_ports`). | DynamoDB stream trigger. |
+| **charging-stations-station-entities-stream-consumer** | DynamoDB stream: forward station-port updates, session payment, and paid-session archive events. | DynamoDB stream trigger. |
 
 **WriteUserRDS** – Cognito triggers (e.g. PostConfirmation) **or** direct invoke with `service` + `data` (e.g. `changeUserStatus`). For Cognito: inserts the user into RDS from `request.userAttributes` and returns the **same event** back. For API invokes: `callerId` in `service`. **full_name**: if missing or Cognito sends `cognito:default_val`, stored as **"Console User"**.
 
@@ -140,16 +141,21 @@ The template provisions **RDS** (PostgreSQL, IAM auth), **VPC endpoints** (RDS A
 - `changeStationState`: `stationId`, `oldState`, `newState`. Updates only when current state matches `oldState`.
 - `deleteStation`: `data.stationId`. Soft-delete when state is `ACTIVE`, `INACTIVE`, or `OUT_OF_SERVICE`.
 - `update_station_ports`: accepts `data` as list of operations (`station_id`, `event_id`, `delta`) from the stream consumer.
+- `archive_session`: accepts stream-forwarded paid session payloads and inserts archived rows into RDS `sessions` (idempotent by `session_id` conflict handling).
 
 **GetStationInfo** – Action-based (`callerId` in `service`):
 - `getStationById`: `data.stationId`.
 - `getAllStations`: optional `meta` — `city`, `owner`, `state`, `page`, `pageSize`. Response `data` is a list of station objects (**snake_case**); optional **`meta`** with totals/pages when implemented.
 
+**GetSessionInfo** – Action-based (`callerId` in `service`):
+- `getSessionById`: `data.sessionId`.
+- `getSessions`: optional filters in `data` (`sessionId`, `stationId`, `userId`, `state`, `orderBy`) and pagination in `meta` (`page`, `pageSize`).
+
 **WriteStationPortsDynamo** – Action-based (`callerId` in `service`):
 - `insertStationPorts`: `data.stationId`, `data.ports` (array of `code`). Atomic batch via DynamoDB `TransactWriteItems`; response includes `data.created_ports`.
 - `supportUpdateStationPorts` / `userUpdateStationPorts`: optimistic state updates using `oldState`/`newState`; `userUpdateStationPorts` requires `userId` and creates a session item in the same transaction. Support flow allows `OCCUPIED -> DISABLED` and closes the active session as `UNPAID` (`ended_at`, `final_cost`) in the same transaction when a session row is found.
 - `deleteStationPorts`: delete one disabled port by `portKey`.
-- `pay_session` (internal from stream consumer): uses probabilistic simulation via `PAYMENT_SUCCESS_RATE` (currently `80` in `template.yaml`, so about 80% success / 20% failure simulation).
+- `pay_session` (internal from stream consumer) and `paySessionUser` (direct retry/user call): payment success is probabilistic. With `PAYMENT_SUCCESS_RATE=80` and condition `random(1..100) >= PAYMENT_SUCCESS_RATE`, effective behavior is about 80% success / 20% simulated failure.
 See **`lambda_request_responces.md`** for exact request/response payloads.
 
 
@@ -163,9 +169,10 @@ See **`lambda_request_responces.md`** for full shapes. Summary:
 - **ConfirmConsoleCreatedAdmin** – Payload: `username`, `password`, `new_password`, `name` (optional). Response tokens / message or error.
 - **WriteStationRDS** – Success `data` uses **snake_case**: `station_id`, `updated_at`, `deleted_at` (ISO strings where applicable).
 - **GetStationInfo** – Station objects in **snake_case**; `location` as GeoJSON when selected.
+- **GetSessionInfo** – archived session objects from RDS `sessions`, with ISO datetime strings in response.
 - **WriteStationPortsDynamo** – `insertStationPorts`, port updates, `deleteStationPorts` (see **`lambda_request_responces.md`**).
 - **GetPortsSessionsDynamo** – `getSessionByUser` supports `data.latest=true` to skip the active-state filter and return latest/history rows available for the user on `user_id-index`.
-- **StationEntitiesStreamConsumer** – Dynamo stream: forwards port insert/remove to RDS `update_station_ports` (details in **`lambda_request_responces.md`**).
+- **StationEntitiesStreamConsumer** – Dynamo stream: forwards port insert/remove and free-state changes to station RDS updates, `UNPAID` transitions to payment, and `PAID` transitions to RDS session archive (details in **`lambda_request_responces.md`**).
 
 ### Maintenance cron Lambdas
 

@@ -770,6 +770,7 @@ Resources:
           Properties:
             Schedule: rate(1 minute)   # or 5 minutes
             Enabled: true
+      
   # Allows private-subnet Lambdas to reach DynamoDB via gateway endpoint (no NAT required)
   DynamoDBGatewayEndpoint:
     Type: AWS::EC2::VPCEndpoint
@@ -783,7 +784,6 @@ Resources:
   WriteStationPortsFunction:
     Type: AWS::Serverless::Function
     DependsOn:
-      - StationEntitiesTable
       - DynamoDBGatewayEndpoint
     Properties:
       Runtime: python3.12
@@ -889,7 +889,56 @@ Resources:
             MaximumRetryAttempts: 3
             BisectBatchOnFunctionError: true
             Enabled: true
-  
+
+  GetSessionInfoFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: ChargingStationsRDSPostgresDB
+    Properties:
+      Runtime: python3.12
+      FunctionName: charging-stations-get-session-info
+      Handler: get_session_rds_info.handler
+      CodeUri: db/read
+      Layers:
+        - !Ref CommonToolsLayer
+        - !Sub "arn:aws:lambda:${AWS::Region}:770693421928:layer:Klayers-p312-psycopg2-binary:2"
+      Description: Get archived session info from RDS
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds:
+          - !Ref PrivateSubnet1Id
+          - !Ref PrivateSubnet2Id
+      Environment:
+        Variables:
+          DB_HOST: !GetAtt ChargingStationsRDSPostgresDB.Endpoint.Address
+          DB_PORT: "5432"
+          DB_NAME: !Ref DBName
+          DB_USER: !Sub "{{resolve:secretsmanager:${DBSecretArn}:SecretString:username}}"
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action: rds-db:connect
+              Resource: !Sub
+                - "arn:aws:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:${DBResourceId}/${DBUser}"
+                - DBResourceId: !GetAtt ChargingStationsRDSPostgresDB.DbiResourceId
+                  DBUser: !Sub "{{resolve:secretsmanager:${DBSecretArn}:SecretString:username}}"
+
+  GetSessionInfoInvokePermissionA:
+    Type: AWS::Lambda::Permission
+    Condition: UseInvokerAccountA
+    Properties:
+      FunctionName: !Ref GetSessionInfoFunction
+      Action: lambda:InvokeFunction
+      Principal: !Sub "arn:aws:iam::${InvokerAccountIdA}:root"
+
+  GetSessionInfoInvokePermissionB:
+    Type: AWS::Lambda::Permission
+    Condition: UseInvokerAccountB
+    Properties:
+      FunctionName: !Ref GetSessionInfoFunction
+      Action: lambda:InvokeFunction
+      Principal: !Sub "arn:aws:iam::${InvokerAccountIdB}:root"
 
   GetPortsSessionsFunction:
     Type: AWS::Serverless::Function

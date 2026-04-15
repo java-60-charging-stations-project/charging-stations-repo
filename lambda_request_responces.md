@@ -685,7 +685,42 @@ Implementation notes:
 
 - Requires an existing user lock row (`station_id = <user_id>`, `entity_key = "SESSION_LOCK"`); payment is rejected if lock is missing.
 - Uses conditional update/idempotency guards on `paid_at` and `last_event_id` to prevent duplicate payment state updates from stream retries.
-- Payment success is intentionally probabilistic in this stack: `PAYMENT_SUCCESS_RATE` is set to `80` in `template.yaml`, and the code succeeds when `random(1..100) >= PAYMENT_SUCCESS_RATE`, resulting in ~**80% success / 20% simulated failure**.
+- Payment success is intentionally probabilistic in this stack: with `PAYMENT_SUCCESS_RATE=80` and success condition `random(1..100) >= PAYMENT_SUCCESS_RATE`, effective behavior is about **80% success / 20% simulated failure**.
+
+### `paySessionUser` (direct user-triggered payment attempt)
+
+Lambda: `charging-stations-write-station-ports-dynamo`  
+Action: `paySessionUser`
+
+Used by user-facing retry/payment flows. Internally it maps the request to the same payment logic used by `pay_session`, with `event_id` derived from the current request id.
+
+Request:
+
+```json
+{
+  "service": { "action": "paySessionUser", "callerId": "string" },
+  "data": {
+    "stationId": "station-uuid",
+    "entityKey": "PORT#A1#SESSION#session-uuid",
+    "userId": "user-uuid"
+  }
+}
+```
+
+Response (success):
+
+```json
+{
+  "data": {
+    "paid_session": {
+      "user_id": "user-uuid",
+      "session_id": "session-uuid",
+      "paid_at": "ISO timestamp"
+    }
+  },
+  "meta": {}
+}
+```
 
 ---
 
@@ -827,6 +862,106 @@ Implementation notes:
 
 ---
 
+## Read (RDS sessions archive)
+
+### `getSessionById`
+
+Lambda: `charging-stations-get-session-info`  
+Action: `getSessionById`
+
+Reads one archived session row from RDS `sessions` table by `session_id`.
+
+Request:
+
+```json
+{
+  "service": { "action": "getSessionById", "callerId": "string" },
+  "data": { "sessionId": "session-uuid" }
+}
+```
+
+Response (success):
+
+```json
+{
+  "data": {
+    "session_id": "session-uuid",
+    "station_id": "station-uuid",
+    "entity_key": "PORT#A1#SESSION#session-uuid",
+    "state": "PAID|UNPAID|ACTIVE|BOOKED",
+    "user_id": "user-uuid",
+    "energy_consumed_kwh": 0.0,
+    "tariff": 1.47,
+    "final_cost": 0.0,
+    "duration_minutes": null,
+    "booking_duration_minutes": null,
+    "charge_level_percent": null,
+    "time_booked_at": null,
+    "time_booked_before": null,
+    "started_at": "ISO timestamp",
+    "stopped_at": null,
+    "ended_at": "ISO timestamp",
+    "paid_at": "ISO timestamp",
+    "created_at": "ISO timestamp",
+    "updated_at": "ISO timestamp"
+  },
+  "meta": {}
+}
+```
+
+### `getSessions`
+
+Lambda: `charging-stations-get-session-info`  
+Action: `getSessions`
+
+Reads archived sessions from RDS with optional filters and paging.
+
+Request:
+
+```json
+{
+  "service": { "action": "getSessions", "callerId": "string" },
+  "data": {
+    "sessionId": "session-uuid|null",
+    "stationId": "station-uuid|null",
+    "userId": "user-uuid|null",
+    "state": "BOOKED|ACTIVE|UNPAID|PAID|null",
+    "orderBy": "paidAt-,createdAt+|..."
+  },
+  "meta": {
+    "page": 1,
+    "pageSize": 20
+  }
+}
+```
+
+Response (success):
+
+```json
+{
+  "data": [
+    {
+      "session_id": "session-uuid",
+      "station_id": "station-uuid",
+      "entity_key": "PORT#A1#SESSION#session-uuid",
+      "state": "PAID",
+      "user_id": "user-uuid",
+      "paid_at": "ISO timestamp",
+      "created_at": "ISO timestamp",
+      "updated_at": "ISO timestamp"
+    }
+  ],
+  "meta": {
+    "total_items": 100,
+    "total_pages": 5,
+    "page": 1,
+    "page_size": 20
+  }
+}
+```
+
+---
+
 ## Stream consumer — `charging-stations-station-entities-stream-consumer`
 
 Triggered by the **DynamoDB stream** on the station entities table (after insert/update/remove).
@@ -893,6 +1028,32 @@ Internal payload:
       "entity_key": "PORT#A1#SESSION#session-uuid",
       "operation": "SESSION_UNPAID",
       "user_id": "user-uuid"
+    }
+  ]
+}
+```
+
+### `MODIFY` (session rows — transition to `PAID`)
+
+When a session row transitions from `UNPAID` to `PAID`, the stream consumer forwards the deserialized `new_image` session payload (with Decimal values converted to JSON numbers) to `charging-stations-write-station-rds` action `archive_session`, which inserts into RDS `sessions`.
+
+Internal payload:
+
+```json
+{
+  "service": { "action": "archive_session", "callerId": "DynamoDB Stream Consumer" },
+  "data": [
+    {
+      "event_id": "dynamodb-stream-event-id",
+      "station_id": "station-uuid",
+      "entity_key": "PORT#A1#SESSION#session-uuid",
+      "operation": "SESSION_PAID",
+      "session_object": {
+        "session_id": "session-uuid",
+        "state": "PAID",
+        "user_id": "user-uuid",
+        "paid_at": "ISO timestamp"
+      }
     }
   ]
 }
