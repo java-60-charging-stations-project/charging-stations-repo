@@ -162,15 +162,6 @@ const PortsView: FC<PortsViewProps> = ({
                 )}
                 {enabled && (
                     <>
-                        <div className="w-full flex justify-end gap-2">
-                            <SimpleButton
-                                caption="Add new ports"
-                                handleClick={addPorts}
-                                size="xs"
-                                color="primary"
-                                isDisabled={isLocked || newPorts.length === 0}
-                            />
-                        </div>
                         <h3 className="text-sm font-bold">{"New port codes to add:"}</h3>
                         <div className="w-full flex items-center gap-2">
                             <div className="w-full flex items-center gap-2">
@@ -207,6 +198,15 @@ const PortsView: FC<PortsViewProps> = ({
                                 />
                             </div>
                         ))}
+                        <div className="w-full flex justify-center gap-2">
+                            <SimpleButton
+                                caption="Send ports"
+                                handleClick={addPorts}
+                                size="xs"
+                                color="secondary"
+                                isDisabled={isLocked || newPorts.length === 0}
+                            />
+                        </div>
                     </>
                 )}
                 {isAddError && (
