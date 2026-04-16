@@ -1,5 +1,5 @@
 import type { BaseQueryFn } from '@reduxjs/toolkit/query';
-import { apiClient } from './api';
+import { apiClient } from "./api";
 import type { ApiResponse } from '@/types/apiTypes';
 
 type ClientArgs = {

@@ -1,4 +1,4 @@
-import { apiClient } from './api';
+import { apiClient } from "./api";
 import type { ApiArrayResponse, ApiResponse } from '@/types/apiTypes';
 import type { 
     UserFullType,
