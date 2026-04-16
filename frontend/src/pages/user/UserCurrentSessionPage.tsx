@@ -2,10 +2,13 @@ import { useGetSessionsQuery } from "@/store/apiSlice";
 import EasySpinner from "@/components/EasySpinner";
 import SessionCard from "@/components/SessionCard";
 import { isFreshUnpaidSession } from "@/utils/sessionStatus";
+import { config } from "@/config/env";
+
+const pollingInterval = config.userSessionsPollingInterval;
 
 const UserCurrentSessionPage = () => {
   const { data, isLoading, error, refetch } = useGetSessionsQuery(undefined, {
-    pollingInterval: 5000,
+    pollingInterval,
     skipPollingIfUnfocused: true,
     refetchOnReconnect: true,
   });
