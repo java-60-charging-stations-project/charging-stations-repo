@@ -31,7 +31,7 @@ On error, Lambdas return:
 ```json
 {
   "error": "Human readable message",
-  "code": "UNHANDLED_ERROR | ALREADY_EXISTS | NOT_FOUND | UNAUTHORIZED | INVALID_REQUEST | CONSTRAINT_VIOLATION | DATABASE_ERROR | INVALID_STATE"
+  "code": "UNHANDLED_ERROR | ALREADY_EXISTS | NOT_FOUND | UNAUTHORIZED | INVALID_REQUEST | CONSTRAINT_VIOLATION | DATABASE_ERROR | EMAIL_ERROR | PAYMENT_FAILED"
 }
 ```
 
@@ -785,7 +785,8 @@ Implementation notes:
 
 - Requires an existing user lock row (`station_id = <user_id>`, `entity_key = "SESSION_LOCK"`); payment is rejected if lock is missing.
 - Uses conditional update/idempotency guards on `paid_at` and `last_event_id` to prevent duplicate payment state updates from stream retries.
-- Payment success is intentionally probabilistic in this stack: with `PAYMENT_SUCCESS_RATE=80` and success condition `random(1..100) >= PAYMENT_SUCCESS_RATE`, effective behavior is about **80% success / 20% simulated failure**.
+- Payment success is intentionally probabilistic in this stack: with `PAYMENT_SUCCESS_RATE=80` and success condition `random(1..100) <= PAYMENT_SUCCESS_RATE`, effective behavior is about **80% success / 20% simulated failure**.
+- On simulated payment failure, this flow asynchronously invokes `charging-stations-payment-notification` with action `notify_payment_failure`, then returns `PAYMENT_FAILED`.
 
 ### `paySessionUser` (direct user-triggered payment attempt)
 
@@ -821,6 +822,39 @@ Response (success):
   "meta": {}
 }
 ```
+
+### Notification — `charging-stations-payment-notification` (internal)
+
+Lambda: `charging-stations-payment-notification`  
+Action: `notify_payment_failure`
+
+Action-based handler used for asynchronous payment-failure email notifications.
+
+- Triggered internally by `charging-stations-write-station-ports-dynamo` when `pay_session` simulates a payment failure.
+- Calls `charging-stations-get-user-info` (`getUserById`) to fetch the user contact fields.
+- Sends an SES email (`ses:SendEmail`) from `SES_FROM_EMAIL` to the user's `email`.
+- Requires SES sender identity verification and, in SES sandbox, verified recipient emails.
+
+Internal request:
+
+```json
+{
+  "service": { "action": "notify_payment_failure", "callerId": "write-station-ports-dynamo" },
+  "data": {
+    "user_id": "user-uuid",
+    "station_id": "station-uuid",
+    "entity_key": "PORT#A1#SESSION#session-uuid",
+    "session_id": "session-uuid",
+    "reason": "payment_failed",
+    "occurred_at": "ISO timestamp"
+  }
+}
+```
+
+Notes:
+
+- `session_id`, `reason`, and `occurred_at` are optional in the payload. If `session_id` is missing, it is derived from `entity_key`; if `occurred_at` is missing, current UTC time is used.
+- The notification invoke from `pay_session` uses `InvocationType: Event` (async). `202` means accepted by Lambda, not necessarily that the email was sent successfully.
 
 ---
 
