@@ -232,7 +232,7 @@ export default function SessionCard({ session }: { session: Session }) {
             </div>
           ) : isUnpaid && (
             <ActionButton
-              label="Stop charging"
+              label="Process payment"
               variant="danger"
               isLoading={isStopping}
                 onClick={payManually}
