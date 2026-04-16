@@ -7,7 +7,10 @@ import type {
   UserSessionPortState,
   UserSessionPortUpdateResponse,
   UserSessionState,
+  UserPaymentRequest,
+  UserPaymentResponse,
 } from './userSessions.types';
+import { ConflictError, ResourceNotFoundError } from '../../../common/serviceErrors';
 
 const LOCAL_USER_SESSIONS: UserSession[] = [
   {
@@ -133,6 +136,28 @@ export class UserSessionsServiceLocal implements UserSessionsIService {
       }
     }
     return { stationId, portCode, newState: 'FREE', updatedAt };
+  }
+
+  async createManualPayment(paymentRequest: UserPaymentRequest): Promise<UserPaymentResponse> {
+    
+    const { userId, stationId, entityKey } = paymentRequest;
+
+    const sessionToPay = LOCAL_USER_SESSIONS.find((session: UserSession) => {
+      session.userId === userId && session.stationId === stationId && session.entityKey === entityKey
+    });
+
+    if (!sessionToPay) {
+      throw new ResourceNotFoundError(`Cannot find session by userId=${userId}, stationId=${stationId}, entityKey=${entityKey}`);
+    }
+    const { sessionId, state } = sessionToPay;
+    if (state !== "UNPAID") {
+      throw new ConflictError(`Session sessionId=${sessionId} is not in the UNPAID state`);
+    }
+    const paidAt = new Date().toISOString();
+    sessionToPay.state = "PAID";
+    sessionToPay.paidAt = paidAt;
+
+    return { userId, sessionId, paidAt };
   }
 
   private appendLocalSession(

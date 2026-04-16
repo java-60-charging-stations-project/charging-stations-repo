@@ -10,7 +10,7 @@ import { stationsRouter } from './modules/stations/stations.routes';
 import { bookingsRouter } from './modules/bookings/bookings.routes';
 import { usersRouter } from './modules/users/users.routes';
 import { authRouter } from './modules/auth/auth.routes';
-import { sessionsRouter, supportSessionsRouter } from './modules/sessions/sessions.routes';
+import { sessionsRouter } from './modules/sessions/sessions.routes';
 import { createLogger } from './utils/logger';
 
 const logger = createLogger('App');
@@ -33,7 +33,6 @@ export function createApp() {
   api.use(stationsRouter());
   api.use('/bookings', bookingsRouter());
   api.use('/sessions', sessionsRouter());
-  api.use('/support', supportSessionsRouter());
 
   if (env.apiPrefix) {
     app.use(env.apiPrefix, api);

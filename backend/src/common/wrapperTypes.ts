@@ -26,5 +26,4 @@ export interface LambdaRequest<T, M = unknown> {
     };
     data: T;
     meta?: M;
-}
-
+};

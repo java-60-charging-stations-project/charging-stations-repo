@@ -1,4 +1,4 @@
-export type UserSessionState = 'BOOKED' | 'ACTIVE' | 'UNPAID';
+export type UserSessionState = "BOOKED" | "ACTIVE" | "UNPAID" | "PAID";
 export type UserSessionPortState = 'FREE' | 'BOOKED' | 'OCCUPIED' | 'ERROR' | 'DISABLED';
 
 export interface UserSession {
@@ -106,3 +106,22 @@ export interface LambdaUserUpdateStationPortsSuccessData {
   time_booked_before?: string;
   session_id?: string;
 }
+
+// User manual payment types
+export interface UserPaymentRequest {
+  stationId: string;
+  entityKey: string;
+  userId: string;
+};
+
+export interface UserPaymentResponseLambda {
+  user_id: string;
+  session_id: string;
+  paid_at: string;
+};
+
+export interface UserPaymentResponse {
+  userId: string;
+  sessionId: string;
+  paidAt: string;
+};

@@ -1,5 +1,6 @@
 import {
   isLambdaErrorPayload,
+  LambdaSuccessPayload,
   type LambdaGetSessionByStationInvokeData,
   type LambdaGetSessionByStationRequest,
   type LambdaGetSessionByUserInvokeData,
@@ -31,6 +32,9 @@ import type {
   UserSession,
   UserSessionPortState,
   UserSessionPortUpdateResponse,
+  UserPaymentRequest,
+  UserPaymentResponse,
+  UserPaymentResponseLambda,
 } from './userSessions.types';
 
 const logger = createLogger('sessions.users.service');
@@ -55,6 +59,31 @@ function throwFromUserSessionsLambdaError(result: LambdaErrorResponse): never {
 
 export class UserSessionsServiceLambda implements UserSessionsIService {
   private static readonly RDS_MAX_PAGE_SIZE = 200;
+  
+  async createManualPayment(request: UserPaymentRequest): Promise<UserPaymentResponse> {
+    logger.debug('.createManualPayment Request =', request);
+    const { userId } = request;
+    const lambdaName = env.stationsPortsWriteLambdaFunctionName;
+    const actionName = 'paySessionUser';
+    const lambdaPayload = wrapLambdaRequest<UserPaymentRequest, Record<string, never>>(
+      actionName, userId, request
+    );
+    logger.debug(`.createManualPayment calling Lambda=${lambdaName}, Action=${actionName}, Payload=`, lambdaPayload);
+    const result = await LAMBDA_INVOKER.
+      invokeJson<LambdaSuccessPayload<UserPaymentResponseLambda> | LambdaErrorResponse>(
+      lambdaName,
+      lambdaPayload
+    );
+    logger.debug(".createManualPayment Lambda Response=", result);
+
+    if (isLambdaErrorPayload(result)) {
+      throwFromUserSessionsLambdaError(result);
+    };
+    const {user_id, session_id, paid_at}: UserPaymentResponseLambda = result.data;
+    const response: UserPaymentResponse = { userId: user_id, sessionId: session_id, paidAt: paid_at };
+    logger.debug(".createManualPayment responding with the Payload: ", response);
+    return response;
+  };
 
   private async updateStationPort(
     userId: string,

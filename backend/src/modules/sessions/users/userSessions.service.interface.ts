@@ -4,6 +4,8 @@ import type {
   UserSession,
   UserSessionPortState,
   UserSessionPortUpdateResponse,
+  UserPaymentResponse,
+  UserPaymentRequest,
 } from './userSessions.types';
 
 export interface UserSessionsIService {
@@ -38,4 +40,6 @@ export interface UserSessionsIService {
     portCode: string,
     oldState: UserSessionPortState,
   ): Promise<UserSessionPortUpdateResponse>;
+
+  createManualPayment(paymentRequest: UserPaymentRequest): Promise<UserPaymentResponse>;
 };

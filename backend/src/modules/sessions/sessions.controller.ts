@@ -96,6 +96,11 @@ const supportSessionsCurrentQuerySchema = z
     }
   });
 
+const postManualPaymentSchema = z.object({
+  stationId: z.string().trim().min(1),
+  entityKey: z.string().trim().min(1),
+});
+
 export class SessionsController {
   constructor(
     private readonly service: SessionsService,
@@ -253,6 +258,16 @@ export class SessionsController {
       payload.oldState,
     );
     res.status(200).json(wrapResponse(data));
+  };
+
+  postManualPayment = async (req: Request, res: Response) => {
+    const userId = req.user!.sub!;
+    const {stationId, entityKey} = postManualPaymentSchema.parse(req.body);
+    const serviceResponse = await this.userSessionsService.createManualPayment({
+      userId, stationId, entityKey
+    });
+
+    res.status(200).json(wrapResponse(serviceResponse));
   };
 
 
