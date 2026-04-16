@@ -13,6 +13,7 @@ const ROLE_NAV_ITEMS: Record<UserRole, NavItem[]> = {
   USER: [
     { label: "Home", to: "/user" },
     { label: "Session", to: "/user/session" },
+    { label: "Recent", to: "/user/recent" },
     { label: "Stations", to: "/user/stations" },
     { label: "Profile", to: "/user/profile" },
   ],

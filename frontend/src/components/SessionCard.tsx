@@ -1,11 +1,15 @@
-import type { Session, UserSessionPortUpdateRequest } from "@/types/sessions";
+import type { Session, UserSessionPaymentRequest, UserSessionPortUpdateRequest } from "@/types/sessions";
 import EasySpinner from "@/components/EasySpinner";
 import { isFreshUnpaidSession } from "@/utils/sessionStatus";
 import {
   useCancelBookingMutation,
   useStartChargingMutation,
   useStopChargingMutation,
+  usePayManuallyMutation,
 } from "@/store/apiSlice";
+import { getLogger } from "@/services/logging";
+
+const logger = getLogger("UserSession");
 
 function formatDate(value?: string | null): string {
   if (!value) return "—";
@@ -51,7 +55,11 @@ export default function SessionCard({ session }: { session: Session }) {
   const [cancelBooking, { isLoading: isCancelling }] = useCancelBookingMutation();
   const [startCharging, { isLoading: isStarting }] = useStartChargingMutation();
   const [stopCharging, { isLoading: isStopping }] = useStopChargingMutation();
-
+  const [payManuallyMutation, {
+    isLoading: isPaying,
+    isError: isPayError,
+    error: payError }] = usePayManuallyMutation();
+  
   const req: UserSessionPortUpdateRequest = {
     stationId: session.stationId,
     portCode: session.portCode,
@@ -63,7 +71,8 @@ export default function SessionCard({ session }: { session: Session }) {
   const isUnpaid = session.state === "UNPAID";
   const isFreshUnpaid = isFreshUnpaidSession(session);
   const usesActiveColors = isActive || isFreshUnpaid;
-  const displayState = isFreshUnpaid ? "PROCESS PAYMENT" : session.state;
+  const showAsPaying = isPaying || isFreshUnpaid;
+  const displayState = showAsPaying ? "PROCESS PAYMENT" : session.state;
 
   const stateColors = isBooked
     ? "border-blue-300 bg-blue-50"
@@ -76,6 +85,21 @@ export default function SessionCard({ session }: { session: Session }) {
     : usesActiveColors
       ? "bg-green-100 text-green-800 border-green-300"
       : "bg-amber-100 text-amber-800 border-amber-300";
+  
+  const payManually = async () => {
+    const payRequest: UserSessionPaymentRequest = {
+      stationId: session.stationId,
+      entityKey: session.entityKey,
+    };
+    try {
+      logger.debug(".payManually sending pay request: ", payRequest);
+      const response = await payManuallyMutation(payRequest).unwrap();
+      logger.debug(".payManually Payment successful, response: ", response);
+    }
+    catch (err) {
+      console.error(".payManually Error while paying: ", err);
+    }
+  }
 
   return (
     <article className={`rounded-lg border p-4 shadow-sm ${stateColors}`}>
@@ -145,12 +169,6 @@ export default function SessionCard({ session }: { session: Session }) {
 
       {isUnpaid && (
         <>
-          {isFreshUnpaid && (
-            <div className="mb-3 flex items-center gap-2 text-sm font-medium text-green-700">
-              <EasySpinner size="sm" />
-              <span>Payment is being processed</span>
-            </div>
-          )}
           <div className="mb-3 grid gap-1 text-sm text-slate-700 sm:grid-cols-2">
             <p>
               <span className="font-medium">Started at:</span>{" "}
@@ -168,6 +186,12 @@ export default function SessionCard({ session }: { session: Session }) {
               <span className="font-medium">Energy consumed:</span>{" "}
               {formatNumeric(session.energyConsumedKwh, " kWh")}
             </p>
+            {isPayError && (
+              <p>
+                <span className="font-medium">Payment error:</span>{" "}
+                {payError?.message}
+              </p>
+            )}
           </div>
         </>
       )}
@@ -189,14 +213,32 @@ export default function SessionCard({ session }: { session: Session }) {
             />
           </>
         )}
+
         {isActive && (
-          <ActionButton
-            label="Stop charging"
-            variant="danger"
-            isLoading={isStopping}
-            onClick={() => stopCharging(req)}
-          />
-        )}
+            <ActionButton
+              label="Stop charging"
+              variant="danger"
+              isLoading={isStopping}
+              onClick={() => stopCharging(req)}
+            />
+          )
+        }
+        
+        {
+          showAsPaying? (
+            <div className="mb-3 flex items-center gap-2 text-sm font-medium text-green-700">
+              <EasySpinner size="sm" />
+              <span>Payment is being processed</span>
+            </div>
+          ) : isUnpaid && (
+            <ActionButton
+              label="Process payment"
+              variant="danger"
+              isLoading={isStopping}
+                onClick={payManually}
+            />
+          )
+        }
       </div>
     </article>
   );

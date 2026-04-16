@@ -10,6 +10,9 @@ import type { StationBase, StationPort } from "@/types/stations";
 import EasySpinner from "@/components/EasySpinner";
 import Modal from "@/components/Modal";
 import SimpleButton from "@/components/SimpleButton";
+import { config } from "@/config/env";
+
+const pollingInterval = config.userSessionsPollingInterval;
 
 const UserStationPage = () => {
   const { stationId } = useParams<{ stationId: string }>();
@@ -24,7 +27,7 @@ const UserStationPage = () => {
   const [selectedPortCode, setSelectedPortCode] = useState("");
 
   const { data: sessionsData } = useGetSessionsQuery(undefined, {
-    pollingInterval: 5000,
+    pollingInterval,
     skipPollingIfUnfocused: true,
     refetchOnReconnect: true,
   });

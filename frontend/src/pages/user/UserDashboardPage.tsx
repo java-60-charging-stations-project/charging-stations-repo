@@ -2,12 +2,14 @@ import { Link } from "react-router";
 import { useGetSessionsQuery } from "@/store/apiSlice";
 import EasySpinner from "@/components/EasySpinner";
 import { getLogger } from "@/services/logging";
+import { config } from "@/config/env";
 
 const logger = getLogger("User.Dashboard");
+const pollingInterval = config.userSessionsPollingInterval;
 
 const UserDashboardPage = () => {
   const { data, isLoading, error } = useGetSessionsQuery(undefined, {
-    pollingInterval: 5000,
+    pollingInterval,
     skipPollingIfUnfocused: true,
     refetchOnReconnect: true,
   });

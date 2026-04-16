@@ -10,7 +10,7 @@ const AdminStationEditPage = () => {
         if (from) {
             navigate(from);
         } else {
-            navigate("/support/stations");
+            navigate("/admin/stations");
         }
     };
 

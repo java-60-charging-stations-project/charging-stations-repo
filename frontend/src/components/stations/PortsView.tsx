@@ -102,7 +102,7 @@ const PortsView: FC<PortsViewProps> = ({
         }
     }, [stationId, updatePortStateMutation]);
 
-    const canEditPort: boolean = enabled && stationState === "OUT_OF_SERVICE";
+    const canDeletePort: boolean = enabled && stationState === "OUT_OF_SERVICE";
     const isLocked = isLoading || isUpdating || isDeleting || isAdding;
     const error = loadError?.message || addError?.message || deleteError?.message || updateError?.message;
     
@@ -141,7 +141,7 @@ const PortsView: FC<PortsViewProps> = ({
                         port={port}
                         isUpdating={editPortId === port.portId && isUpdating}
                         isLocked={isLocked}
-                        canEdit={canEditPort}
+                        canDelete={canDeletePort}
                         onDelete={() => void deletePort(port.portId)}
                         onTurnOn={() => void updatePortState(port, "FREE")}
                         onTurnOff={() => void updatePortState(port, "DISABLED")}
@@ -162,51 +162,55 @@ const PortsView: FC<PortsViewProps> = ({
                 )}
                 {enabled && (
                     <>
-                        <div className="w-full flex justify-end gap-2">
-                            <SimpleButton
-                                caption="Add new ports"
-                                handleClick={addPorts}
-                                size="xs"
-                                color="primary"
-                                isDisabled={isLocked || newPorts.length === 0}
-                            />
-                        </div>
-                        <h3 className="text-sm font-bold">{"New port codes to add:"}</h3>
+                        <h3 className="text-sm font-bold">{"Type a code of a new port:"}</h3>
                         <div className="w-full flex items-center gap-2">
-                            <div className="w-full flex items-center gap-2">
-                                <label htmlFor="new-port-code">New code</label>
-                                <input
-                                    id="new-port-code"
-                                    type="text"
-                                    value={newPortCode}
-                                    onChange={(event) => setNewPortCode(event.target.value)}
-                                    disabled={isLocked}
-                                    className="px-2 py-1 border rounded text-xs"
-                                />
-                            </div>
-                            <SimpleButton
-                                caption="Add"
-                                handleClick={addPortCreateItem}
-                                size="xs"
-                                color="secondary"
-                                isDisabled={isLocked || newPortCode.trim().length === 0}
+                            <input
+                                id="new-port-code"
+                                type="text"
+                                value={newPortCode}
+                                onChange={(event) => setNewPortCode(event.target.value)}
+                                onKeyDown={(event) => { if (event.key === "Enter") addPortCreateItem(); }}
+                                disabled={isLocked}
+                                className="flex-1 px-2 py-1 border rounded text-xs"
                             />
+                            <button
+                                type="button"
+                                title="Add to list"
+                                className="flex h-7 w-7 items-center justify-center rounded border border-neutral-300 bg-neutral-50 text-base font-bold leading-none text-green-500 hover:bg-neutral-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                                onClick={addPortCreateItem}
+                                disabled={isLocked || newPortCode.trim().length === 0}
+                            >
+                                <span className="sr-only">Add to list</span>
+                                <span aria-hidden>✚</span>
+                            </button>
                         </div>
                         {newPorts.map((port: StationPortCreate, idx: number) => (
                             <div key={port.portCode} className="w-full flex justify-between gap-2">
                                 <p className="text-xs">{port.portCode}</p>
-                                <SimpleButton
-                                    caption="Remove"
-                                    handleClick={() => {
+                                <button
+                                    type="button"
+                                    title="Remove from list"
+                                    className="flex h-7 w-7 items-center justify-center rounded border border-neutral-300 bg-neutral-50 text-base font-bold leading-none text-red-500 hover:bg-neutral-100"
+                                    onClick={() => {
                                         setNewPorts(
                                             (prev: StationPortCreate[]) => [...prev.slice(0, idx), ...prev.slice(idx + 1)]
                                         );
                                     }}
-                                    size="xs"
-                                    color="secondary"
-                                />
+                                >
+                                    <span className="sr-only">Remove from list</span>
+                                    <span aria-hidden>✕</span>
+                                </button>
                             </div>
                         ))}
+                        <div className="w-full flex justify-center gap-2">
+                            <SimpleButton
+                                caption="Send ports"
+                                handleClick={addPorts}
+                                size="xs"
+                                color="secondary"
+                                isDisabled={isLocked || newPorts.length === 0}
+                            />
+                        </div>
                     </>
                 )}
                 {isAddError && (
