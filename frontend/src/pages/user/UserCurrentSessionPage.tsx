@@ -1,6 +1,7 @@
 import { useGetSessionsQuery } from "@/store/apiSlice";
 import EasySpinner from "@/components/EasySpinner";
 import SessionCard from "@/components/SessionCard";
+import RefetchIconButton from "@/components/RefetchIconButton";
 import { isFreshUnpaidSession } from "@/utils/sessionStatus";
 import { config } from "@/config/env";
 
@@ -24,16 +25,11 @@ const UserCurrentSessionPage = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-center text-2xl font-bold">Your active sessions</h1>
-
-      <div className="flex justify-center">
-        <button
-          type="button"
-          className="rounded bg-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-300"
-          onClick={refetch}
-        >
-          Refetch
-        </button>
+      <div className="relative flex items-center justify-center">
+        <h1 className="text-2xl font-bold">Your active sessions</h1>
+        <div className="absolute right-0">
+          <RefetchIconButton onClick={refetch} />
+        </div>
       </div>
 
       {isLoading && <EasySpinner />}
