@@ -27,7 +27,13 @@ const LOCAL_USER_SESSIONS: UserSession[] = [
 
 export class UserSessionsServiceLocal implements UserSessionsIService {
   async getUserSessions(userId: string, _latest?: boolean): Promise<UserSession[]> {
-    return LOCAL_USER_SESSIONS.filter((session) => session.userId === userId);
+    let userSessions = LOCAL_USER_SESSIONS.filter((session) => session.userId === userId);
+    if (!_latest) {
+      userSessions = userSessions.filter(
+        (s) => s.state === "ACTIVE" || s.state === "BOOKED" || s.state === "UNPAID"
+      )
+    }
+    return userSessions;
   }
 
   async getSessionsByStation(stationId: string): Promise<UserSession[]> {
