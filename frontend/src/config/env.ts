@@ -1,3 +1,4 @@
+import { getNumberParameter, getStringParameter } from "./configUtils";
 
 export const config = {
     logLevel: import.meta.env.VITE_LOG_LEVEL,
@@ -7,14 +8,14 @@ export const config = {
     cognitoRegion: import.meta.env.VITE_COGNITO_REGION,
     cognitoClientId: import.meta.env.VITE_COGNITO_CLIENT_ID,
     currency: {
-        code: (import.meta.env.VITE_CURRENCY_CODE as string) ?? "ILS",
-        name: (import.meta.env.VITE_CURRENCY_NAME as string) ?? "Israeli New Shekel",
+        code: getStringParameter("VITE_CURRENCY_CODE", "ILS"),
+        name: getStringParameter("VITE_CURRENCY_NAME", "Israeli New Shekel"),
     },
-    adminGroupName: (import.meta.env.VITE_ADMIN_GROUP_NAME as string) ?? "ADMIN",
-    supportGroupName: (import.meta.env.VITE_SUPPORT_GROUP_NAME as string) ?? "SUPPORT",
-    defaultPageSize: Number(import.meta.env.VITE_DEFAULT_PAGE_SIZE ?? "10") || 10,
-    maxPortsPerStation: Number(import.meta.env.VITE_MAX_PORTS_PER_STATION ?? "22") || 22,
-    pollingIntervalMs: import.meta.env.VITE_POLLING_INTERVAL_MS,
-    unpaidSessionGracePeriodMs:
-        Number(import.meta.env.VITE_UNPAID_SESSION_GRACE_PERIOD_MS ?? "15000") || 15_000,
-}
+    adminGroupName: getStringParameter("VITE_ADMIN_GROUP_NAME", "ADMIN"),
+    supportGroupName: getStringParameter("VITE_SUPPORT_GROUP_NAME", "SUPPORT"),
+    defaultPageSize: getNumberParameter("VITE_DEFAULT_PAGE_SIZE", 10),
+    maxPortsPerStation: getNumberParameter("VITE_MAX_PORTS_PER_STATION", 22),
+    pollingIntervalMs: getNumberParameter("VITE_POLLING_INTERVAL_MS", 30_000),
+    userSessionsPollingInterval: getNumberParameter("VITE_USER_SESSION_POLLING_INTERVAL_MS", 5_000),
+    unpaidSessionGracePeriodMs: getNumberParameter("VITE_UNPAID_SESSION_GRACE_PERIOD_MS", 15_000),
+};
