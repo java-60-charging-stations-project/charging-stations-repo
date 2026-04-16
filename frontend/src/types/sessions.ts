@@ -1,4 +1,4 @@
-export type SessionState = 'BOOKED' | 'ACTIVE' | 'UNPAID';
+export type SessionState = "BOOKED" | "ACTIVE" | "UNPAID" | "PAID";
 export type SessionPortState = 'FREE' | 'BOOKED' | 'OCCUPIED' | 'ERROR' | 'DISABLED';
 
 export type Session = {

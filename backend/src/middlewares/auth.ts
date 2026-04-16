@@ -3,6 +3,7 @@ import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose';
 import { InternalServerError, ServiceError, UnauthorizedError } from '../common/serviceErrors';
 import { env } from '../config/env';
 import { createLogger } from '../utils/logger';
+import { ADMIN_GROUP, SUPPORT_GROUP } from '../common/authRoles';
 
 const logger = createLogger('auth');
 
@@ -145,4 +146,8 @@ export function requireGroups(allowed: string[]) {
     }
     next();
   };
-}
+};
+
+export const requireSupport = requireGroups([SUPPORT_GROUP]);
+
+export const requireAdmin = requireGroups([ADMIN_GROUP]);

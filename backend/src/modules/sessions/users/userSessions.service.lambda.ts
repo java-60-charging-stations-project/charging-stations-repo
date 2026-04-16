@@ -1,4 +1,11 @@
-import { isLambdaErrorPayload } from '../../../common/lambdaContracts';
+import {
+  isLambdaErrorPayload,
+  LambdaSuccessPayload,
+  type LambdaGetSessionByStationInvokeData,
+  type LambdaGetSessionByStationRequest,
+  type LambdaGetSessionByUserInvokeData,
+  type LambdaGetSessionByUserRequest,
+} from '../../../common/lambdaContracts';
 import { type LambdaErrorResponse } from '../../../common/wrapperTypes';
 import { wrapLambdaRequest } from '../../../common/wrappers';
 import {
@@ -12,6 +19,7 @@ import { AwsLambdaInvoker, type LambdaInvoker } from '../../../utils/lambdaInvok
 import { createLogger } from '../../../utils/logger';
 import {
   mapLambdaUserSessions,
+  mapLambdaUserSessionsByStation,
   mapLambdaUserStationPortUpdate,
 } from './userSessions.mapper';
 import type { UserSessionsIService } from './userSessions.service.interface';
@@ -19,9 +27,14 @@ import type {
   LambdaGetUserSessionsSuccessData,
   LambdaUserUpdateStationPortsData,
   LambdaUserUpdateStationPortsSuccessData,
+  UserSessionHistoryPage,
+  UserSessionHistoryQuery,
   UserSession,
   UserSessionPortState,
   UserSessionPortUpdateResponse,
+  UserPaymentRequest,
+  UserPaymentResponse,
+  UserPaymentResponseLambda,
 } from './userSessions.types';
 
 const logger = createLogger('sessions.users.service');
@@ -45,6 +58,33 @@ function throwFromUserSessionsLambdaError(result: LambdaErrorResponse): never {
 }
 
 export class UserSessionsServiceLambda implements UserSessionsIService {
+  private static readonly RDS_MAX_PAGE_SIZE = 200;
+  
+  async createManualPayment(request: UserPaymentRequest): Promise<UserPaymentResponse> {
+    logger.debug('.createManualPayment Request =', request);
+    const { userId } = request;
+    const lambdaName = env.stationsPortsWriteLambdaFunctionName;
+    const actionName = 'paySessionUser';
+    const lambdaPayload = wrapLambdaRequest<UserPaymentRequest, Record<string, never>>(
+      actionName, userId, request
+    );
+    logger.debug(`.createManualPayment calling Lambda=${lambdaName}, Action=${actionName}, Payload=`, lambdaPayload);
+    const result = await LAMBDA_INVOKER.
+      invokeJson<LambdaSuccessPayload<UserPaymentResponseLambda> | LambdaErrorResponse>(
+      lambdaName,
+      lambdaPayload
+    );
+    logger.debug(".createManualPayment Lambda Response=", result);
+
+    if (isLambdaErrorPayload(result)) {
+      throwFromUserSessionsLambdaError(result);
+    };
+    const {user_id, session_id, paid_at}: UserPaymentResponseLambda = result.data;
+    const response: UserPaymentResponse = { userId: user_id, sessionId: session_id, paidAt: paid_at };
+    logger.debug(".createManualPayment responding with the Payload: ", response);
+    return response;
+  };
+
   private async updateStationPort(
     userId: string,
     stationId: string,
@@ -88,14 +128,17 @@ export class UserSessionsServiceLambda implements UserSessionsIService {
     return mapLambdaUserStationPortUpdate(result.data);
   }
 
-  async getUserSessions(userId: string): Promise<UserSession[]> {
+  async getUserSessions(userId: string, latest = false): Promise<UserSession[]> {
     logger.debug('Invoking ports read lambda: getSessionByUser', { userId });
 
     const result = await LAMBDA_INVOKER.invokeJson<
       { data: LambdaGetUserSessionsSuccessData } | LambdaErrorResponse
     >(
       env.stationsPortsReadLambdaFunctionName,
-      wrapLambdaRequest('getSessionByUser', userId, { userId })
+      wrapLambdaRequest<
+        LambdaGetSessionByUserInvokeData,
+        LambdaGetSessionByUserRequest['meta']
+      >('getSessionByUser', userId, { userId, latest })
     );
 
     if (isLambdaErrorPayload(result)) {
@@ -107,6 +150,94 @@ export class UserSessionsServiceLambda implements UserSessionsIService {
     }
 
     return mapLambdaUserSessions(result.data);
+  }
+
+  async getUserHistory(query: UserSessionHistoryQuery): Promise<UserSessionHistoryPage> {
+    const collected: UserSession[] = [];
+    let currentPage = 1;
+    let totalLambdaPages = 1;
+
+    do {
+      const result = await LAMBDA_INVOKER.invokeJson<
+        { data: unknown[]; meta?: { total_pages?: number } } | LambdaErrorResponse
+      >(
+        env.sessionsReadLambdaFunctionName,
+        wrapLambdaRequest(
+          'getSessions',
+          query.userId,
+          {
+            userId: query.userId,
+            ...(query.sessionId ? { sessionId: query.sessionId } : {}),
+            ...(query.stationId ? { stationId: query.stationId } : {}),
+            ...(query.state ? { state: query.state } : {}),
+            ...(query.orderBy ? { orderBy: query.orderBy } : {}),
+          },
+          { page: currentPage, pageSize: UserSessionsServiceLambda.RDS_MAX_PAGE_SIZE }
+        )
+      );
+
+      if (isLambdaErrorPayload(result)) {
+        throwFromUserSessionsLambdaError(result);
+      }
+
+      if (!result.data || !Array.isArray(result.data)) {
+        throw new ServiceError('sessions rds lambda: invalid response', 502, 'INVALID_RESPONSE');
+      }
+
+      collected.push(...mapLambdaUserSessionsByStation(result.data));
+      totalLambdaPages = result.meta?.total_pages ?? 0;
+      currentPage += 1;
+    } while (currentPage <= totalLambdaPages);
+
+    const dateFromMs = query.dateFrom ? Date.parse(query.dateFrom) : undefined;
+    const dateToMs = query.dateTo ? Date.parse(query.dateTo) : undefined;
+
+    const filtered = collected.filter((session) => {
+      const startedAtSource = session.startedAt ?? session.createdAt;
+      const startedAtMs = Date.parse(startedAtSource);
+      if (Number.isNaN(startedAtMs)) return false;
+      if (dateFromMs !== undefined && startedAtMs < dateFromMs) return false;
+      if (dateToMs !== undefined && startedAtMs > dateToMs) return false;
+      return true;
+    });
+
+    const totalItems = filtered.length;
+    const totalPages = totalItems === 0 ? 0 : Math.ceil(totalItems / query.pageSize);
+    const safePage = totalPages === 0 ? 1 : Math.min(query.page, totalPages);
+    const offset = (safePage - 1) * query.pageSize;
+    const sessions = filtered.slice(offset, offset + query.pageSize);
+
+    return {
+      sessions,
+      totalItems,
+      totalPages,
+      page: safePage,
+      pageSize: query.pageSize,
+    };
+  }
+
+  async getSessionsByStation(stationId: string): Promise<UserSession[]> {
+    logger.debug('Invoking ports read lambda: getSessionByStation', { stationId });
+
+    const result = await LAMBDA_INVOKER.invokeJson<
+      { data: { sessions: unknown[] } } | LambdaErrorResponse
+    >(
+      env.stationsPortsReadLambdaFunctionName,
+      wrapLambdaRequest<
+        LambdaGetSessionByStationInvokeData,
+        LambdaGetSessionByStationRequest['meta']
+      >('getSessionByStation', stationId, { stationId })
+    );
+
+    if (isLambdaErrorPayload(result)) {
+      throwFromUserSessionsLambdaError(result);
+    }
+
+    if (!result.data || !Array.isArray(result.data.sessions)) {
+      throw new ServiceError('user sessions lambda: invalid station sessions response', 502, 'INVALID_RESPONSE');
+    }
+
+    return mapLambdaUserSessionsByStation(result.data.sessions);
   }
 
   async createBooking(

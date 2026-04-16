@@ -201,9 +201,18 @@ export type LambdaUpdateStationPortsStreamPayload = LambdaStreamForwardedPortOpe
 
 // --- Ports: read Lambda (`getPortsByStation`) — `get_ports_sessions_dynamo.py` ---
 
-export type LambdaPortsReadAction = 'getPortsByStation';
+export type LambdaPortsReadAction = 'getPortsByStation' | 'getSessionByUser' | 'getSessionByStation';
 
 export interface LambdaGetPortsByStationInvokeData {
+  stationId: string;
+}
+
+export interface LambdaGetSessionByUserInvokeData {
+  userId: string;
+  latest?: boolean;
+}
+
+export interface LambdaGetSessionByStationInvokeData {
   stationId: string;
 }
 
@@ -262,6 +271,14 @@ export interface LambdaInsertStationPortsData {
 /** Invoke: `service.action === 'getPortsByStation'`. */
 export interface LambdaGetPortsByStationRequest
   extends LambdaServiceEnvelope<LambdaGetPortsByStationInvokeData, Record<string, never>, 'getPortsByStation'> {}
+
+/** Invoke: `service.action === 'getSessionByUser'`. */
+export interface LambdaGetSessionByUserRequest
+  extends LambdaServiceEnvelope<LambdaGetSessionByUserInvokeData, Record<string, never>, 'getSessionByUser'> {}
+
+/** Invoke: `service.action === 'getSessionByStation'`. */
+export interface LambdaGetSessionByStationRequest
+  extends LambdaServiceEnvelope<LambdaGetSessionByStationInvokeData, Record<string, never>, 'getSessionByStation'> {}
 
 /** Invoke: `service.action === 'insertStationPorts'`. */
 export interface LambdaInsertStationPortsRequest

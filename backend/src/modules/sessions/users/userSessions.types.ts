@@ -1,4 +1,4 @@
-export type UserSessionState = 'BOOKED' | 'ACTIVE' | 'UNPAID';
+export type UserSessionState = "BOOKED" | "ACTIVE" | "UNPAID" | "PAID";
 export type UserSessionPortState = 'FREE' | 'BOOKED' | 'OCCUPIED' | 'ERROR' | 'DISABLED';
 
 export interface UserSession {
@@ -22,12 +22,14 @@ export interface UserSession {
   durationMinutes?: number | null;
   bookingDurationMinutes?: number | null;
   chargeLevelPercent?: number | null;
+  finalCost?: number | string | null;
+  paidAt?: string | null;
 }
 
 export interface LambdaUserSessionRow {
   session_id: string;
   station_id: string;
-  entity_key: string;
+  entity_key?: string;
   port_code: string;
   state: UserSessionState;
   user_id: string;
@@ -45,10 +47,36 @@ export interface LambdaUserSessionRow {
   duration_minutes?: number | null;
   booking_duration_minutes?: number | null;
   charge_level_percent?: number | null;
+  final_cost?: number | string | null;
+  paid_at?: string | null;
 }
 
 export interface LambdaGetUserSessionsSuccessData {
   session: LambdaUserSessionRow[];
+}
+
+export interface UserSessionHistoryQuery {
+  userId: string;
+  sessionId?: string;
+  stationId?: string;
+  state?: UserSessionState;
+  orderBy?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  page: number;
+  pageSize: number;
+}
+
+export interface UserSessionHistoryPage {
+  sessions: UserSession[];
+  totalItems: number;
+  totalPages: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface LambdaGetStationSessionsSuccessData {
+  sessions: LambdaUserSessionRow[];
 }
 
 export interface UserSessionPortUpdateResponse {
@@ -78,3 +106,22 @@ export interface LambdaUserUpdateStationPortsSuccessData {
   time_booked_before?: string;
   session_id?: string;
 }
+
+// User manual payment types
+export interface UserPaymentRequest {
+  stationId: string;
+  entityKey: string;
+  userId: string;
+};
+
+export interface UserPaymentResponseLambda {
+  user_id: string;
+  session_id: string;
+  paid_at: string;
+};
+
+export interface UserPaymentResponse {
+  userId: string;
+  sessionId: string;
+  paidAt: string;
+};
