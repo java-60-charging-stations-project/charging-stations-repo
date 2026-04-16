@@ -92,14 +92,14 @@ const StationPortCard: FC<StationPortCardProps> = ({
                         <DetailLine label="Last meter (kW)" value={port.lastMeterKw} />
                         <DetailLine label="Created" value={formatDateTime(port.createdAt)} />
                         <DetailLine label="Updated" value={formatDateTime(port.updatedAt)} />
-                        {canDelete && onDelete && port.status === "DISABLED" && (
-                            <div className="flex justify-end pt-1">
+                        {canDelete && onDelete && (
+                            <div className="flex justify-center pt-1">
                                 <SimpleButton
                                     caption="Delete port"
                                     handleClick={onDelete}
                                     size="xs"
-                                    color="tertiary"
-                                    isDisabled={isLocked}
+                                    color="secondary"
+                                    isDisabled={isLocked || port.status !== "DISABLED"}
                                 />
                             </div>
                         )}
