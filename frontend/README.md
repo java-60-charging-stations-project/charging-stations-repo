@@ -41,7 +41,7 @@ Create a local env file in `frontend` (for example: `.env.local`) and define:
 ```bash
 VITE_API_BASE_URL=http://localhost:8000
 VITE_API_URL_PREFIX=/api/v1
-VITE_API_TIMEOUT=3000
+VITE_API_TIMEOUT_MS=3000
 VITE_LOG_LEVEL=debug
 VITE_COGNITO_REGION=<your-cognito-region>
 VITE_COGNITO_USER_POOL=<your-cognito-user-pool-id>
@@ -55,7 +55,7 @@ Notes:
 - These values are consumed through `src/config/env.ts` (`config` object).
 - `VITE_API_BASE_URL` should point to your backend host.
 - `VITE_API_URL_PREFIX` should match backend API routing.
-- `VITE_API_TIMEOUT` is in milliseconds.
+- `VITE_API_TIMEOUT_MS` is in milliseconds.
 - Cognito variables are required for authentication to work.
 
 ### Start Development Server
@@ -134,7 +134,7 @@ Current variables in `config`:
   - Common API path prefix appended to base URL (for example: `/api/v1`).
   - Combined with base URL in the API client.
 
-- `VITE_API_TIMEOUT` -> `config.apiTimeout`
+- `VITE_API_TIMEOUT_MS` -> `config.apiTimeout`
   - Request timeout for API calls in milliseconds.
   - If not provided, API client falls back to `3000`.
 
@@ -372,7 +372,7 @@ After the backend is deployed, copy `.env.production` (or create one) and set `V
 ```bash
 VITE_API_BASE_URL=http://<backend-load-balancer-or-host>
 VITE_API_URL_PREFIX=/api/v1
-VITE_API_TIMEOUT=5000
+VITE_API_TIMEOUT_MS=5000
 VITE_LOG_LEVEL=warn
 VITE_COGNITO_REGION=<region>
 VITE_COGNITO_CLIENT_ID=<client-id>

@@ -1,12 +1,12 @@
 import { getNumberParameter, getStringParameter } from "./configUtils";
 
 export const config = {
-    logLevel: import.meta.env.VITE_LOG_LEVEL,
-    apiBaseUrl: import.meta.env.VITE_API_BASE_URL,
     apiPrefix: import.meta.env.VITE_API_URL_PREFIX,
-    apiTimeout: import.meta.env.VITE_API_TIMEOUT,
-    cognitoRegion: import.meta.env.VITE_COGNITO_REGION,
-    cognitoClientId: import.meta.env.VITE_COGNITO_CLIENT_ID,
+    apiBaseUrl: getStringParameter("VITE_API_BASE_URL"),
+    apiTimeout: getNumberParameter("VITE_API_TIMEOUT_MS", 10_000),
+    logLevel: getStringParameter("VITE_LOG_LEVEL", "info"),
+    cognitoRegion: getStringParameter("VITE_COGNITO_REGION", "il-central-1"),
+    cognitoClientId: getStringParameter("VITE_COGNITO_CLIENT_ID"),
     currency: {
         code: getStringParameter("VITE_CURRENCY_CODE", "ILS"),
         name: getStringParameter("VITE_CURRENCY_NAME", "Israeli New Shekel"),
