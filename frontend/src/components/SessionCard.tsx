@@ -197,7 +197,6 @@ export default function SessionCard({ session }: { session: Session }) {
       )}
 
       <div className="flex gap-2">
-        // BOOKED Actions
         {isBooked && (
           <>
             <ActionButton
@@ -214,7 +213,7 @@ export default function SessionCard({ session }: { session: Session }) {
             />
           </>
         )}
-        // ACTIVE Actions
+
         {isActive && (
             <ActionButton
               label="Stop charging"
@@ -224,7 +223,7 @@ export default function SessionCard({ session }: { session: Session }) {
             />
           )
         }
-        // UNPAID Actions
+        
         {
           showAsPaying? (
             <div className="mb-3 flex items-center gap-2 text-sm font-medium text-green-700">
