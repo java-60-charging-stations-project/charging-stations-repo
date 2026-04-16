@@ -59,7 +59,7 @@ export const apiSlice = createApi({
                 method: "POST",
                 data: body,
             }),
-             invalidatesTags: ['Session'],
+            invalidatesTags: ['Session'],
         }),
         // STATIONS
         getStation: builder.query<StationBase, GetStationPayload>({
