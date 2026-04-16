@@ -102,7 +102,7 @@ const PortsView: FC<PortsViewProps> = ({
         }
     }, [stationId, updatePortStateMutation]);
 
-    const canEditPort: boolean = enabled && stationState === "OUT_OF_SERVICE";
+    const canDeletePort: boolean = enabled && stationState === "OUT_OF_SERVICE";
     const isLocked = isLoading || isUpdating || isDeleting || isAdding;
     const error = loadError?.message || addError?.message || deleteError?.message || updateError?.message;
     
@@ -141,7 +141,7 @@ const PortsView: FC<PortsViewProps> = ({
                         port={port}
                         isUpdating={editPortId === port.portId && isUpdating}
                         isLocked={isLocked}
-                        canEdit={canEditPort}
+                        canDelete={canDeletePort}
                         onDelete={() => void deletePort(port.portId)}
                         onTurnOn={() => void updatePortState(port, "FREE")}
                         onTurnOff={() => void updatePortState(port, "DISABLED")}

@@ -3,12 +3,14 @@ import type { StationPort } from "@/types/stations";
 import { PortStateBadge } from "../StatusBadge";
 import SimpleButton from "../SimpleButton";
 import EasySpinner from "../EasySpinner";
+import ToggleSwitch from "../ToggleSwitch";
 
 export interface StationPortCardProps {
     port: StationPort;
     isUpdating: boolean;
     isLocked: boolean;
-    canEdit?: boolean;
+    /** Allows deleting the port (requires station OUT_OF_SERVICE) */
+    canDelete?: boolean;
     onDelete?: () => void;
     onTurnOn?: () => void;
     onTurnOff?: () => void;
@@ -26,17 +28,29 @@ const DetailLine = ({ label, value }: { label: string; value: string | number })
     </div>
 );
 
-const StationPortCard: FC<StationPortCardProps> = ({ port, isUpdating, isLocked, canEdit, onDelete, onTurnOn, onTurnOff }) => {
+const StationPortCard: FC<StationPortCardProps> = ({
+    port,
+    isUpdating,
+    isLocked,
+    canDelete,
+    onDelete,
+    onTurnOn,
+    onTurnOff,
+}) => {
     const [detailsOpen, setDetailsOpen] = useState(false);
     const panelId = useId();
     const toggleDetails = useCallback(() => setDetailsOpen((v) => !v), []);
 
     if (isUpdating) {
-        return (<div className="w-full flex justify-center items-center">
-            <EasySpinner size="sm" />
+        return (
+            <div className="w-full flex justify-center items-center">
+                <EasySpinner size="sm" />
             </div>
         );
     }
+
+    const isOn = port.status !== "DISABLED";
+    const hint = isOn ? "Turn the port OFF" : "Turn the port ON";
 
     return (
         <div className="flex flex-col gap-2 rounded-md border border-neutral-200 bg-white p-2 text-xs">
@@ -66,15 +80,20 @@ const StationPortCard: FC<StationPortCardProps> = ({ port, isUpdating, isLocked,
                         <DetailLine label="Last meter (kW)" value={port.lastMeterKw} />
                         <DetailLine label="Created" value={formatDateTime(port.createdAt)} />
                         <DetailLine label="Updated" value={formatDateTime(port.updatedAt)} />
-                        <div className="flex items-center justify-between gap-2">
-                            <SimpleButton
-                                caption={port.status === "DISABLED" ? "Turn on port" : "Turn off port"}
-                                handleClick={port.status === "DISABLED" ? onTurnOn ?? (() => {}) : onTurnOff ?? (() => {})}
-                                size="xs"
-                                color="secondary"
-                                isDisabled={isLocked}
+                        <div className="flex items-center justify-between gap-2 pt-1">
+                            <ToggleSwitch
+                                value={isOn}
+                                onChange={(checked) => {
+                                    if (checked) {
+                                        onTurnOn?.();
+                                    } else {
+                                        onTurnOff?.();
+                                    }
+                                }}
+                                hint={hint}
+                                disabled={isLocked}
                             />
-                            {canEdit && onDelete && (port.status === "DISABLED") && (
+                            {canDelete && onDelete && port.status === "DISABLED" && (
                                 <SimpleButton
                                     caption="Delete port"
                                     handleClick={onDelete}
