@@ -199,7 +199,7 @@ def insert_station_to_rds(station: StationInstance) -> None:
             cur.execute(
                 """
                     INSERT INTO stations (
-                        id, code, name, owner, city, address, email, 
+                        id, code, name, owner, city, address, email, phone, 
                         site_technician, max_power_kw, location, ports, 
                         rate_plan, state, has_free_ports, created_at, updated_at, ports_number_event_id, ports_state_event_id
                     ) VALUES (
