@@ -67,21 +67,19 @@ const StationPortCard: FC<StationPortCardProps> = ({ port, isUpdating, isLocked,
                         <DetailLine label="Created" value={formatDateTime(port.createdAt)} />
                         <DetailLine label="Updated" value={formatDateTime(port.updatedAt)} />
                         <div className="flex items-center justify-between gap-2">
-                            {canEdit && onDelete && (
+                            <SimpleButton
+                                caption={port.status === "DISABLED" ? "Turn on port" : "Turn off port"}
+                                handleClick={port.status === "DISABLED" ? onTurnOn ?? (() => {}) : onTurnOff ?? (() => {})}
+                                size="xs"
+                                color="secondary"
+                                isDisabled={isLocked}
+                            />
+                            {canEdit && onDelete && (port.status === "DISABLED") && (
                                 <SimpleButton
                                     caption="Delete port"
                                     handleClick={onDelete}
                                     size="xs"
                                     color="tertiary"
-                                    isDisabled={isLocked}
-                                />
-                            )}
-                            {canEdit && (
-                                <SimpleButton
-                                    caption={port.status === "DISABLED" ? "Turn on" : "Turn off"}
-                                    handleClick={port.status === "DISABLED" ? onTurnOn ?? (() => {}) : onTurnOff ?? (() => {})}
-                                    size="xs"
-                                    color="secondary"
                                     isDisabled={isLocked}
                                 />
                             )}
