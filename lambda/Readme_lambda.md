@@ -45,7 +45,7 @@ sam deploy --guided   # first time; then sam deploy
 
 Use `--use-container` so dependencies (e.g. psycopg2 on Python 3.12) build correctly. On first deploy, set VPC, subnets, DB secret ARN, invoker account ID(s); save to `samconfig.toml` for later runs.
 
-The template provisions: **Cognito** (User Pool, client, groups ADMIN/USER/SUPPORT), **RDS** PostgreSQL (IAM auth, private), **VPC endpoints** (RDS API for auth tokens, **Lambda API** for private Lambda-to-Lambda invoke, **DynamoDB** gateway for private-subnet access), **Lambdas** (WriteUserRDS, GetUserInfo, CreateRDSTables, ConfirmConsoleCreatedAdmin, Health, station read/write, ports writer, Dynamo stream consumer), and permissions.
+The template provisions: **Cognito** (User Pool, client, groups ADMIN/USER/SUPPORT), **RDS** PostgreSQL (IAM auth, private), **VPC endpoints** (RDS API for auth tokens, **Lambda API** for private Lambda-to-Lambda invoke, **SES API** for private-subnet email delivery, **DynamoDB** gateway for private-subnet access), **Lambdas** (WriteUserRDS, GetUserInfo, CreateRDSTables, ConfirmConsoleCreatedAdmin, Health, station read/write, ports writer, notification sender, Dynamo stream consumer), and permissions.
 
 1. In the RDS console, temporarily:
    - On the **Databases** tab of **Aurora and RDS** page select desired **db**, in Modify - Connectivity - Additional configuration set **Publicly accessible = Yes**, apply the change, and wait for **db** to modify.
@@ -130,6 +130,7 @@ The template provisions **RDS** (PostgreSQL, IAM auth), **VPC endpoints** (RDS A
 | **charging-stations-get-station-info** | Read station(s) from RDS. | Backend or cross-account. |
 | **charging-stations-get-session-info** | Read archived session rows from RDS `sessions` table. | Backend or cross-account. |
 | **charging-stations-write-station-ports-dynamo** | Insert/update/delete ports in DynamoDB single-table; for user port updates it also creates a session item in the same transaction. | Support / backend. |
+| **charging-stations-payment-notification** | Internal notification lambda; fetches user contact and sends SES payment-failure email. | Invoked by write-station-ports-dynamo. |
 | **charging-stations-station-entities-stream-consumer** | DynamoDB stream: forward station-port updates, session payment, and paid-session archive events. | DynamoDB stream trigger. |
 
 **WriteUserRDS** – Cognito triggers (e.g. PostConfirmation) **or** direct invoke with `service` + `data` (e.g. `changeUserStatus`). For Cognito: inserts the user into RDS from `request.userAttributes` and returns the **same event** back. For API invokes: `callerId` in `service`. **full_name**: if missing or Cognito sends `cognito:default_val`, stored as **"Console User"**.
@@ -155,7 +156,9 @@ The template provisions **RDS** (PostgreSQL, IAM auth), **VPC endpoints** (RDS A
 - `insertStationPorts`: `data.stationId`, `data.ports` (array of `code`). Atomic batch via DynamoDB `TransactWriteItems`; response includes `data.created_ports`.
 - `supportUpdateStationPorts` / `userUpdateStationPorts`: optimistic state updates using `oldState`/`newState`; `userUpdateStationPorts` requires `userId` and creates a session item in the same transaction. Support flow allows `OCCUPIED -> DISABLED` and closes the active session as `UNPAID` (`ended_at`, `final_cost`) in the same transaction when a session row is found.
 - `deleteStationPorts`: delete one disabled port by `portKey`.
-- `pay_session` (internal from stream consumer) and `paySessionUser` (direct retry/user call): payment success is probabilistic. With `PAYMENT_SUCCESS_RATE=80` and condition `random(1..100) >= PAYMENT_SUCCESS_RATE`, effective behavior is about 80% success / 20% simulated failure.
+- `pay_session` (internal from stream consumer) and `paySessionUser` (direct retry/user call): payment success is probabilistic. With `PAYMENT_SUCCESS_RATE=80` and condition `random(1..100) <= PAYMENT_SUCCESS_RATE`, effective behavior is about 80% success / 20% simulated failure.
+- On simulated payment failure, `pay_session` asynchronously invokes `charging-stations-payment-notification` (action `notify_payment_failure`) and returns `PAYMENT_FAILED`.
+- `charging-stations-payment-notification` uses `SES_FROM_EMAIL` and requires SES identity verification; if SES is in sandbox, recipients must also be SES-verified.
 See **`lambda_request_responces.md`** for exact request/response payloads.
 
 
@@ -273,6 +276,7 @@ Copy **`lambda/.env.example`** to **`lambda/.env`** and set values for local run
 | **WRITE_STATION_FUNCTION_NAME** | Function name for `charging-stations-write-station-rds`. |
 | **WRITE_PORTS_FUNCTION_NAME** | Function name for `charging-stations-write-station-ports-dynamo`. |
 | **GET_PORTS_SESSIONS_FUNCTION_NAME** | Function name for `charging-stations-get-ports-sessions-dynamo`. |
+| **SES_FROM_EMAIL** | Verified SES sender email used by `charging-stations-payment-notification`. |
 
 
 ---

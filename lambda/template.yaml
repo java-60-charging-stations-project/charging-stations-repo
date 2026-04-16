@@ -160,6 +160,20 @@ Resources:
       SecurityGroupEgress:
         - IpProtocol: -1
           CidrIp: 0.0.0.0/0
+    
+  SesSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for SES
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          SourceSecurityGroupId: !Ref LambdaSecurityGroup
 
   RDSSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -796,7 +810,7 @@ Resources:
         - !Ref PrivateSubnet1Id
         - !Ref PrivateSubnet2Id
       SecurityGroupIds:
-        - !Ref LambdaSecurityGroup
+        - !Ref SesSecurityGroup
       PrivateDnsEnabled: true
 
   PaymentNotificationFunction:
