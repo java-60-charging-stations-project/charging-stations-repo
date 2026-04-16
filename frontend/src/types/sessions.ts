@@ -43,3 +43,14 @@ export type UserSessionPortUpdateResponse = {
     timeBookedBefore?: string;
     sessionId?: string;
 };
+
+export type UserSessionPaymentRequest = {
+  stationId: string;
+  entityKey: string;
+};
+
+export type UserSessionPaymentResponse = {
+  userId: string;
+  sessionId: string;
+  paidAt: string;
+};

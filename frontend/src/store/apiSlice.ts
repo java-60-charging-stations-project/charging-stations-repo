@@ -1,6 +1,6 @@
 import { clientBaseQuery } from "@/services/api/clientBaseQuery";
 import { createApi } from "@reduxjs/toolkit/query/react";
-import type { UserSessionsResponse, UserSessionPortUpdateRequest, UserSessionPortUpdateResponse } from '@/types/sessions';
+import type { UserSessionsResponse, UserSessionPortUpdateRequest, UserSessionPortUpdateResponse, UserSessionPaymentResponse, UserSessionPaymentRequest } from '@/types/sessions';
 import type { AdminCreateStationRequest, AdminCreateStationResponse, ChangeStationStateResponse, StationBase, StationPortsCreateResponse, StationPortsListResponse, SupportUpdatePortStateResponse, UpdateStationResponse } from "@/types/stations";
 import type { AddStationPortsPayload, ChangeStationStatePayload, DeleteStationPortPayload, GetStationPayload, UpdateStationPayload, UpdateStationPortStatePayload } from "@/types/rtk_payload";
 import type { UserRole } from "@/types";
@@ -52,6 +52,14 @@ export const apiSlice = createApi({
                 data: body,
             }),
             invalidatesTags: ['Session'],
+        }),
+        payManually: builder.mutation<UserSessionPaymentResponse, UserSessionPaymentRequest>({
+            query: (body) => ({
+                url: "/sessions/user/manual-payment",
+                method: "POST",
+                data: body,
+            }),
+             invalidatesTags: ['Session'],
         }),
         // STATIONS
         getStation: builder.query<StationBase, GetStationPayload>({
@@ -127,11 +135,14 @@ export const apiSlice = createApi({
 });
 
 export const {
+    // SESSIONS
     useGetSessionsQuery,
     useStartBookingMutation,
     useCancelBookingMutation,
     useStartChargingMutation,
     useStopChargingMutation,
+    usePayManuallyMutation,
+    // STATIONS
     useGetStationQuery,
     useUpdateStationMutation,
     useUpdateStationStateMutation,
