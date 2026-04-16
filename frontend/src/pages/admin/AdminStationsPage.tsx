@@ -2,9 +2,12 @@ import NavButton from "@/components/NavButton";
 import StationsTable from "@/components/StationsTable";
 import { fetchStations } from "@/services/api/adminApi";
 import { useCallback } from "react";
+import { useLocation } from "react-router";
 
 const AdminStationsPage = () => {
+    const location = useLocation();
     const detailPath = useCallback((stationId: string) => `/admin/stations/view/${stationId}`, []);
+    const createPath = `/admin/stations/create?from=${encodeURIComponent(location.pathname + location.search)}`;
     return (
         <>
             <div>
@@ -18,7 +21,7 @@ const AdminStationsPage = () => {
                 />
                 <div className="mt-2">
                     <NavButton
-                        to="/admin/stations/create"
+                        to={createPath}
                         caption="Create a new station"
                         color="secondary"
                         size="xs"
