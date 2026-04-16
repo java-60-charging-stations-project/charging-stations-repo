@@ -934,50 +934,9 @@ paths:
       summary: Get current sessions by user or station (support/admin)
       description: |
         Returns current sessions for support/admin.
-        Exactly one query parameter must be provided:
-        - `userId`
-        - `stationId`
-      security:
-        - bearerAuth: []
-      x-roles: [SUPPORT, ADMIN]
-      parameters:
-        - name: userId
-          in: query
-          required: false
-          description: User identifier (mutually exclusive with `stationId`).
-          schema:
-            type: string
-        - name: stationId
-          in: query
-          required: false
-          description: Station identifier (mutually exclusive with `userId`).
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Current sessions
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserSessionsApiResponse'
-        '400':
-          $ref: '#/components/responses/BadRequestResponse'
-        '401':
-          $ref: '#/components/responses/UnauthenticatedResponse'
-        '403':
-          $ref: '#/components/responses/ForbiddenResponse'
-        '500':
-          $ref: '#/components/responses/ErrorResponse'
-
-  /support/sessions-current:
-    get:
-      operationId: getSupportCurrentSessionsAlias
-      summary: Get current sessions by user or station (support/admin)
-      description: |
-        Alias for `GET /sessions/support/sessions-current`.
-        Exactly one query parameter must be provided:
-        - `userId`
-        - `stationId`
+        Exactly one query parameter must be provided — either `userId` or `stationId`.
+        If `userId` is given, returns that user's active sessions.
+        If `stationId` is given, returns active sessions for that station.
       security:
         - bearerAuth: []
       x-roles: [SUPPORT, ADMIN]
@@ -1125,6 +1084,39 @@ paths:
           $ref: '#/components/responses/BadRequestResponse'
         '401':
           $ref: '#/components/responses/UnauthenticatedResponse'
+        '409':
+          $ref: '#/components/responses/ConflictResponse'
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
+
+  /sessions/user/manual-payment:
+    post:
+      operationId: postManualPayment
+      summary: Submit manual payment for an unpaid session (user)
+      description: |
+        Marks an UNPAID session as paid. The caller must own the session.
+        Requires `stationId` and `entityKey` to identify the session.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ManualPaymentRequest'
+      responses:
+        '200':
+          description: Payment recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManualPaymentApiResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestResponse'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
         '409':
           $ref: '#/components/responses/ConflictResponse'
         '500':
@@ -2970,6 +2962,36 @@ components:
         data:
           $ref: '#/components/schemas/UserSessionPortUpdateResponse'
 
+    ManualPaymentRequest:
+      type: object
+      required: [stationId, entityKey]
+      properties:
+        stationId:
+          type: string
+          description: Identifier of the station the session belongs to.
+        entityKey:
+          type: string
+          description: Entity key that identifies the session to pay.
+
+    ManualPaymentResponse:
+      type: object
+      required: [userId, sessionId, paidAt]
+      properties:
+        userId:
+          type: string
+        sessionId:
+          type: string
+        paidAt:
+          type: string
+          format: date-time
+
+    ManualPaymentApiResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/ManualPaymentResponse'
+
     Session:
       type: object
       required:
@@ -3806,6 +3828,13 @@ components:
 
     ForbiddenResponse:
       description: "Insufficient permissions (code: FORBIDDEN)"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFoundResponse:
+      description: "Resource not found (code: NOT_FOUND)"
       content:
         application/json:
           schema:
