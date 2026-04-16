@@ -54,8 +54,20 @@ const StationPortCard: FC<StationPortCardProps> = ({
 
     return (
         <div className="flex flex-col gap-2 rounded-md border border-neutral-200 bg-white p-2 text-xs">
-            <div className="flex flex-row items-center justify-between gap-2">
-                <span className="font-medium text-neutral-800">Code: {port.portCode}</span>
+            <div className="flex flex-row items-center gap-2">
+                <ToggleSwitch
+                    value={isOn}
+                    onChange={(checked) => {
+                        if (checked) {
+                            onTurnOn?.();
+                        } else {
+                            onTurnOff?.();
+                        }
+                    }}
+                    hint={hint}
+                    disabled={isLocked}
+                />
+                <span className="flex-1 font-bold text-neutral-800">{port.portCode}</span>
                 <PortStateBadge state={port.status} />
             </div>
 
@@ -80,20 +92,8 @@ const StationPortCard: FC<StationPortCardProps> = ({
                         <DetailLine label="Last meter (kW)" value={port.lastMeterKw} />
                         <DetailLine label="Created" value={formatDateTime(port.createdAt)} />
                         <DetailLine label="Updated" value={formatDateTime(port.updatedAt)} />
-                        <div className="flex items-center justify-between gap-2 pt-1">
-                            <ToggleSwitch
-                                value={isOn}
-                                onChange={(checked) => {
-                                    if (checked) {
-                                        onTurnOn?.();
-                                    } else {
-                                        onTurnOff?.();
-                                    }
-                                }}
-                                hint={hint}
-                                disabled={isLocked}
-                            />
-                            {canDelete && onDelete && port.status === "DISABLED" && (
+                        {canDelete && onDelete && port.status === "DISABLED" && (
+                            <div className="flex justify-end pt-1">
                                 <SimpleButton
                                     caption="Delete port"
                                     handleClick={onDelete}
@@ -101,8 +101,8 @@ const StationPortCard: FC<StationPortCardProps> = ({
                                     color="tertiary"
                                     isDisabled={isLocked}
                                 />
-                            )}
-                        </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
