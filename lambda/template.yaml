@@ -10,6 +10,11 @@ Globals:
 
 Parameters:
 
+  SesFromEmail:
+    Type: String
+    Default: "mike.volchek17@gmail.com"
+    Description: Verified SES sender email
+  
   BookingTimeoutMinutes:
     Type: Number
     Default: 15
@@ -781,6 +786,71 @@ Resources:
       RouteTableIds:
         - !Ref DynamoDBRouteTable1Id
 
+  SesApiVpcEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VpcId
+      VpcEndpointType: Interface
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.email"
+      SubnetIds:
+        - !Ref PrivateSubnet1Id
+        - !Ref PrivateSubnet2Id
+      SecurityGroupIds:
+        - !Ref LambdaSecurityGroup
+      PrivateDnsEnabled: true
+
+  PaymentNotificationFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: ChargingStationsRDSPostgresDB
+    Properties:
+      Runtime: python3.12
+      FunctionName: charging-stations-payment-notification
+      Handler: notification.handler
+      CodeUri: notification
+      Layers:
+        - !Ref CommonToolsLayer
+        - !Sub "arn:aws:lambda:${AWS::Region}:770693421928:layer:Klayers-p312-psycopg2-binary:2"
+      Description: Sends payment failure notifications via SES
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds:
+          - !Ref PrivateSubnet1Id
+          - !Ref PrivateSubnet2Id
+      Environment:
+        Variables:
+          GET_USER_FUNCTION_NAME: !Ref GetUserInfoFunction
+          AWS_LAMBDA_HOST_ACCOUNT: !Ref AWS::AccountId
+          SES_FROM_EMAIL: !Ref SesFromEmail
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - ses:SendEmail
+              Resource: !Sub "arn:aws:ses:${AWS::Region}:${AWS::AccountId}:identity/*"
+            - Effect: Allow
+              Action:
+                - lambda:InvokeFunction
+              Resource: 
+                - !GetAtt GetUserInfoFunction.Arn
+
+  PaymentNotificationInvokePermissionA:
+    Type: AWS::Lambda::Permission
+    Condition: UseInvokerAccountA
+    Properties:
+      FunctionName: !Ref PaymentNotificationFunction
+      Action: lambda:InvokeFunction
+      Principal: !Sub "arn:aws:iam::${InvokerAccountIdA}:root"
+
+  PaymentNotificationInvokePermissionB:
+    Type: AWS::Lambda::Permission
+    Condition: UseInvokerAccountB
+    Properties:
+      FunctionName: !Ref PaymentNotificationFunction
+      Action: lambda:InvokeFunction
+      Principal: !Sub "arn:aws:iam::${InvokerAccountIdB}:root"
+
   WriteStationPortsFunction:
     Type: AWS::Serverless::Function
     DependsOn:
@@ -808,6 +878,7 @@ Resources:
           GET_PORTS_SESSIONS_FUNCTION_NAME: !Ref GetPortsSessionsFunction
           PAYMENT_SUCCESS_RATE: "80" # 80% chance of successful payment
           WRITE_STATION_RDS_FUNCTION_NAME: !Ref WriteStationRDSFunction
+          NOTIFICATION_LAMBDA_FUNCTION_NAME: !Ref PaymentNotificationFunction
       Policies:
         - Version: '2012-10-17'
           Statement:
@@ -827,6 +898,7 @@ Resources:
               Resource: 
                 - !GetAtt GetStationInfoFunction.Arn
                 - !GetAtt GetPortsSessionsFunction.Arn
+                - !GetAtt PaymentNotificationFunction.Arn
     
   WriteStationPortsInvokePermissionA:
     Type: AWS::Lambda::Permission

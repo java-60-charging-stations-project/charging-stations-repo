@@ -22,6 +22,7 @@ PORT_STATES = ["FREE", "OCCUPIED", "ERROR", "DISABLED", "BOOKED"]
 BOOKING_TIMEOUT_MINUTES = int(os.environ["BOOKING_TIMEOUT_MINUTES"])
 PAYMENT_SUCCESS_RATE = int(os.environ["PAYMENT_SUCCESS_RATE"])
 WRITE_STATION_RDS_FUNCTION_NAME = os.environ["WRITE_STATION_RDS_FUNCTION_NAME"]
+NOTIFICATION_LAMBDA_FUNCTION_NAME = os.environ["NOTIFICATION_LAMBDA_FUNCTION_NAME"]
 
 _dynamo_client = None
 _serializer = TypeSerializer()
@@ -258,7 +259,7 @@ def _transact_update_session_booked_to_active(session: dict, ts_iso: str, charge
         }
     }
 
-def update_station_ports(action: str, port_data: dict, user_id: str| None = None, cron_caller: bool = False) -> dict:
+def update_station_ports(action: str, port_data: dict, user_id: str| None = None) -> dict:
     if not port_data["port_key"]:
         logger.error(f"port key is required for {action}")
         raise LambdaResponseError({"error": f"port key is required for {action}", "code": "INVALID_REQUEST"})
@@ -463,7 +464,17 @@ def pay_session(session_data: dict) -> dict:
     random_chance = random.randint(1, 100)
     success = random_chance <= PAYMENT_SUCCESS_RATE
     if not success:
-        raise LambdaResponseError({"error": f"session payment failed", "code": "Failed attempt"})
+        client = boto3.client("lambda", region_name=AWS_REGION)
+        resp = client.invoke(
+        FunctionName=f"arn:aws:lambda:{AWS_REGION}:{AWS_LAMBDA_HOST_ACCOUNT}:function:{NOTIFICATION_LAMBDA_FUNCTION_NAME}",
+        InvocationType="Event",
+        Payload=json.dumps({"service": {"action": "notify_payment_failure", 
+        "callerId": "write-station-ports-dynamo"}, "data": session_data}).encode("utf-8"))
+        if resp.get("StatusCode") != 202:
+            logger.error(f"payment failed notification invoke failed: {resp}")
+            raise LambdaResponseError({"error": f"payment failed notification invoke failed: {resp}", "code": "DATABASE_ERROR"})
+        logger.info(f"payment failed notification invoked successfully: {resp}")
+        raise LambdaResponseError({"error": f"session payment failed", "code": "PAYMENT_FAILED"})
     try:
         client = get_dynamo_client()
     except Exception as e:
@@ -587,11 +598,8 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                 return SuccessResponsePayload(data=updated_port_data, meta={})
             case "userUpdateStationPorts":
                 user_id = event["data"]["userId"]
-                cron_caller = False
-                if caller_id == "expire-bookings-cron":
-                    cron_caller = True
                 update_data = get_update_data_from_event(event)
-                updated_port_data = update_station_ports(action, update_data, user_id, cron_caller)
+                updated_port_data = update_station_ports(action, update_data, user_id)
                 log_audit("INFO", message="station ports updated successfully", status="SUCCESS", **audit_base)
                 return SuccessResponsePayload(data=updated_port_data, meta={})
             case "deleteStationPorts":
