@@ -8,16 +8,17 @@ import { buildUserSessionsService } from './users/userSessions.service';
 export function sessionsRouter(): Router {
   const router = Router();
   const controller = new SessionsController(buildSessionsService(), buildUserSessionsService());
+  
+  // Require basic authentication
+  router.use(verifyCognitoJwt);
 
   // Register static paths before /:sessionId
-  router.get('/all', verifyCognitoJwt, requireGroups([ADMIN_GROUP, SUPPORT_GROUP]), controller.listAll);
-  router.get('/', verifyCognitoJwt, controller.listByUser);
-  router.post('/', verifyCognitoJwt, controller.startSession);
-  router.post('/:sessionId/stop', verifyCognitoJwt, controller.stopSession);
-  router.get('/:sessionId', verifyCognitoJwt, controller.getById);
+  router.get('/all', requireGroups([ADMIN_GROUP, SUPPORT_GROUP]), controller.listAll);
+  router.get('/', controller.listByUser);
+  router.post('/', controller.startSession);
+  router.post('/:sessionId/stop', controller.stopSession);
+  router.get('/:sessionId', controller.getById);
 
-  // Require basic authentication for USER and SUPPORT
-  router.use(['/user', '/support'], verifyCognitoJwt);
   // User sessions routes
   router.get('/user', controller.getUserSessions);
   router.get('/user/history', controller.getUserHistory);
