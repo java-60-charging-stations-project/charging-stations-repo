@@ -26,10 +26,12 @@ See `backend/package.json`:
 
 ## `API_PREFIX` and `/health`
 
-In `backend/src/app.ts`, health routes are mounted **both without a prefix and with the prefix**:
+In `backend/src/app.ts`, health route is mounted **both without a prefix and with the prefix**:
 
-- without prefix: `GET /health`, `GET /health/api`, `GET /health/secured-lambda`
-- with prefix (if `API_PREFIX` is set, e.g. `/api/v1`): `GET /api/v1/health`, ...
+- without prefix: `GET /health`
+- with prefix (if `API_PREFIX` is set, e.g. `/api/v1`): `GET /api/v1/health`
+
+Health is Lambda-backed only (`invokeHealthLambda`), local static health responses were removed.
 
 ## Environment variables
 
@@ -38,7 +40,7 @@ See `backend/.env.example`.
 Key ones:
 
 - **Server**: `PORT`, `API_PREFIX`, `CORS_ORIGIN`
-- **AWS/Lambda**: `AWS_REGION`, `HEALTH_LAMBDA_FUNCTION_NAME`, `USER_INFO_LAMBDA_FUNCTION_NAME`, `USER_MANAGEMENT_LAMBDA_FUNCTION_NAME`, `STATIONS_LAMBDA_FUNCTION_NAME`, `STATIONS_LAMBDA_WRITE_FUNCTION_NAME`, `STATIONS_PORTS_READ_LAMBDA_FUNCTION_NAME`, `STATIONS_PORTS_WRITE_LAMBDA_FUNCTION_NAME`
+- **AWS/Lambda**: `AWS_REGION`, `HEALTH_LAMBDA_FUNCTION_NAME`, `USER_INFO_LAMBDA_FUNCTION_NAME`, `USER_MANAGEMENT_LAMBDA_FUNCTION_NAME`, `STATIONS_LAMBDA_FUNCTION_NAME`, `STATIONS_LAMBDA_WRITE_FUNCTION_NAME`, `STATIONS_PORTS_READ_LAMBDA_FUNCTION_NAME`, `STATIONS_PORTS_WRITE_LAMBDA_FUNCTION_NAME`, `SESSIONS_READ_LAMBDA_FUNCTION_NAME`
 - **Auth (Cognito)**: `AUTH_DISABLED`, `COGNITO_REGION`, `COGNITO_USER_POOL_ID`, `COGNITO_CLIENT_ID`
 
 ## Auth and roles
@@ -53,17 +55,12 @@ Below are the main public paths. If `API_PREFIX` is set, it is added to all rout
 
 ### Health
 
-- `GET /health` → `200 { "status": "ok" }`
-- `GET /health/api` → invokes the health Lambda, HTTP status = `result.code`, body = `result`
-- `GET /health/secured-lambda` → JWT required, writes structured logs, body:
-  - `{ "success": boolean, "user": { "sub": string }, "lambda": { ... } }`
+- `GET /health` → invokes health Lambda, HTTP status = `result.code`, body = `result`
 
-Examples:
+Example:
 
 ```bash
 curl http://localhost:8000/health
-curl http://localhost:8000/health/api
-curl http://localhost:8000/health/secured-lambda -H "Authorization: Bearer <ACCESS_TOKEN>"
 ```
 
 ### Auth config (for frontend)
@@ -164,6 +161,11 @@ Admin/Support:
 User port operations (body is validated; `oldState` matters):
 
 - `GET /sessions/user` — sessions for the current user (Dynamo via userSessions service)
+- `GET /sessions/user?latest=true|false|1|0` — same endpoint with scope control:
+  - omitted / `false` / `0` → active/current sessions
+  - `true` / `1` → full Dynamo history for target user
+- `GET /sessions/user/history` — paginated history from RDS Lambda (`getSessions`) with filters:
+  - query: `userId`, `date_from`, `date_to`, `sessionId`, `stationId`, `state`, `orderBy`, `page`, `pageSize`
 - `POST /sessions/user/booking` — book a port, body:
   - `{ "stationId": "...", "portCode": "...", "oldState": "FREE" }`
 - `POST /sessions/user/booking/stop` — stop booking, body:
@@ -179,6 +181,28 @@ Sessions (role-shaped responses for `USER` / `SUPPORT` / `ADMIN`):
 - `GET /sessions/:sessionId` — `USER` only own, staff any
 - `POST /sessions` — start session, body: `{ "stationId": "...", "portId": "..." }`
 - `POST /sessions/:sessionId/stop`
+
+Support helper:
+
+- `GET /sessions/support/sessions-current?userId=...` or `?stationId=...`
+  - exactly one of the parameters is required
+
+### Logs (JWT required)
+
+Router is mounted at `/logs` (see `logs.routes.ts`).
+
+- `GET /logs/support` — support/admin log feed for support audience (`SUPPORT` role)
+- `GET /logs/admin` — admin audience log feed (`ADMIN` role)
+- `POST /logs/support/:log_id` — resolve support log
+- `POST /logs/admin/:log_id` — resolve admin log
+
+Resolve body:
+
+```json
+{
+  "resolve_time": "2026-04-17T10:15:00.000Z"
+}
+```
 
 ## Deployment (ECS Fargate + SAM)
 

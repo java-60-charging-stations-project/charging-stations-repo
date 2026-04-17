@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
+import { randomUUID } from 'node:crypto';
 import type {
   CollectorErrorLog,
   ForbiddenLogContext,
@@ -38,14 +39,20 @@ function buildCollectorErrorLog(
   event: string,
   sourceService?: string
 ): CollectorErrorLog {
+  const nowIso = new Date().toISOString();
+  const resolverId = req.user?.sub ?? 'guest';
   return {
     level: 'ERROR',
     message,
     service: 'backend',
     event,
-    source_service: sourceService,
-    caller_id: req.user?.sub ?? 'guest',
+    source_service: sourceService ?? 'errorHandler',
+    caller_id: resolverId,
     request_id: req.get('x-request-id') ?? undefined,
+    timestamp: nowIso,
+    log_id: randomUUID(),
+    resolve_time: nowIso,
+    resolver_id: resolverId,
   };
 }
 
