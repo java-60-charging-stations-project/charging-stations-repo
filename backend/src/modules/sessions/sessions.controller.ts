@@ -1,5 +1,9 @@
 import type { Request, Response } from 'express';
 import { z } from 'zod';
+import type {
+  RequestLogContext,
+  SessionAccessDeniedLogContext,
+} from '../../common/logContracts';
 import { wrapResponse, wrapResponseList } from '../../common/wrappers';
 import type { SessionsService } from './sessions.service';
 import { projectSession, resolveViewerRole, type ViewerRole } from './sessions.types';
@@ -16,6 +20,16 @@ const pageSizeParam = z.coerce.number().int().min(1).max(200).default(50);
 const userSessionStateParam = z.enum(['BOOKED', 'ACTIVE', 'UNPAID']);
 
 const logger = createLogger('SessionsController');
+
+function buildRequestLogContext(req: Request): RequestLogContext {
+  return {
+    method: req.method,
+    path: req.path,
+    userId: req.user?.sub,
+    query: req.query,
+    params: req.params,
+  };
+}
 
 function parseOptionalBooleanQueryParam(value: unknown, paramName: string): boolean | undefined {
   if (value === undefined) return undefined;
@@ -108,7 +122,7 @@ export class SessionsController {
   ) { }
   // User Sessions routes
   getUserSessions = async (req: Request, res: Response) => {
-    logger.info('Getting user sessions');
+    logger.info('Getting user sessions', buildRequestLogContext(req));
     const callerId = req.user!.sub!;
     const groups = req.user?.groups ?? [];
     const viewer = resolveViewerRole(groups);
@@ -117,23 +131,22 @@ export class SessionsController {
     const latest = parseOptionalBooleanQueryParam(req.query.latest, 'latest');
 
     if (viewer === 'USER' && targetUserId !== callerId) {
-      logger.warn('Forbidden: user attempted to fetch sessions for another user', {
-        method: req.method,
-        path: req.path,
+      const meta: SessionAccessDeniedLogContext = {
+        ...buildRequestLogContext(req),
         requesterUserId: callerId,
         requestedUserId: targetUserId,
         viewerRole: viewer,
         userGroups: groups,
-        query: req.query,
-        params: req.params,
         ip: req.ip,
         userAgent: req.get('user-agent'),
-      });
+      };
+      logger.warn('Forbidden: user attempted to fetch sessions for another user', meta);
       throw new ForbiddenError('Forbidden: can only list your own sessions', 'FORBIDDEN');
     }
 
     const sessions = await this.userSessionsService.getUserSessions(targetUserId, latest);
     logger.info('User sessions fetched successfully', {
+      ...buildRequestLogContext(req),
       requesterUserId: callerId,
       targetUserId,
       latest,
@@ -301,18 +314,16 @@ export class SessionsController {
     const viewer = resolveViewerRole(groups);
 
     if (viewer === 'USER' && userId !== sub) {
-      logger.warn('Forbidden: user attempted to list another user sessions', {
-        method: req.method,
-        path: req.path,
+      const meta: SessionAccessDeniedLogContext = {
+        ...buildRequestLogContext(req),
         requesterUserId: sub,
         requestedUserId: userId,
         viewerRole: viewer,
         userGroups: groups,
-        query: req.query,
-        params: req.params,
         ip: req.ip,
         userAgent: req.get('user-agent'),
-      });
+      };
+      logger.warn('Forbidden: user attempted to list another user sessions', meta);
       return res.status(403).json({ code: 403, error: { message: 'Forbidden: can only list your own sessions' } });
     }
 

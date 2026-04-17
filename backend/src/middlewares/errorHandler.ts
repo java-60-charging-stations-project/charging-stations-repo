@@ -1,4 +1,11 @@
 import type { NextFunction, Request, Response } from 'express';
+import type {
+  ForbiddenLogContext,
+  RequestLogContext,
+  ServiceErrorLogContext,
+  UnhandledErrorLogContext,
+  ValidationErrorLogContext,
+} from '../common/logContracts';
 import { ServiceError } from '../common/serviceErrors';
 import { ZodError } from 'zod';
 import { createLogger } from '../utils/logger';
@@ -14,6 +21,16 @@ function formatZodError(error: ZodError): string {
     .join('; ');
 }
 
+function getRequestLogContext(req: Request): RequestLogContext {
+  return {
+    method: req.method,
+    path: req.path,
+    userId: req.user?.sub,
+    query: req.query,
+    params: req.params,
+  };
+}
+
 
 export function errorHandler(
   error: unknown,
@@ -27,29 +44,23 @@ export function errorHandler(
 
   if (error instanceof ServiceError) {
     if (error.statusCode === 403) {
-      logger.warn('Forbidden response returned', {
+      const meta: ForbiddenLogContext = {
         errorCode: error.errorCode,
         message: error.message,
-        method: req.method,
-        path: req.path,
-        userId: req.user?.sub,
+        ...getRequestLogContext(req),
         userGroups: req.user?.groups ?? [],
-        query: req.query,
-        params: req.params,
         ip: req.ip,
         userAgent: req.get('user-agent'),
-      });
+      };
+      logger.warn('Forbidden response returned', meta);
     } else {
-      logger.error('Service error returned', {
+      const meta: ServiceErrorLogContext = {
         errorCode: error.errorCode,
         statusCode: error.statusCode,
         message: error.message,
-        method: req.method,
-        path: req.path,
-        userId: req.user?.sub,
-        query: req.query,
-        params: req.params,
-      });
+        ...getRequestLogContext(req),
+      };
+      logger.error('Service error returned', meta);
     }
 
     res.status(error.statusCode).json({
@@ -62,14 +73,11 @@ export function errorHandler(
   }
 
   if (error instanceof ZodError) {
-    logger.warn('Validation error returned', {
+    const meta: ValidationErrorLogContext = {
       message: formatZodError(error),
-      method: req.method,
-      path: req.path,
-      userId: req.user?.sub,
-      query: req.query,
-      params: req.params,
-    });
+      ...getRequestLogContext(req),
+    };
+    logger.warn('Validation error returned', meta);
 
     res.status(400).json({
       error: {
@@ -80,15 +88,12 @@ export function errorHandler(
     return;
   }
 
-  logger.error('Unhandled error returned', {
+  const meta: UnhandledErrorLogContext = {
     message: error instanceof Error ? error.message : 'Unknown error',
     stack: error instanceof Error ? error.stack : undefined,
-    method: req.method,
-    path: req.path,
-    userId: req.user?.sub,
-    query: req.query,
-    params: req.params,
-  });
+    ...getRequestLogContext(req),
+  };
+  logger.error('Unhandled error returned', meta);
 
   res.status(500).json({
     error: {

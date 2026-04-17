@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose';
+import type { AuthRequestLogContext } from '../common/logContracts';
 import { InternalServerError, ServiceError, UnauthorizedError } from '../common/serviceErrors';
 import { env } from '../config/env';
 import { createLogger } from '../utils/logger';
@@ -33,6 +34,19 @@ function getBearerToken(req: Request): string | null {
 
 let jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
 
+function buildAuthRequestLogContext(req: Request): AuthRequestLogContext {
+  return {
+    method: req.method,
+    path: req.path,
+    userId: req.user?.sub,
+    userGroups: req.user?.groups ?? [],
+    query: req.query,
+    params: req.params,
+    ip: req.ip,
+    userAgent: req.get('user-agent') ?? undefined,
+  };
+}
+
 function getJwks() {
   if (jwks) return jwks;
   if (!env.cognitoUserPoolId || !env.cognitoRegion) {
@@ -47,7 +61,7 @@ function getJwks() {
 }
 
 export async function verifyCognitoJwt(req: Request, res: Response, next: NextFunction) {
-  logger.info('Verifying Cognito JWT', { path: req.path, method: req.method });
+  logger.info('Verifying Cognito JWT', buildAuthRequestLogContext(req));
   if (env.authDisabled) {
     logger.warn('Authentication is disabled, injecting local user');
     req.user = { sub: 'local-user', username: 'local', raw: {} };
@@ -56,10 +70,7 @@ export async function verifyCognitoJwt(req: Request, res: Response, next: NextFu
 
   const token = getBearerToken(req);
   if (!token) {
-    logger.warn('Missing Authorization Bearer token', {
-      path: req.path,
-      method: req.method
-    });
+    logger.warn('Missing Authorization Bearer token', buildAuthRequestLogContext(req));
     return res.status(401).json({ code: 401, error: { message: 'Missing Authorization Bearer token' } });
   }
 
@@ -95,23 +106,25 @@ export async function verifyCognitoJwt(req: Request, res: Response, next: NextFu
     };
 
     if (!req.user.sub) {
-      logger.error('Invalid token: missing sub', { path: req.path, method: req.method });
+      logger.error('Invalid token: missing sub', buildAuthRequestLogContext(req));
       return res.status(401).json({ code: 401, error: { message: 'Invalid token (missing sub)' } });
     }
 
     return next();
   } catch (e) {
     if (e instanceof ServiceError && e.statusCode >= 500) {
-      logger.error('JWT / auth configuration error', { error: e.message });
+      logger.error('JWT / auth configuration error', {
+        ...buildAuthRequestLogContext(req),
+        error: e.message,
+      });
       return res.status(e.statusCode).json({
         error: { code: e.errorCode, message: e.message },
       });
     }
     const message = e instanceof Error ? e.message : 'Invalid token';
     logger.error('JWT verification failed', {
-      path: req.path,
-      method: req.method,
-      error: message
+      ...buildAuthRequestLogContext(req),
+      error: message,
     });
     const errCode = e instanceof UnauthorizedError ? e.errorCode : undefined;
     return res.status(401).json({
@@ -131,16 +144,9 @@ export function requireGroups(allowed: string[]) {
     const ok = allowed.some((g) => groups.includes(g));
     if (!ok) {
       logger.error('Access denied: insufficient role', {
-        path: req.path,
+        ...buildAuthRequestLogContext(req),
         originalUrl: req.originalUrl,
-        method: req.method,
-        userId: req.user?.sub,
-        userGroups: groups,
         requiredGroups: allowed,
-        query: req.query,
-        params: req.params,
-        ip: req.ip,
-        userAgent: req.get('user-agent')
       });
       return res.status(403).json({ code: 403, error: { message: 'Forbidden' } });
     }
