@@ -32,6 +32,12 @@ export default defineConfig([
     },
     rules: {
       'import/no-unresolved': 'error',
+      '@typescript-eslint/no-unused-vars': [
+        'error', {
+          'argsIgnorePattern': '^_',
+          'varsIgnorePattern': '^_',
+        }
+      ],
     },
     languageOptions: {
       ecmaVersion: 2020,
