@@ -1,4 +1,5 @@
 import { env } from "../config/env";
+import type { CollectorErrorLog } from '../common/logContracts';
 const LOG_LEVELS = ['debug', 'info', 'warn', 'error'] as const;
 const DEFAULT_LOG_LEVEL = 'info';
 
@@ -29,6 +30,7 @@ export function createLogger(scope: string, minLevel: Level = parseLogLevel(env.
     debug: (message: string, meta?: unknown) => should('debug') && console.log(fmt('debug', message, meta)),
     info: (message: string, meta?: unknown) => should('info') && console.log(fmt('info', message, meta)),
     warn: (message: string, meta?: unknown) => should('warn') && console.warn(fmt('warn', message, meta)),
-    error: (message: string, meta?: unknown) => should('error') && console.error(fmt('error', message, meta))
+    error: (message: string, meta?: unknown) => should('error') && console.error(fmt('error', message, meta)),
+    collectorError: (payload: CollectorErrorLog) => should('error') && console.error(JSON.stringify(payload)),
   };
 }

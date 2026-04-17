@@ -57,3 +57,13 @@ export interface SessionAccessDeniedLogContext extends RequestLogContext {
   ip?: string;
   userAgent?: string;
 }
+
+export interface CollectorErrorLog {
+  level: 'ERROR';
+  message: string;
+  service: string;
+  event: string;
+  source_service?: string;
+  caller_id: string;
+  request_id?: string;
+}

@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 import type {
+  CollectorErrorLog,
   ForbiddenLogContext,
   RequestLogContext,
   ServiceErrorLogContext,
@@ -31,6 +32,23 @@ function getRequestLogContext(req: Request): RequestLogContext {
   };
 }
 
+function buildCollectorErrorLog(
+  req: Request,
+  message: string,
+  event: string,
+  sourceService?: string
+): CollectorErrorLog {
+  return {
+    level: 'ERROR',
+    message,
+    service: 'backend',
+    event,
+    source_service: sourceService,
+    caller_id: req.user?.sub ?? 'guest',
+    request_id: req.get('x-request-id') ?? undefined,
+  };
+}
+
 
 export function errorHandler(
   error: unknown,
@@ -53,6 +71,9 @@ export function errorHandler(
         userAgent: req.get('user-agent'),
       };
       logger.warn('Forbidden response returned', meta);
+      logger.collectorError(
+        buildCollectorErrorLog(req, error.message, 'FORBIDDEN_RESPONSE', 'errorHandler')
+      );
     } else {
       const meta: ServiceErrorLogContext = {
         errorCode: error.errorCode,
@@ -61,6 +82,9 @@ export function errorHandler(
         ...getRequestLogContext(req),
       };
       logger.error('Service error returned', meta);
+      logger.collectorError(
+        buildCollectorErrorLog(req, error.message, 'SERVICE_ERROR', 'errorHandler')
+      );
     }
 
     res.status(error.statusCode).json({
@@ -73,16 +97,20 @@ export function errorHandler(
   }
 
   if (error instanceof ZodError) {
+    const validationMessage = formatZodError(error);
     const meta: ValidationErrorLogContext = {
-      message: formatZodError(error),
+      message: validationMessage,
       ...getRequestLogContext(req),
     };
     logger.warn('Validation error returned', meta);
+    logger.collectorError(
+      buildCollectorErrorLog(req, validationMessage, 'VALIDATION_ERROR', 'errorHandler')
+    );
 
     res.status(400).json({
       error: {
         code: 'VALIDATION_ERROR',
-        message: formatZodError(error),
+        message: validationMessage,
       },
     });
     return;
@@ -94,6 +122,9 @@ export function errorHandler(
     ...getRequestLogContext(req),
   };
   logger.error('Unhandled error returned', meta);
+  logger.collectorError(
+    buildCollectorErrorLog(req, meta.message, 'UNHANDLED_ERROR', 'errorHandler')
+  );
 
   res.status(500).json({
     error: {
