@@ -21,11 +21,6 @@ export function errorHandler(
   res: Response,
   _next: NextFunction
 ): void {
-  logger.error("Processing error", {
-    message: error instanceof Error ? error.message : 'Unknown error',
-    stack: error instanceof Error ? error.stack : undefined,
-  });
-
   if (res.headersSent) {
     return;
   }
@@ -44,6 +39,17 @@ export function errorHandler(
         ip: req.ip,
         userAgent: req.get('user-agent'),
       });
+    } else {
+      logger.error('Service error returned', {
+        errorCode: error.errorCode,
+        statusCode: error.statusCode,
+        message: error.message,
+        method: req.method,
+        path: req.path,
+        userId: req.user?.sub,
+        query: req.query,
+        params: req.params,
+      });
     }
 
     res.status(error.statusCode).json({
@@ -56,6 +62,15 @@ export function errorHandler(
   }
 
   if (error instanceof ZodError) {
+    logger.warn('Validation error returned', {
+      message: formatZodError(error),
+      method: req.method,
+      path: req.path,
+      userId: req.user?.sub,
+      query: req.query,
+      params: req.params,
+    });
+
     res.status(400).json({
       error: {
         code: 'VALIDATION_ERROR',
@@ -64,6 +79,16 @@ export function errorHandler(
     });
     return;
   }
+
+  logger.error('Unhandled error returned', {
+    message: error instanceof Error ? error.message : 'Unknown error',
+    stack: error instanceof Error ? error.stack : undefined,
+    method: req.method,
+    path: req.path,
+    userId: req.user?.sub,
+    query: req.query,
+    params: req.params,
+  });
 
   res.status(500).json({
     error: {
