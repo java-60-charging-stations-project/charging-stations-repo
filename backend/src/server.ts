@@ -1,5 +1,6 @@
 import { env } from './config/env';
 import { createApp } from './app';
+import { closeValkey } from './cache/valkeyClient';
 
 const app = createApp();
 
@@ -12,6 +13,7 @@ process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 
 async function shutdown() {
+    await closeValkey().catch(() => undefined);
     server.close(async () => {
         console.log("Server closed");
     });
