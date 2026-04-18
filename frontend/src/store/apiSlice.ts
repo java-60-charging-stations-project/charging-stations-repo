@@ -4,6 +4,8 @@ import type { Session, UserSessionsResponse, UserSessionPortUpdateRequest, UserS
 import type { AdminCreateStationRequest, AdminCreateStationResponse, ChangeStationStateResponse, StationBase, StationPortsCreateResponse, StationPortsListResponse, SupportUpdatePortStateResponse, UpdateStationResponse } from "@/types/stations";
 import type { AddStationPortsPayload, ChangeStationStatePayload, DeleteStationPortPayload, GetStationPayload, UpdateStationPayload, UpdateStationPortStatePayload } from "@/types/rtk_payload";
 import type { UserRole } from "@/types";
+import type { ApiArrayResponse } from "@/types/apiTypes";
+import type { LogRecord, LogRequest, LogResolveRequest } from "@/types/logs";
 
 function buildRolePath(role: UserRole): string {
     return role === 'ADMIN' ? '/admin' : '/support';
@@ -12,7 +14,7 @@ function buildRolePath(role: UserRole): string {
 export const apiSlice = createApi({
     reducerPath: 'api',
     baseQuery: clientBaseQuery,
-    tagTypes: ["Session", "Station"],
+    tagTypes: ["Session", "Station", "Log"],
     endpoints: builder => ({
         getSessions: builder.query<UserSessionsResponse, void>({
             query: () => ({
@@ -78,6 +80,23 @@ export const apiSlice = createApi({
                 data: body,
             }),
             invalidatesTags: ['Session'],
+        }),
+        // Logs
+        getLogs: builder.query<ApiArrayResponse<LogRecord>, LogRequest>({
+            query: ({ role, ...params }: LogRequest) => ({
+                method: "GET",
+                url: `${buildRolePath(role)}/logs`,
+                params,
+            }),
+            providesTags: ["Log"],
+        }),
+        resolveLog: builder.mutation<LogRecord, LogResolveRequest>({
+            query: ({role, resolve_time, log_id}) => ({
+                method: "GET",
+                url: `/logs${buildRolePath(role)}/${log_id}`,
+                data: {resolve_time},
+            }),
+            invalidatesTags: ["Log"],
         }),
         // STATIONS
         getStation: builder.query<StationBase, GetStationPayload>({
