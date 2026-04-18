@@ -34,19 +34,20 @@ interface LambdaListUsersResponse {
   totalItems?: number;
 }
 
-function throwFromUserInfoLambdaError(result: LambdaErrorResponse): never {
+function throwFromUserLambdaError(result: LambdaErrorResponse, collectorSource: string): never {
   const msg = result.error;
   const code = result.code ?? 'UNKNOWN';
+  const opts = { collectorSource };
   if (code === 'NOT_FOUND' || code === 'USER_NOT_FOUND' || msg.toLowerCase().includes('not found')) {
-    throw new ResourceNotFoundError(msg, code === 'USER_NOT_FOUND' ? 'USER_NOT_FOUND' : 'NOT_FOUND');
+    throw new ResourceNotFoundError(msg, code === 'USER_NOT_FOUND' ? 'USER_NOT_FOUND' : 'NOT_FOUND', opts);
   }
   if (code === 'UNAUTHORIZED') {
-    throw new UnauthorizedError(msg, code);
+    throw new UnauthorizedError(msg, code, opts);
   }
   if (code === 'INVALID_REQUEST') {
-    throw new BadRequestError(msg, code);
+    throw new BadRequestError(msg, code, opts);
   }
-  throw new ServiceError(`userInfo lambda: ${msg}`, 502, code);
+  throw new ServiceError(`users lambda: ${msg}`, 502, code, opts);
 }
 
 export class UsersServiceLambda implements UsersService {
@@ -62,7 +63,7 @@ export class UsersServiceLambda implements UsersService {
     );
 
     if (isLambdaErrorPayload(result)) {
-      throwFromUserInfoLambdaError(result);
+      throwFromUserLambdaError(result, env.userInfoLambdaFunctionName);
     }
 
     return mapLambdaUser(result.data);
@@ -80,7 +81,7 @@ export class UsersServiceLambda implements UsersService {
     );
 
     if (isLambdaErrorPayload(result)) {
-      throwFromUserInfoLambdaError(result);
+      throwFromUserLambdaError(result, env.userInfoLambdaFunctionName);
     }
 
     return mapLambdaUser(result.data);
@@ -113,7 +114,7 @@ export class UsersServiceLambda implements UsersService {
       ) {
         return { data: [], totalItems: 0 };
       }
-      throwFromUserInfoLambdaError(result);
+      throwFromUserLambdaError(result, env.userInfoLambdaFunctionName);
     }
 
     const mapped = mapLambdaUsers(result.data);
@@ -137,7 +138,7 @@ export class UsersServiceLambda implements UsersService {
       )
     );
     if (isLambdaErrorPayload(result)) {
-      throwFromUserInfoLambdaError(result);
+      throwFromUserLambdaError(result, env.userManagementLambdaFunctionName);
     }
   }
 }

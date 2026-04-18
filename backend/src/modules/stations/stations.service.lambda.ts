@@ -60,28 +60,29 @@ import type { ListStationsParams, StationsService } from './stations.interface';
 const logger = createLogger('stations.service');
 const LAMBDA_INVOKER: LambdaInvoker = new AwsLambdaInvoker(env.awsRegion);
 
-function throwFromStationsLambdaError(result: LambdaErrorResponse): never {
+function throwFromStationsLambdaError(result: LambdaErrorResponse, collectorSource: string): never {
   const msg = result.error;
   const code = result.code ?? 'UNKNOWN';
+  const opts = { collectorSource };
   if (code === 'NOT_FOUND') {
-    throw new ResourceNotFoundError(msg, 'NOT_FOUND');
+    throw new ResourceNotFoundError(msg, 'NOT_FOUND', opts);
   }
   if (code === 'UNAUTHORIZED') {
-    throw new UnauthorizedError(msg, code);
+    throw new UnauthorizedError(msg, code, opts);
   }
   if (code === 'INVALID_REQUEST' || code === 'INVALID_STATE') {
-    throw new BadRequestError(msg, String(code));
+    throw new BadRequestError(msg, String(code), opts);
   }
   if (code === 'TRANSACTION_CANCELED') {
-    throw new ConflictError(msg, String(code));
+    throw new ConflictError(msg, String(code), opts);
   }
   if (code === 'ALREADY_EXISTS') {
-    throw new ConflictError(msg, code);
+    throw new ConflictError(msg, code, opts);
   }
   if (code === 'CONSTRAINT_VIOLATION') {
-    throw new ConflictError(msg, code);
+    throw new ConflictError(msg, code, opts);
   }
-  throw new ServiceError(`stations lambda: ${msg}`, 502, code);
+  throw new ServiceError(`stations lambda: ${msg}`, 502, code, opts);
 }
 
 export class StationsServiceLambda implements StationsService {
@@ -94,11 +95,13 @@ export class StationsServiceLambda implements StationsService {
       wrapLambdaRequest('getPortsByStation', callerId, { stationId })
     );
     if (isLambdaErrorPayload(result)) {
-      throwFromStationsLambdaError(result);
+      throwFromStationsLambdaError(result, env.stationsPortsReadLambdaFunctionName);
     }
     const ports = result.data?.ports;
     if (!Array.isArray(ports)) {
-      throw new ServiceError('stations ports lambda: invalid response', 502, 'INVALID_RESPONSE');
+      throw new ServiceError('stations ports lambda: invalid response', 502, 'INVALID_RESPONSE', {
+        collectorSource: env.stationsPortsReadLambdaFunctionName,
+      });
     }
     return ports;
   }
@@ -112,10 +115,14 @@ export class StationsServiceLambda implements StationsService {
     const port = ports.find((item) => item.port_id === portId || item.entity_key === portId || item.code === portId);
 
     if (!port) {
-      throw new ResourceNotFoundError('Port not found');
+      throw new ResourceNotFoundError('Port not found', 'RESOURCE_NOT_FOUND', {
+        collectorSource: env.stationsPortsReadLambdaFunctionName,
+      });
     }
     if (!port.entity_key) {
-      throw new ServiceError('stations ports lambda: missing port key', 502, 'INVALID_RESPONSE');
+      throw new ServiceError('stations ports lambda: missing port key', 502, 'INVALID_RESPONSE', {
+        collectorSource: env.stationsPortsReadLambdaFunctionName,
+      });
     }
 
     return port.entity_key;
@@ -137,7 +144,7 @@ export class StationsServiceLambda implements StationsService {
     } | LambdaErrorResponse>(env.stationsLambdaFunctionName, wrapLambdaRequest('getAllStations', callerId, data, { page, pageSize }));
 
     if (isLambdaErrorPayload(result)) {
-      throwFromStationsLambdaError(result);
+      throwFromStationsLambdaError(result, env.stationsLambdaFunctionName);
     }
 
     const stations = mapLambdaStationList(result.data);
@@ -159,10 +166,12 @@ export class StationsServiceLambda implements StationsService {
       wrapLambdaRequest('getStationById', callerId, { stationId })
     );
     if (isLambdaErrorPayload(result)) {
-      throwFromStationsLambdaError(result);
+      throwFromStationsLambdaError(result, env.stationsLambdaFunctionName);
     }
     if (!result.data) {
-      throw new ResourceNotFoundError('Station not found');
+      throw new ResourceNotFoundError('Station not found', 'RESOURCE_NOT_FOUND', {
+        collectorSource: env.stationsLambdaFunctionName,
+      });
     }
     const station = mapLambdaStation(result.data);
     if (includePorts) {
@@ -183,7 +192,7 @@ export class StationsServiceLambda implements StationsService {
       wrapLambdaRequest('writeStation', callerId, payload)
     );
     if (isLambdaErrorPayload(result)) {
-      throwFromStationsLambdaError(result);
+      throwFromStationsLambdaError(result, env.stationsLambdaWriteFunctionName);
     }
     return mapLambdaAdminCreateStationResponse(result.data);
   }
@@ -205,7 +214,7 @@ export class StationsServiceLambda implements StationsService {
       wrapLambdaRequest<AdminUpdateStationStateRequest, unknown>('changeStationState', callerId, { stationId, oldState, newState })
     );
     if (isLambdaErrorPayload(result)) {
-      throwFromStationsLambdaError(result);
+      throwFromStationsLambdaError(result, env.stationsLambdaWriteFunctionName);
     }
     return mapLambdaAdminUpdateStationStateResponse(result.data);
   }
@@ -237,7 +246,7 @@ export class StationsServiceLambda implements StationsService {
     );
 
     if (isLambdaErrorPayload(result)) {
-      throwFromStationsLambdaError(result);
+      throwFromStationsLambdaError(result, env.stationsLambdaWriteFunctionName);
     }
 
     const station = await this.getById(stationId, callerId);
@@ -270,7 +279,7 @@ export class StationsServiceLambda implements StationsService {
       })
     );
     if (isLambdaErrorPayload(result)) {
-      throwFromStationsLambdaError(result);
+      throwFromStationsLambdaError(result, env.stationsPortsWriteLambdaFunctionName);
     }
     const d = result.data;
     return {
@@ -308,7 +317,7 @@ export class StationsServiceLambda implements StationsService {
       wrapLambdaRequest('updateStation', callerId, payload)
     );
     if (isLambdaErrorPayload(result)) {
-      throwFromStationsLambdaError(result);
+      throwFromStationsLambdaError(result, env.stationsLambdaWriteFunctionName);
     }
     return { stationId: result.data?.station_id ?? stationId };
   }
@@ -332,7 +341,7 @@ export class StationsServiceLambda implements StationsService {
       })
     );
     if (isLambdaErrorPayload(result)) {
-      throwFromStationsLambdaError(result);
+      throwFromStationsLambdaError(result, env.stationsPortsWriteLambdaFunctionName);
     }
 
     const createdPorts = mapLambdaInsertStationPortsResponse(result.data);
@@ -355,7 +364,9 @@ export class StationsServiceLambda implements StationsService {
     return createdPortKeys.map((portKey) => {
       const port = portsByKey.get(portKey);
       if (!port) {
-        throw new ServiceError('stations ports lambda: created port not found after insert', 502, 'INVALID_RESPONSE');
+        throw new ServiceError('stations ports lambda: created port not found after insert', 502, 'INVALID_RESPONSE', {
+          collectorSource: env.stationsPortsReadLambdaFunctionName,
+        });
       }
       return mapLambdaPortRow(port);
     });
@@ -380,7 +391,7 @@ export class StationsServiceLambda implements StationsService {
       })
     );
     if (isLambdaErrorPayload(result)) {
-      throwFromStationsLambdaError(result);
+      throwFromStationsLambdaError(result, env.stationsPortsWriteLambdaFunctionName);
     }
     const deletePortData = result.data;
     logger.debug("Delete successful. Lambda response: ", deletePortData);
@@ -398,7 +409,7 @@ export class StationsServiceLambda implements StationsService {
       })
     );
     if (isLambdaErrorPayload(result)) {
-      throwFromStationsLambdaError(result);
+      throwFromStationsLambdaError(result, env.stationsLambdaWriteFunctionName);
     }
     return mapLambdaDeleteStationResponse(result.data);
   }
