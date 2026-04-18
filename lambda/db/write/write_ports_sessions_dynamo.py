@@ -21,6 +21,7 @@ GET_PORTS_SESSIONS_FUNCTION_NAME = os.environ["GET_PORTS_SESSIONS_FUNCTION_NAME"
 PORT_STATES = ["FREE", "OCCUPIED", "ERROR", "DISABLED", "BOOKED"]
 BOOKING_TIMEOUT_MINUTES = int(os.environ["BOOKING_TIMEOUT_MINUTES"])
 PAYMENT_SUCCESS_RATE = int(os.environ["PAYMENT_SUCCESS_RATE"])
+PORT_UPDATE_SUCCESS_RATE = int(os.environ["PORT_UPDATE_SUCCESS_RATE"])
 WRITE_STATION_RDS_FUNCTION_NAME = os.environ["WRITE_STATION_RDS_FUNCTION_NAME"]
 NOTIFICATION_LAMBDA_FUNCTION_NAME = os.environ["NOTIFICATION_LAMBDA_FUNCTION_NAME"]
 
@@ -260,6 +261,11 @@ def _transact_update_session_booked_to_active(session: dict, ts_iso: str, charge
     }
 
 def update_station_ports(action: str, port_data: dict, user_id: str| None = None) -> dict:
+    random_chance = random.randint(1, 100)
+    port_update_success = random_chance <= PORT_UPDATE_SUCCESS_RATE
+    if not port_update_success:
+        logger.info(f"port update failed: {port_data}")
+        raise LambdaResponseError({"error": f"port update failed", "code": "UNHANDLED_ERROR"})
     if not port_data["port_key"]:
         logger.error(f"port key is required for {action}")
         raise LambdaResponseError({"error": f"port key is required for {action}", "code": "INVALID_REQUEST"})

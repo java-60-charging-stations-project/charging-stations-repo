@@ -1047,6 +1047,7 @@ Resources:
           BOOKING_TIMEOUT_MINUTES: !Ref BookingTimeoutMinutes
           GET_PORTS_SESSIONS_FUNCTION_NAME: !Ref GetPortsSessionsFunction
           PAYMENT_SUCCESS_RATE: "80" # 80% chance of successful payment
+          PORT_UPDATE_SUCCESS_RATE: "80" # 80% chance of successful port update
           WRITE_STATION_RDS_FUNCTION_NAME: !Ref WriteStationRDSFunction
           NOTIFICATION_LAMBDA_FUNCTION_NAME: !Ref PaymentNotificationFunction
       Policies:
