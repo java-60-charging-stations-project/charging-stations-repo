@@ -85,7 +85,7 @@ export const apiSlice = createApi({
         getLogs: builder.query<ApiArrayResponse<LogRecord>, LogRequest>({
             query: ({ role, ...params }: LogRequest) => ({
                 method: "GET",
-                url: `${buildRolePath(role)}/logs`,
+                url: `/logs${buildRolePath(role)}`,
                 params,
             }),
             providesTags: ["Log"],

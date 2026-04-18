@@ -195,13 +195,12 @@ export class ApiClientAxios implements ApiClient {
         config: AxiosRequestConfig,
         signal?: AbortSignal
     ): Promise<T> {
-        logger.debug("REQUEST", {
+        logger.debug(".request REQUEST", {
             url: config.url,
             method: config.method,
             params: config.params,
             data: config.data,
         });
-
         const response = await this.client.request<T>({
             ...config,
             signal,
@@ -209,7 +208,7 @@ export class ApiClientAxios implements ApiClient {
 
         const { status, data } = response;
 
-        logger.debug("RESPONSE", { status, data });
+        logger.debug(".request RESPONSE", { status, data });
 
         return data;
     }
