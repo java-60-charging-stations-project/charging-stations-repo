@@ -16,16 +16,17 @@ import type { LogsListQuery, LogsListResult, LogsService } from './logs.service.
 const logger = createLogger('logs.service.lambda');
 const LAMBDA_INVOKER: LambdaInvoker = new AwsLambdaInvoker(env.awsRegion);
 
-function throwFromLogsLambdaError(result: LambdaErrorResponse): never {
+function throwFromLogsLambdaError(result: LambdaErrorResponse, collectorSource: string): never {
   const msg = result.error;
   const code = result.code ?? 'UNKNOWN';
+  const opts = { collectorSource };
   if (code === 'NOT_FOUND' || code === 'LOG_NOT_FOUND') {
-    throw new ResourceNotFoundError(msg, code === 'LOG_NOT_FOUND' ? 'LOG_NOT_FOUND' : 'NOT_FOUND');
+    throw new ResourceNotFoundError(msg, code === 'LOG_NOT_FOUND' ? 'LOG_NOT_FOUND' : 'NOT_FOUND', opts);
   }
   if (code === 'INVALID_REQUEST') {
-    throw new BadRequestError(msg, code);
+    throw new BadRequestError(msg, code, opts);
   }
-  throw new ServiceError(`logs lambda: ${msg}`, 502, String(code));
+  throw new ServiceError(`logs lambda: ${msg}`, 502, String(code), opts);
 }
 
 /** Lambda success body for list — `data.logs` snake_case rows per API contract. */
@@ -42,6 +43,7 @@ interface LambdaListLogsMeta {
 
 export class LogsServiceLambda implements LogsService {
   async listByAudience(audience: LogAudience, query: LogsListQuery): Promise<LogsListResult> {
+    const collectorSource = env.logsLambdaFunctionName!;
     const callerId = query.callerId?.trim() || 'guest';
     const payload: LambdaListCollectorLogsData = {
       audience,
@@ -55,15 +57,17 @@ export class LogsServiceLambda implements LogsService {
 
     const result = await LAMBDA_INVOKER.invokeJson<
       LambdaSuccessPayload<LambdaListLogsSuccess, LambdaListLogsMeta> | LambdaErrorResponse
-    >(env.logsLambdaFunctionName!, wrapLambdaRequest('listCollectorLogs', callerId, payload));
+    >(collectorSource, wrapLambdaRequest('listCollectorLogs', callerId, payload));
 
     if (isLambdaErrorPayload(result)) {
-      throwFromLogsLambdaError(result);
+      throwFromLogsLambdaError(result, collectorSource);
     }
 
     const logs = result.data?.logs;
     if (!Array.isArray(logs)) {
-      throw new ServiceError('logs lambda: invalid list response', 502, 'INVALID_LAMBDA_RESPONSE');
+      throw new ServiceError('logs lambda: invalid list response', 502, 'INVALID_LAMBDA_RESPONSE', {
+        collectorSource,
+      });
     }
 
     const meta = result.meta;
@@ -89,6 +93,7 @@ export class LogsServiceLambda implements LogsService {
     resolveTime: string,
     resolverId: string
   ): Promise<CollectorLogRecord> {
+    const collectorSource = env.logsLambdaFunctionName!;
     const payload: LambdaResolveCollectorLogData = {
       logId,
       resolveTime,
@@ -100,18 +105,17 @@ export class LogsServiceLambda implements LogsService {
 
     const result = await LAMBDA_INVOKER.invokeJson<
       LambdaSuccessPayload<{ log: CollectorLogRecord }> | LambdaErrorResponse
-    >(
-      env.logsLambdaFunctionName!,
-      wrapLambdaRequest('resolveCollectorLog', resolverId, payload),
-    );
+    >(collectorSource, wrapLambdaRequest('resolveCollectorLog', resolverId, payload));
 
     if (isLambdaErrorPayload(result)) {
-      throwFromLogsLambdaError(result);
+      throwFromLogsLambdaError(result, collectorSource);
     }
 
     const log = result.data?.log;
     if (!log || typeof log !== 'object') {
-      throw new ServiceError('logs lambda: invalid resolve response', 502, 'INVALID_LAMBDA_RESPONSE');
+      throw new ServiceError('logs lambda: invalid resolve response', 502, 'INVALID_LAMBDA_RESPONSE', {
+        collectorSource,
+      });
     }
 
     return log;

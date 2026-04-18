@@ -1,5 +1,6 @@
 import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda';
 import type { LambdaInvokeLogContext, LambdaResultLogContext } from '../common/logContracts';
+import { ServiceError } from '../common/serviceErrors';
 import { createLogger } from './logger';
 
 const logger = createLogger("lambda.invoker");
@@ -32,7 +33,12 @@ export class AwsLambdaInvoker implements LambdaInvoker {
     logger.debug('Lambda raw response received', resultMeta);
 
     if (res.FunctionError) {
-      throw new Error(`Lambda error: ${res.FunctionError}. Payload: ${raw}`);
+      throw new ServiceError(
+        `Lambda runtime error (${res.FunctionError}). Payload: ${raw}`,
+        502,
+        'LAMBDA_INVOKE_FAILED',
+        { collectorSource: functionName },
+      );
     }
 
     if (!raw) {
@@ -41,7 +47,18 @@ export class AwsLambdaInvoker implements LambdaInvoker {
       return {} as any;
     }
 
-    const parsed = JSON.parse(raw);
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      throw new ServiceError(
+        'Lambda returned invalid JSON',
+        502,
+        'LAMBDA_INVOKE_FAILED',
+        { collectorSource: functionName },
+      );
+    }
+
     logger.debug('Lambda payload parsed', {
       ...invokeMeta,
       parsedType: typeof parsed,
@@ -53,10 +70,19 @@ export class AwsLambdaInvoker implements LambdaInvoker {
       parsed &&
       typeof parsed === 'object' &&
       'body' in parsed &&
-      typeof (parsed as any).body === 'string'
+      typeof (parsed as { body?: unknown }).body === 'string'
     ) {
       logger.debug('Lambda response in API Gateway proxy format', invokeMeta);
-      return JSON.parse((parsed as any).body) as TResponse;
+      try {
+        return JSON.parse((parsed as { body: string }).body) as TResponse;
+      } catch {
+        throw new ServiceError(
+          'Lambda API Gateway proxy body is not valid JSON',
+          502,
+          'LAMBDA_INVOKE_FAILED',
+          { collectorSource: functionName },
+        );
+      }
     }
     logger.debug('Lambda response returned as plain JSON', invokeMeta);
     return parsed as TResponse;
