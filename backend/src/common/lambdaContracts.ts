@@ -369,6 +369,27 @@ export interface LambdaCreateRdsTablesResponse {
   message: string;
 }
 
+/** Collector logs — backend → Lambda `data` uses camelCase (`lambda/Readme_lambda.md`). */
+
+export type LambdaCollectorLogAudience = 'support' | 'admin';
+
+/** `resolveCollectorLog` action payload. */
+export interface LambdaResolveCollectorLogData {
+  logId: string;
+  resolveTime: string;
+  resolverId: string;
+  audience: LambdaCollectorLogAudience;
+}
+
+/** `listCollectorLogs` action payload. */
+export interface LambdaListCollectorLogsData {
+  audience: LambdaCollectorLogAudience;
+  page: number;
+  pageSize: number;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
 // Backward compatibility
 
 /** @deprecated Используй LambdaUserRow */

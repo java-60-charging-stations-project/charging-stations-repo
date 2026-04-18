@@ -44,7 +44,8 @@ export class LogsController {
 
   getSupportLogs = async (req: Request, res: Response) => {
     const query = parseLogsListQuery(req);
-    const result = await this.service.listByAudience('support', query);
+    const callerId = req.user?.sub ?? 'guest';
+    const result = await this.service.listByAudience('support', { ...query, callerId });
     res.status(200).json(
       wrapLogsCollectionResponse(
         result.logs,
@@ -58,7 +59,8 @@ export class LogsController {
 
   getAdminLogs = async (req: Request, res: Response) => {
     const query = parseLogsListQuery(req);
-    const result = await this.service.listByAudience('admin', query);
+    const callerId = req.user?.sub ?? 'guest';
+    const result = await this.service.listByAudience('admin', { ...query, callerId });
     res.status(200).json(
       wrapLogsCollectionResponse(
         result.logs,

@@ -8,7 +8,8 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "lint": "eslint .",
-    "test": "echo \"No tests yet\""
+    "test": "echo \"No tests yet\"",
+    "valkey:smoke": "ts-node --transpile-only scripts/valkey-smoke.ts"
   },
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.1014.0",

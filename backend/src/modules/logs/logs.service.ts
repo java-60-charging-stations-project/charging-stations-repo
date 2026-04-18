@@ -1,30 +1,10 @@
 import { ResourceNotFoundError } from '../../common/serviceErrors';
+import { env } from '../../config/env';
 import type { CollectorLogRecord, LogAudience } from './logs.types';
+import type { LogsListQuery, LogsListResult, LogsService } from './logs.service.interface';
+import { LogsServiceLambda } from './logs.service.lambda.js';
 
-export interface LogsListQuery {
-  page: number;
-  pageSize: number;
-  dateFrom?: string;
-  dateTo?: string;
-}
-
-export interface LogsListResult {
-  logs: CollectorLogRecord[];
-  totalItems: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
-}
-
-export interface LogsService {
-  listByAudience(audience: LogAudience, query: LogsListQuery): Promise<LogsListResult>;
-  resolveById(
-    audience: LogAudience,
-    logId: string,
-    resolveTime: string,
-    resolverId: string
-  ): Promise<CollectorLogRecord>;
-}
+export type { LogsListQuery, LogsListResult, LogsService } from './logs.service.interface';
 
 const LOGS_STORE: CollectorLogRecord[] = [];
 
@@ -82,6 +62,9 @@ class LogsServiceLocal implements LogsService {
 }
 
 export function buildLogsService(): LogsService {
+  const name = env.logsLambdaFunctionName?.trim();
+  if (env.useLambda && name) {
+    return new LogsServiceLambda();
+  }
   return new LogsServiceLocal();
 }
-

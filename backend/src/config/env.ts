@@ -52,6 +52,9 @@ export const env = {
       'arn:aws:lambda:il-central-1:852215679994:function:charging-stations-get-session-rds-info'
   ),
 
+  /** Collector logs (list/resolve). Used when `USE_LAMBDA=true` and this name is non-empty. */
+  logsLambdaFunctionName: process.env.LOGS_LAMBDA_FUNCTION_NAME?.trim() || undefined,
+
   stationsPortsWriteLambdaFunctionName: String(
     process.env.STATIONS_PORTS_WRITE_LAMBDA_FUNCTION_NAME ??
       'arn:aws:lambda:il-central-1:852215679994:function:charging-stations-write-station-ports-dynamo'
