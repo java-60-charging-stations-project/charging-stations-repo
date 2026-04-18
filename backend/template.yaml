@@ -61,10 +61,13 @@ Parameters:
     Type: String
     Description: Cross-account IAM role ARN used by the backend to manage Cognito users
     Default: arn:aws:iam::852215679994:role/sam-db-lambdas-cognito-cross-account
+  LambdaLogSubscriptionProcessorName:
+    Type: String
+    Default: charging-stations-log-subscription-processor
+    Description: Lambda function name in LambdaAccountId that receives CloudWatch Logs subscription deliveries
   DesiredCount:
     Type: Number
     Default: 1
-
 Resources:
   Cluster:
     Type: AWS::ECS::Cluster
@@ -166,6 +169,14 @@ Resources:
     Properties:
       LogGroupName: /ecs/charging-stations-backend
       RetentionInDays: 14
+
+  BackendAuditLogSubscriptionToProcessor:
+    Type: AWS::Logs::SubscriptionFilter
+    Properties:
+      LogGroupName: !Ref TaskLogGroup
+      FilterName: audit-high-severity-ecs-backend
+      FilterPattern: '?"level": "ERROR" "service" ?"level": "CRITICAL" "service"'
+      DestinationArn: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaLogSubscriptionProcessorName}"
 
   LoadBalancerSecurityGroup:
     Type: AWS::EC2::SecurityGroup

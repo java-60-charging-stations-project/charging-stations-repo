@@ -10,6 +10,11 @@ Globals:
 
 Parameters:
 
+  ExternalAuditLogSourceLogGroupName:
+    Type: String
+    Default: "/ecs/charging-stations-backend"
+    Description: CloudWatch log group name in the external account that sends audit lines to the log subscription processor
+
   SesFromEmail:
     Type: String
     Default: "mike.volchek17@gmail.com"
@@ -1329,6 +1334,15 @@ Resources:
         - "${Arn}:*"
         - Arn: !GetAtt ApplicationSharedLambdaLogGroup.Arn
 
+  LogSubscriptionPermExternalBackend:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref LogSubscriptionProcessorFunction
+      Action: lambda:InvokeFunction
+      Principal: logs.amazonaws.com
+      SourceArn: !Sub
+        arn:aws:logs:${AWS::Region}:${InvokerAccountIdA}:log-group:${ExternalAuditLogSourceLogGroupName}:*
+
   AuditLogSubscriptionApplicationShared:
     Type: AWS::Logs::SubscriptionFilter
     DependsOn: LogSubscriptionPermApplicationShared
@@ -1364,4 +1378,9 @@ Outputs:
     Description: Backend sets CognitoCrossAccountRoleArn to this — sts:AssumeRole from invoker account(s) (same principals as Lambda invoke)
     Value: !GetAtt BackendCognitoCrossAccountRole.Arn
     Export:
-      Name: !Sub ${AWS::StackName}-CognitoCrossAccountRoleArn  
+      Name: !Sub ${AWS::StackName}-CognitoCrossAccountRoleArn
+  LogSubscriptionProcessorFunctionArn:
+    Description: ARN of the log subscription processor (cross-account subscription DestinationArn in the backend account)
+    Value: !GetAtt LogSubscriptionProcessorFunction.Arn
+    Export:
+      Name: !Sub ${AWS::StackName}-LogSubscriptionProcessorFunctionArn
