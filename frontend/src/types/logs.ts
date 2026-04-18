@@ -7,7 +7,7 @@ export type LogRecord = {
     level: "DEBUG" | "INFO" | "WARN" | "ERROR";
     message: string;
     service: string;
-    source_service: string;
+    source_service?: string;
     event: string;
     audience: LogAudience;
     caller_id: string;
