@@ -314,11 +314,27 @@ Resources:
       PubliclyAccessible: false
       EnableIAMDatabaseAuthentication: true
 
+  # One log group for all app Lambdas → one subscription filter (streams include logStream name to distinguish functions)
+  ApplicationSharedLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/charging-stations/${AWS::StackName}/lambda/application"
+      RetentionInDays: 30
+
+  ApplicationAuditLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/charging-stations/${AWS::StackName}/lambda/application/audit"
+      RetentionInDays: 30
+
   WriteUserRDSFunction:
     Type: AWS::Serverless::Function
-    DependsOn: ChargingStationsRDSPostgresDB
+    DependsOn:
+      - ApplicationSharedLambdaLogGroup
     Properties:
       Runtime: python3.12
+      LoggingConfig:
+        LogGroup: !Sub "/charging-stations/${AWS::StackName}/lambda/application"
       FunctionName: charging-stations-write-user-rds
       Handler: write_user_rds.handler
       CodeUri: db/write
@@ -349,11 +365,121 @@ Resources:
                 - DBResourceId: !GetAtt ChargingStationsRDSPostgresDB.DbiResourceId
                   DBUser: !Sub "{{resolve:secretsmanager:${DBSecretArn}:SecretString:username}}"
 
-  GetUserInfoFunction:
+  WriteLogsRDSFunction:
     Type: AWS::Serverless::Function
-    DependsOn: ChargingStationsRDSPostgresDB
+    DependsOn:
+      - ApplicationAuditLogGroup
     Properties:
       Runtime: python3.12
+      LoggingConfig:
+        LogGroup: !Ref ApplicationAuditLogGroup
+      FunctionName: charging-stations-write-logs-rds
+      Handler: write_logs_rds.handler
+      CodeUri: db/write
+      Layers:
+        - !Ref CommonToolsLayer
+        - !Sub "arn:aws:lambda:${AWS::Region}:770693421928:layer:Klayers-p312-psycopg2-binary:2"
+      Description: Resolve logs in RDS (resolver_id, resolve_time)
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds:
+          - !Ref PrivateSubnet1Id
+          - !Ref PrivateSubnet2Id
+      Environment:
+        Variables:
+          DB_HOST: !GetAtt ChargingStationsRDSPostgresDB.Endpoint.Address
+          DB_PORT: "5432"
+          DB_NAME: !Ref DBName
+          DB_USER: !Sub "{{resolve:secretsmanager:${DBSecretArn}:SecretString:username}}"
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action: rds-db:connect
+              Resource: !Sub
+                - "arn:aws:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:${DBResourceId}/${DBUser}"
+                - DBResourceId: !GetAtt ChargingStationsRDSPostgresDB.DbiResourceId
+                  DBUser: !Sub "{{resolve:secretsmanager:${DBSecretArn}:SecretString:username}}"
+
+  WriteLogsRDSInvokePermissionA:
+    Type: AWS::Lambda::Permission
+    Condition: UseInvokerAccountA
+    Properties:
+      FunctionName: !Ref WriteLogsRDSFunction
+      Action: lambda:InvokeFunction
+      Principal: !Sub "arn:aws:iam::${InvokerAccountIdA}:root"
+
+  WriteLogsRDSInvokePermissionB:
+    Type: AWS::Lambda::Permission
+    Condition: UseInvokerAccountB
+    Properties:
+      FunctionName: !Ref WriteLogsRDSFunction
+      Action: lambda:InvokeFunction
+      Principal: !Sub "arn:aws:iam::${InvokerAccountIdB}:root"
+
+  GetLogsInfoFunction:
+    Type: AWS::Serverless::Function
+    DependsOn:
+      - ApplicationSharedLambdaLogGroup
+    Properties:
+      Runtime: python3.12
+      LoggingConfig:
+        LogGroup: !Sub "/charging-stations/${AWS::StackName}/lambda/application"
+      FunctionName: charging-stations-read-logs-rds
+      Handler: get_logs_info.handler
+      CodeUri: db/read
+      Layers:
+        - !Ref CommonToolsLayer
+        - !Sub "arn:aws:lambda:${AWS::Region}:770693421928:layer:Klayers-p312-psycopg2-binary:2"
+      Description: Get logs from RDS
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds:
+          - !Ref PrivateSubnet1Id
+          - !Ref PrivateSubnet2Id
+      Environment:
+        Variables:
+          DB_HOST: !GetAtt ChargingStationsRDSPostgresDB.Endpoint.Address
+          DB_PORT: "5432"
+          DB_NAME: !Ref DBName
+          DB_USER: !Sub "{{resolve:secretsmanager:${DBSecretArn}:SecretString:username}}"
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action: rds-db:connect
+              Resource: !Sub
+                - "arn:aws:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:${DBResourceId}/${DBUser}"
+                - DBResourceId: !GetAtt ChargingStationsRDSPostgresDB.DbiResourceId
+                  DBUser: !Sub "{{resolve:secretsmanager:${DBSecretArn}:SecretString:username}}"
+
+  GetLogsInfoInvokePermissionA:
+    Type: AWS::Lambda::Permission
+    Condition: UseInvokerAccountA
+    Properties:
+      FunctionName: !Ref GetLogsInfoFunction
+      Action: lambda:InvokeFunction
+      Principal: !Sub "arn:aws:iam::${InvokerAccountIdA}:root"
+
+  GetLogsInfoInvokePermissionB:
+    Type: AWS::Lambda::Permission
+    Condition: UseInvokerAccountB
+    Properties:
+      FunctionName: !Ref GetLogsInfoFunction
+      Action: lambda:InvokeFunction
+      Principal: !Sub "arn:aws:iam::${InvokerAccountIdB}:root"
+  
+
+  GetUserInfoFunction:
+    Type: AWS::Serverless::Function
+    DependsOn:
+      - ApplicationSharedLambdaLogGroup
+    Properties:
+      Runtime: python3.12
+      LoggingConfig:
+        LogGroup: !Sub "/charging-stations/${AWS::StackName}/lambda/application"
       FunctionName: charging-stations-get-user-info
       Handler: get_user_info.handler
       CodeUri: db/read
@@ -401,9 +527,14 @@ Resources:
 
   CreateRDSTablesFunction:
     Type: AWS::Serverless::Function
+    DependsOn:
+      - ChargingStationsRDSPostgresDB
+      - ApplicationSharedLambdaLogGroup
     Properties:
       Timeout: 30
       Runtime: python3.12
+      LoggingConfig:
+        LogGroup: !Sub "/charging-stations/${AWS::StackName}/lambda/application"
       FunctionName: charging-stations-create-rds-tables
       Handler: create_rds_tables.handler
       CodeUri: db
@@ -475,7 +606,10 @@ Resources:
 
   ConfirmConsoleCreatedAdminFunction:
     Type: AWS::Serverless::Function
+    DependsOn: ApplicationSharedLambdaLogGroup
     Properties:
+      LoggingConfig:
+        LogGroup: !Sub "/charging-stations/${AWS::StackName}/lambda/application"
       FunctionName: charging-stations-confirm-console-created-admin
       Handler: confirm_console_created_admin.handler
       CodeUri: db
@@ -513,7 +647,10 @@ Resources:
       
   HealthFunction:
     Type: AWS::Serverless::Function
+    DependsOn: ApplicationSharedLambdaLogGroup
     Properties:
+      LoggingConfig:
+        LogGroup: !Sub "/charging-stations/${AWS::StackName}/lambda/application"
       FunctionName: charging-stations-health
       Handler: app.handler
       CodeUri: routes/health
@@ -540,9 +677,12 @@ Resources:
   
   WriteStationRDSFunction:
     Type: AWS::Serverless::Function
-    DependsOn: ChargingStationsRDSPostgresDB
+    DependsOn:
+      - ApplicationSharedLambdaLogGroup
     Properties:
       Runtime: python3.12
+      LoggingConfig:
+        LogGroup: !Sub "/charging-stations/${AWS::StackName}/lambda/application"
       FunctionName: charging-stations-write-station-rds
       Handler: write_station_rds.handler
       CodeUri: db/write
@@ -596,9 +736,12 @@ Resources:
   
   GetStationInfoFunction:
     Type: AWS::Serverless::Function
-    DependsOn: ChargingStationsRDSPostgresDB
+    DependsOn:
+      - ApplicationSharedLambdaLogGroup
     Properties:
       Runtime: python3.12
+      LoggingConfig:
+        LogGroup: !Sub "/charging-stations/${AWS::StackName}/lambda/application"
       FunctionName: charging-stations-get-station-info
       Handler: get_station_info.handler
       CodeUri: db/read
@@ -709,7 +852,10 @@ Resources:
   
   CheckBookingsFunction:
     Type: AWS::Serverless::Function
+    DependsOn: ApplicationSharedLambdaLogGroup
     Properties:
+      LoggingConfig:
+        LogGroup: !Sub "/charging-stations/${AWS::StackName}/lambda/application"
       FunctionName: charging-stations-check-bookings
       Handler: check_bookings.handler
       CodeUri: db/maintenance
@@ -751,7 +897,10 @@ Resources:
 
   ChargeSimPriceCalcFunction:
     Type: AWS::Serverless::Function
+    DependsOn: ApplicationSharedLambdaLogGroup
     Properties:
+      LoggingConfig:
+        LogGroup: !Sub "/charging-stations/${AWS::StackName}/lambda/application"
       FunctionName: charging-stations-charge-sim-price-calc
       Handler: charge_sim_price_calc.handler
       CodeUri: db/maintenance
@@ -815,9 +964,13 @@ Resources:
 
   PaymentNotificationFunction:
     Type: AWS::Serverless::Function
-    DependsOn: ChargingStationsRDSPostgresDB
+    DependsOn:
+      - ChargingStationsRDSPostgresDB
+      - ApplicationSharedLambdaLogGroup
     Properties:
       Runtime: python3.12
+      LoggingConfig:
+        LogGroup: !Sub "/charging-stations/${AWS::StackName}/lambda/application"
       FunctionName: charging-stations-payment-notification
       Handler: notification.handler
       CodeUri: notification
@@ -869,8 +1022,11 @@ Resources:
     Type: AWS::Serverless::Function
     DependsOn:
       - DynamoDBGatewayEndpoint
+      - ApplicationSharedLambdaLogGroup
     Properties:
       Runtime: python3.12
+      LoggingConfig:
+        LogGroup: !Sub "/charging-stations/${AWS::StackName}/lambda/application"
       FunctionName: charging-stations-write-station-ports-dynamo
       Handler: write_ports_sessions_dynamo.handler
       CodeUri: db/write
@@ -936,8 +1092,11 @@ Resources:
       - StationEntitiesTable
       - DynamoDBGatewayEndpoint
       - LambdaApiVpcEndpoint
+      - ApplicationSharedLambdaLogGroup
     Properties:
       Runtime: python3.12
+      LoggingConfig:
+        LogGroup: !Sub "/charging-stations/${AWS::StackName}/lambda/application"
       FunctionName: charging-stations-station-entities-stream-consumer
       Handler: stations_dynamo_stream_consumer.handler
       CodeUri: db/read
@@ -978,9 +1137,12 @@ Resources:
 
   GetSessionInfoFunction:
     Type: AWS::Serverless::Function
-    DependsOn: ChargingStationsRDSPostgresDB
+    DependsOn:
+      - ApplicationSharedLambdaLogGroup
     Properties:
       Runtime: python3.12
+      LoggingConfig:
+        LogGroup: !Sub "/charging-stations/${AWS::StackName}/lambda/application"
       FunctionName: charging-stations-get-session-info
       Handler: get_session_rds_info.handler
       CodeUri: db/read
@@ -1029,10 +1191,12 @@ Resources:
   GetPortsSessionsFunction:
     Type: AWS::Serverless::Function
     DependsOn:
-      - StationEntitiesTable
       - DynamoDBGatewayEndpoint
+      - ApplicationSharedLambdaLogGroup
     Properties:
       Runtime: python3.12
+      LoggingConfig:
+        LogGroup: !Sub "/charging-stations/${AWS::StackName}/lambda/application"
       FunctionName: charging-stations-get-ports-sessions-dynamo
       Handler: get_ports_sessions_dynamo.handler
       CodeUri: db/read
@@ -1077,10 +1241,11 @@ Resources:
   ReconcileFreePortsFunction:
     Type: AWS::Serverless::Function
     DependsOn:
-      - StationEntitiesTable
       - DynamoDBGatewayEndpoint
-      - ChargingStationsRDSPostgresDB
+      - ApplicationSharedLambdaLogGroup
     Properties:
+      LoggingConfig:
+        LogGroup: !Sub "/charging-stations/${AWS::StackName}/lambda/application"
       FunctionName: charging-stations-reconcile-free-ports
       Handler: reconcile_free_ports.handler
       CodeUri: db/maintenance
@@ -1124,7 +1289,53 @@ Resources:
           Properties:
             Schedule: rate(1 hour)
             Enabled: true
-  
+
+  # Receives ERROR/CRITICAL-shaped audit JSON from the shared app log group
+  LogSubscriptionProcessorFunction:
+    Type: AWS::Serverless::Function
+    DependsOn:
+      - ApplicationAuditLogGroup
+    Properties:
+      FunctionName: charging-stations-log-subscription-processor
+      Handler: log_sub_processor.handler
+      CodeUri: db/maintenance
+      LoggingConfig:
+        LogGroup: !Ref ApplicationAuditLogGroup
+      Description: CloudWatch Logs subscription target for high-severity audit lines
+      Timeout: 60
+      MemorySize: 256
+      Layers:
+        - !Ref CommonToolsLayer
+        - !Sub "arn:aws:lambda:${AWS::Region}:770693421928:layer:Klayers-p312-psycopg2-binary:2"
+      Environment:
+        Variables:
+          WRITE_LOGS_RDS_FUNCTION_NAME: !Ref WriteLogsRDSFunction
+          AWS_LAMBDA_HOST_ACCOUNT: !Ref AWS::AccountId
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action: lambda:InvokeFunction
+              Resource: !GetAtt WriteLogsRDSFunction.Arn
+
+  LogSubscriptionPermApplicationShared:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref LogSubscriptionProcessorFunction
+      Action: lambda:InvokeFunction
+      Principal: logs.amazonaws.com
+      SourceArn: !Sub
+        - "${Arn}:*"
+        - Arn: !GetAtt ApplicationSharedLambdaLogGroup.Arn
+
+  AuditLogSubscriptionApplicationShared:
+    Type: AWS::Logs::SubscriptionFilter
+    DependsOn: LogSubscriptionPermApplicationShared
+    Properties:
+      LogGroupName: !Ref ApplicationSharedLambdaLogGroup
+      FilterName: audit-high-severity
+      FilterPattern: '?"level": "ERROR" "service" ?"level": "CRITICAL" "service"'
+      DestinationArn: !GetAtt LogSubscriptionProcessorFunction.Arn
 
 Outputs:
   UserPoolId:

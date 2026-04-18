@@ -102,6 +102,21 @@ def create_tables() -> None:
                     updated_at TIMESTAMPTZ NOT NULL
                 );
             """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS logs (
+                    log_id TEXT PRIMARY KEY,
+                    level TEXT NOT NULL,
+                    message TEXT,
+                    service TEXT,
+                    event TEXT,
+                    source_service TEXT,
+                    caller_id TEXT,
+                    request_id TEXT NOT NULL UNIQUE,
+                    timestamp TIMESTAMPTZ,
+                    resolve_time TEXT,
+                    resolver_id TEXT
+                );
+            """)
             cur.execute("""CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions (user_id);""")
             cur.execute("""CREATE INDEX IF NOT EXISTS idx_sessions_station_id ON sessions (station_id);""")
             cur.execute("""CREATE INDEX IF NOT EXISTS idx_sessions_paid_at ON sessions (paid_at DESC);""")
