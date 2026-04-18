@@ -14,7 +14,7 @@ _conn = None
 DEFAULT_PAGE_SIZE = 200
 LOGS_SELECT = """
     log_id, level, message, service, event, source_service, caller_id, request_id,
-    timestamp, resolve_time, resolver_id
+    timestamp, resolve_time, resolver_id, resolved
 """
 SORTABLE_COLUMNS = {
     "logId": "log_id",
@@ -28,6 +28,7 @@ SORTABLE_COLUMNS = {
     "timestamp": "timestamp",
     "resolveTime": "resolve_time",
     "resolverId": "resolver_id",
+    "resolved": "resolved",
 }
 
 def datetime_to_json(v: Any) -> Any:
@@ -99,11 +100,16 @@ def get_request_parameters(data: dict, meta_parameters: dict) -> dict:
     page, page_size = _normalize_pagination(
         meta_parameters.get("page"), meta_parameters.get("pageSize")
     )
+    resolved = data.get("resolved")
+    if resolved is not None and isinstance(resolved, str):
+        r = resolved.strip().lower()
+        resolved = True if r == "true" else False if r == "false" else None
     return {
         "level": data.get("level"),
         "service": data.get("service"),
         "caller_id": data.get("callerId"),
         "event": data.get("event"),
+        "resolved": resolved,
         "order_by": data.get("orderBy"),
         "page": page,
         "page_size": page_size,
@@ -130,10 +136,13 @@ def get_all_logs(parameters: dict) -> tuple[list[dict], int, int]:
     if parameters.get("event"):
         conditions.append("event ILIKE %s")
         params.append(f"%{parameters['event']}%")
+    if parameters.get("resolved") is not None:
+        conditions.append("resolved = %s")
+        params.append(parameters["resolved"])
     where_sql = " AND ".join(conditions) if conditions else "TRUE"
-    order_by_sql = "log_id DESC"
+    order_by_sql = "timestamp DESC"
     if parameters.get("order_by"):
-        order_by_sql = parse_order_by(parameters["order_by"]) or "log_id DESC"
+        order_by_sql = parse_order_by(parameters["order_by"]) or "timestamp DESC"
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(f"SELECT COUNT(*) AS c FROM logs WHERE {where_sql}", tuple(params))

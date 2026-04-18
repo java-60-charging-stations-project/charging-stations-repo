@@ -53,6 +53,7 @@ def extract_log_instance_from_event(event: dict) -> dict:
         "caller_id": event["caller_id"],
         "request_id": event.get("request_id") or str(uuid.uuid4()),
         "timestamp": event["timestamp"],
+        "resolved": False,
     }
 
 def write_logs_in_rds(batch_logs: list[dict]) -> None:
@@ -76,6 +77,7 @@ def write_logs_in_rds(batch_logs: list[dict]) -> None:
         "timestamp",
         "resolve_time",
         "resolver_id",
+        "resolved",
     )
     template = "(" + ", ".join(["%s"] * len(columns)) + ")"
     insert_sql = f"""
@@ -90,7 +92,10 @@ def write_logs_in_rds(batch_logs: list[dict]) -> None:
             source_service = EXCLUDED.source_service,
             caller_id = EXCLUDED.caller_id,
             request_id = EXCLUDED.request_id,
-            timestamp = EXCLUDED.timestamp
+            timestamp = EXCLUDED.timestamp,
+            resolve_time = EXCLUDED.resolve_time,
+            resolver_id = EXCLUDED.resolver_id,
+            resolved = EXCLUDED.resolved
         WHERE EXCLUDED.source_service IS NULL
     """
     values = [
@@ -106,6 +111,7 @@ def write_logs_in_rds(batch_logs: list[dict]) -> None:
             row.get("timestamp"),
             row.get("resolve_time"),
             row.get("resolver_id"),
+            row.get("resolved"),
         )
         for row in batch_logs
     ]

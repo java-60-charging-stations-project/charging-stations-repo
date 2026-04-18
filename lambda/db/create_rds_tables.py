@@ -113,8 +113,9 @@ def create_tables() -> None:
                     caller_id TEXT,
                     request_id TEXT NOT NULL UNIQUE,
                     timestamp TIMESTAMPTZ,
-                    resolve_time TEXT,
-                    resolver_id TEXT
+                    resolve_time TIMESTAMPTZ,
+                    resolver_id TEXT,
+                    resolved BOOLEAN NOT NULL
                 );
             """)
             cur.execute("""CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions (user_id);""")
