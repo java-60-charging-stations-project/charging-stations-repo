@@ -52,6 +52,9 @@ export const env = {
       'arn:aws:lambda:il-central-1:852215679994:function:charging-stations-get-session-rds-info'
   ),
 
+  /** Collector logs (list/resolve). Used when `USE_LAMBDA=true` and this name is non-empty. */
+  logsLambdaFunctionName: process.env.LOGS_LAMBDA_FUNCTION_NAME?.trim() || undefined,
+
   stationsPortsWriteLambdaFunctionName: String(
     process.env.STATIONS_PORTS_WRITE_LAMBDA_FUNCTION_NAME ??
       'arn:aws:lambda:il-central-1:852215679994:function:charging-stations-write-station-ports-dynamo'
@@ -70,4 +73,22 @@ export const env = {
   cognitoAssumeRoleDurationSeconds: process.env.COGNITO_ASSUME_ROLE_DURATION_SECONDS,
   cognitoCrossAccountExternalId: process.env.COGNITO_CROSS_ACCOUNT_EXTERNAL_ID,
   cognitoAssumeRoleSessionName: process.env.COGNITO_ASSUME_ROLE_SESSION_NAME,
+
+  /** Valkey / Redis-compatible cache (ElastiCache Valkey, local Valkey, etc.). Wire `VALKEY_ENABLED=true` and URL or host. */
+  valkey: {
+    enabled: readBool('VALKEY_ENABLED', false),
+    /** Full URL: `redis://…` or `rediss://…` (TLS). If set, host/port/password below are ignored. */
+    url: process.env.VALKEY_URL?.trim() || undefined,
+    host: process.env.VALKEY_HOST?.trim() || undefined,
+    port: Number(process.env.VALKEY_PORT ?? 6379),
+    username: process.env.VALKEY_USERNAME?.trim() || undefined,
+    password: process.env.VALKEY_PASSWORD ?? undefined,
+    tls: readBool('VALKEY_TLS', false),
+    db: Number(process.env.VALKEY_DB ?? 0),
+    /** Prepended to every cache key (namespace). */
+    keyPrefix: String(process.env.VALKEY_KEY_PREFIX ?? 'charging:'),
+    connectTimeoutMs: Number(process.env.VALKEY_CONNECT_TIMEOUT_MS ?? 10_000),
+    /** When true, TLS uses default Node verification (works with AWS ElastiCache CA). */
+    tlsRejectUnauthorized: readBool('VALKEY_TLS_REJECT_UNAUTHORIZED', true),
+  },
 };

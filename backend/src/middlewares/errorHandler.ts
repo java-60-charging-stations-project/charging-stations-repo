@@ -37,6 +37,7 @@ function buildCollectorErrorLog(
   req: Request,
   message: string,
   event: string,
+  /** Prefer Lambda function name/ARN when the fault came from Lambda so collectors can dedupe. */
   sourceService?: string
 ): CollectorErrorLog {
   const nowIso = new Date().toISOString();
@@ -68,6 +69,16 @@ export function errorHandler(
   }
 
   if (error instanceof ServiceError) {
+    const collectorSource = error.collectorSource ?? 'errorHandler';
+    const collectorEvent =
+      error.statusCode === 403
+        ? 'FORBIDDEN_RESPONSE'
+        : error.errorCode === 'LAMBDA_INVOKE_FAILED'
+          ? 'LAMBDA_TRANSPORT_ERROR'
+          : error.collectorSource
+            ? 'LAMBDA_RESPONSE_ERROR'
+            : 'SERVICE_ERROR';
+
     if (error.statusCode === 403) {
       const meta: ForbiddenLogContext = {
         errorCode: error.errorCode,
@@ -79,7 +90,7 @@ export function errorHandler(
       };
       logger.warn('Forbidden response returned', meta);
       logger.collectorError(
-        buildCollectorErrorLog(req, error.message, 'FORBIDDEN_RESPONSE', 'errorHandler')
+        buildCollectorErrorLog(req, error.message, collectorEvent, collectorSource)
       );
     } else {
       const meta: ServiceErrorLogContext = {
@@ -90,7 +101,7 @@ export function errorHandler(
       };
       logger.error('Service error returned', meta);
       logger.collectorError(
-        buildCollectorErrorLog(req, error.message, 'SERVICE_ERROR', 'errorHandler')
+        buildCollectorErrorLog(req, error.message, collectorEvent, collectorSource)
       );
     }
 

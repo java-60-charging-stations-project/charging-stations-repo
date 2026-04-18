@@ -65,6 +65,7 @@ export interface CollectorErrorLog {
   message: string;
   service: string;
   event: string;
+  /** Where the error is attributed: `errorHandler` for pure API layer, or the **Lambda function name/ARN** when the failure is tied to a specific invoke (dedupe with Lambda-native logs). */
   source_service: string;
   caller_id: string;
   request_id?: string;

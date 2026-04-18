@@ -1,4 +1,4 @@
-import { apiResponse, apiResponseList, LambdaRequest } from "./wrapperTypes";
+import { apiMetadata, apiResponse, apiResponseList, LambdaRequest } from "./wrapperTypes";
 
 export function wrapResponse<T>(data: T): apiResponse<T> {
     return { data };
@@ -33,4 +33,22 @@ export function wrapResponseList<T>(
             totalItems,
         }
     }
+}
+
+export function wrapLogsCollectionResponse<T>(
+    logs: T[],
+    totalItems: number,
+    pageSize: number,
+    page: number = 1,
+    totalPages: number = 1,
+): { data: { logs: T[] }; meta: apiMetadata } {
+    return {
+        data: { logs },
+        meta: {
+            page,
+            totalPages,
+            pageSize,
+            totalItems,
+        },
+    };
 }

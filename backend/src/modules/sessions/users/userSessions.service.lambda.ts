@@ -40,21 +40,22 @@ import type {
 const logger = createLogger('sessions.users.service');
 const LAMBDA_INVOKER: LambdaInvoker = new AwsLambdaInvoker(env.awsRegion);
 
-function throwFromUserSessionsLambdaError(result: LambdaErrorResponse): never {
+function throwFromUserSessionsLambdaError(result: LambdaErrorResponse, collectorSource: string): never {
   const message = result.error;
   const code = result.code ?? 'UNKNOWN';
+  const opts = { collectorSource };
 
   if (code === 'NOT_FOUND') {
-    throw new ResourceNotFoundError(message, code);
+    throw new ResourceNotFoundError(message, code, opts);
   }
   if (code === 'UNAUTHORIZED') {
-    throw new UnauthorizedError(message, code);
+    throw new UnauthorizedError(message, code, opts);
   }
   if (code === 'INVALID_REQUEST' || code === 'INVALID_STATE') {
-    throw new BadRequestError(message, code);
+    throw new BadRequestError(message, code, opts);
   }
 
-  throw new ServiceError(`user sessions lambda: ${message}`, 502, code);
+  throw new ServiceError(`user sessions lambda: ${message}`, 502, code, opts);
 }
 
 export class UserSessionsServiceLambda implements UserSessionsIService {
@@ -77,7 +78,7 @@ export class UserSessionsServiceLambda implements UserSessionsIService {
     logger.debug(".createManualPayment Lambda Response=", result);
 
     if (isLambdaErrorPayload(result)) {
-      throwFromUserSessionsLambdaError(result);
+      throwFromUserSessionsLambdaError(result, lambdaName);
     };
     const {user_id, session_id, paid_at}: UserPaymentResponseLambda = result.data;
     const response: UserPaymentResponse = { userId: user_id, sessionId: session_id, paidAt: paid_at };
@@ -118,11 +119,13 @@ export class UserSessionsServiceLambda implements UserSessionsIService {
     );
 
     if (isLambdaErrorPayload(result)) {
-      throwFromUserSessionsLambdaError(result);
+      throwFromUserSessionsLambdaError(result, env.stationsPortsWriteLambdaFunctionName);
     }
 
     if (!result.data || typeof result.data.entity_key !== 'string') {
-      throw new ServiceError('user sessions lambda: invalid port update response', 502, 'INVALID_RESPONSE');
+      throw new ServiceError('user sessions lambda: invalid port update response', 502, 'INVALID_RESPONSE', {
+        collectorSource: env.stationsPortsWriteLambdaFunctionName,
+      });
     }
 
     return mapLambdaUserStationPortUpdate(result.data);
@@ -142,11 +145,13 @@ export class UserSessionsServiceLambda implements UserSessionsIService {
     );
 
     if (isLambdaErrorPayload(result)) {
-      throwFromUserSessionsLambdaError(result);
+      throwFromUserSessionsLambdaError(result, env.stationsPortsReadLambdaFunctionName);
     }
 
     if (!result.data || !Array.isArray(result.data.session)) {
-      throw new ServiceError('user sessions lambda: invalid response', 502, 'INVALID_RESPONSE');
+      throw new ServiceError('user sessions lambda: invalid response', 502, 'INVALID_RESPONSE', {
+        collectorSource: env.stationsPortsReadLambdaFunctionName,
+      });
     }
 
     return mapLambdaUserSessions(result.data);
@@ -177,11 +182,13 @@ export class UserSessionsServiceLambda implements UserSessionsIService {
       );
 
       if (isLambdaErrorPayload(result)) {
-        throwFromUserSessionsLambdaError(result);
+        throwFromUserSessionsLambdaError(result, env.sessionsReadLambdaFunctionName);
       }
 
       if (!result.data || !Array.isArray(result.data)) {
-        throw new ServiceError('sessions rds lambda: invalid response', 502, 'INVALID_RESPONSE');
+        throw new ServiceError('sessions rds lambda: invalid response', 502, 'INVALID_RESPONSE', {
+          collectorSource: env.sessionsReadLambdaFunctionName,
+        });
       }
 
       collected.push(...mapLambdaUserSessionsByStation(result.data));
@@ -230,11 +237,13 @@ export class UserSessionsServiceLambda implements UserSessionsIService {
     );
 
     if (isLambdaErrorPayload(result)) {
-      throwFromUserSessionsLambdaError(result);
+      throwFromUserSessionsLambdaError(result, env.stationsPortsReadLambdaFunctionName);
     }
 
     if (!result.data || !Array.isArray(result.data.sessions)) {
-      throw new ServiceError('user sessions lambda: invalid station sessions response', 502, 'INVALID_RESPONSE');
+      throw new ServiceError('user sessions lambda: invalid station sessions response', 502, 'INVALID_RESPONSE', {
+        collectorSource: env.stationsPortsReadLambdaFunctionName,
+      });
     }
 
     return mapLambdaUserSessionsByStation(result.data.sessions);
