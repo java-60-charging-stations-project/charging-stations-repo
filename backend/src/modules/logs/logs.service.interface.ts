@@ -1,12 +1,19 @@
-import type { CollectorLogRecord, LogAudience } from './logs.types';
+import type { CollectorLogRecord, LogAudience, LogsResolvePayload } from './logs.types';
 
 export interface LogsListQuery {
   page: number;
   pageSize: number;
   dateFrom?: string;
   dateTo?: string;
-  /** Cognito `sub` for Lambda `callerId` (list). */
+  /** Cognito `sub` for Lambda invoke envelope `service.callerId` (audit). */
   callerId?: string;
+  /** Filter `logs.caller_id` (query `caller_id`). */
+  filterCallerId?: string;
+  level?: string;
+  service?: string;
+  event?: string;
+  resolved?: boolean;
+  orderBy?: string;
 }
 
 export interface LogsListResult {
@@ -24,5 +31,5 @@ export interface LogsService {
     logId: string,
     resolveTime: string,
     resolverId: string
-  ): Promise<CollectorLogRecord>;
+  ): Promise<LogsResolvePayload>;
 }

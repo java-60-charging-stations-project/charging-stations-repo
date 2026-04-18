@@ -2,7 +2,7 @@ import { ResourceNotFoundError } from '../../common/serviceErrors';
 import { env } from '../../config/env';
 import type { CollectorLogRecord, LogAudience } from './logs.types';
 import type { LogsListQuery, LogsListResult, LogsService } from './logs.service.interface';
-import { LogsServiceLambda } from './logs.service.lambda.js';
+import { LogsServiceLambda } from './logs.service.lambda';
 
 export type { LogsListQuery, LogsListResult, LogsService } from './logs.service.interface';
 
@@ -19,6 +19,24 @@ class LogsServiceLocal implements LogsService {
     const dateToMs = query.dateTo ? new Date(query.dateTo).getTime() : undefined;
 
     let filtered = LOGS_STORE.filter((log) => log.audience === audience);
+
+    if (query.level) {
+      filtered = filtered.filter((log) => log.level === query.level);
+    }
+    if (query.service) {
+      const s = query.service.toLowerCase();
+      filtered = filtered.filter((log) => log.service.toLowerCase().includes(s));
+    }
+    if (query.filterCallerId) {
+      filtered = filtered.filter((log) => log.caller_id === query.filterCallerId);
+    }
+    if (query.event) {
+      const e = query.event.toLowerCase();
+      filtered = filtered.filter((log) => log.event.toLowerCase().includes(e));
+    }
+    if (query.resolved !== undefined) {
+      filtered = filtered.filter((log) => log.resolved === query.resolved);
+    }
 
     if (dateFromMs !== undefined) {
       filtered = filtered.filter((log) => logTimestampMs(log) >= dateFromMs);
@@ -48,8 +66,8 @@ class LogsServiceLocal implements LogsService {
     audience: LogAudience,
     logId: string,
     resolveTime: string,
-    resolverId: string
-  ): Promise<CollectorLogRecord> {
+    resolverId: string,
+  ) {
     const log = LOGS_STORE.find((entry) => entry.audience === audience && entry.log_id === logId);
     if (!log) {
       throw new ResourceNotFoundError('Log not found', 'LOG_NOT_FOUND');
@@ -57,13 +75,17 @@ class LogsServiceLocal implements LogsService {
 
     log.resolve_time = resolveTime;
     log.resolver_id = resolverId;
-    return log;
+    log.resolved = true;
+    return {
+      logId: log.log_id,
+      resolverId,
+      resolveTime,
+    };
   }
 }
 
 export function buildLogsService(): LogsService {
-  const name = env.logsLambdaFunctionName?.trim();
-  if (env.useLambda && name) {
+  if (env.useLambda) {
     return new LogsServiceLambda();
   }
   return new LogsServiceLocal();

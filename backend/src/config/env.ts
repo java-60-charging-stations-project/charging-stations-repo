@@ -52,8 +52,21 @@ export const env = {
       'arn:aws:lambda:il-central-1:852215679994:function:charging-stations-get-session-rds-info'
   ),
 
-  /** Collector logs (list/resolve). Used when `USE_LAMBDA=true` and this name is non-empty. */
-  logsLambdaFunctionName: process.env.LOGS_LAMBDA_FUNCTION_NAME?.trim() || undefined,
+  /**
+   * RDS logs read Lambda (`lambda/db/read/get_logs_info.py`, action `getLogs`).
+   */
+  logsReadLambdaFunctionName: String(
+    process.env.LOGS_READ_LAMBDA_FUNCTION_NAME ??
+      'arn:aws:lambda:il-central-1:852215679994:function:charging-stations-read-logs-rds'
+  ),
+
+  /**
+   * RDS logs write Lambda (`lambda/db/write/write_logs_rds.py`, actions `write_logs`, `resolveLog`).
+   */
+  logsWriteLambdaFunctionName: String(
+    process.env.LOGS_WRITE_LAMBDA_FUNCTION_NAME ??
+      'arn:aws:lambda:il-central-1:852215679994:function:charging-stations-write-logs-rds'
+  ),
 
   stationsPortsWriteLambdaFunctionName: String(
     process.env.STATIONS_PORTS_WRITE_LAMBDA_FUNCTION_NAME ??

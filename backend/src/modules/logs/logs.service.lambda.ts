@@ -1,8 +1,9 @@
 import {
   isLambdaErrorPayload,
+  type LambdaGetLogsFilterData,
+  type LambdaGetLogsResponseMeta,
+  type LambdaResolveLogSuccessData,
   type LambdaSuccessPayload,
-  type LambdaListCollectorLogsData,
-  type LambdaResolveCollectorLogData,
 } from '../../common/lambdaContracts';
 import { ServiceError, ResourceNotFoundError, BadRequestError } from '../../common/serviceErrors';
 import { type LambdaErrorResponse } from '../../common/wrapperTypes';
@@ -20,8 +21,8 @@ function throwFromLogsLambdaError(result: LambdaErrorResponse, collectorSource: 
   const msg = result.error;
   const code = result.code ?? 'UNKNOWN';
   const opts = { collectorSource };
-  if (code === 'NOT_FOUND' || code === 'LOG_NOT_FOUND') {
-    throw new ResourceNotFoundError(msg, code === 'LOG_NOT_FOUND' ? 'LOG_NOT_FOUND' : 'NOT_FOUND', opts);
+  if (code === 'NOT_FOUND') {
+    throw new ResourceNotFoundError(msg, 'NOT_FOUND', opts);
   }
   if (code === 'INVALID_REQUEST') {
     throw new BadRequestError(msg, code, opts);
@@ -29,54 +30,96 @@ function throwFromLogsLambdaError(result: LambdaErrorResponse, collectorSource: 
   throw new ServiceError(`logs lambda: ${msg}`, 502, String(code), opts);
 }
 
-/** Lambda success body for list — `data.logs` snake_case rows per API contract. */
-interface LambdaListLogsSuccess {
-  logs: CollectorLogRecord[];
+function isoFromUnknown(v: unknown): string {
+  if (typeof v === 'string') return v;
+  if (v instanceof Date) return v.toISOString();
+  return '';
 }
 
-interface LambdaListLogsMeta {
-  totalItems: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
+function normalizeLevel(raw: unknown): CollectorLogRecord['level'] {
+  const u = String(raw ?? 'INFO').toUpperCase();
+  if (u === 'DEBUG' || u === 'INFO' || u === 'WARN' || u === 'ERROR') return u;
+  return 'INFO';
+}
+
+function mapRdsRowToCollector(row: Record<string, unknown>, audience: LogAudience): CollectorLogRecord {
+  return {
+    level: normalizeLevel(row.level),
+    message: String(row.message ?? ''),
+    service: String(row.service ?? ''),
+    event: String(row.event ?? ''),
+    source_service: row.source_service != null ? String(row.source_service) : '',
+    caller_id: String(row.caller_id ?? ''),
+    request_id: row.request_id != null ? String(row.request_id) : undefined,
+    timestamp: isoFromUnknown(row.timestamp) || new Date().toISOString(),
+    log_id: String(row.log_id ?? ''),
+    resolve_time: row.resolve_time != null ? isoFromUnknown(row.resolve_time) : undefined,
+    resolver_id: row.resolver_id != null ? String(row.resolver_id) : undefined,
+    resolved: Boolean(row.resolved),
+    audience,
+  };
+}
+
+function normalizeResolvePayload(raw: unknown): LambdaResolveLogSuccessData {
+  if (!raw || typeof raw !== 'object') {
+    throw new ServiceError('logs lambda: invalid resolve response', 502, 'INVALID_LAMBDA_RESPONSE', {});
+  }
+  const o = raw as Record<string, unknown>;
+  const logId = String(o.logId ?? '');
+  const resolverId = String(o.resolverId ?? '');
+  let resolveTime = isoFromUnknown(o.resolveTime);
+  if (!resolveTime) resolveTime = new Date().toISOString();
+  if (!logId || !resolverId) {
+    throw new ServiceError('logs lambda: invalid resolve response', 502, 'INVALID_LAMBDA_RESPONSE', {});
+  }
+  return { logId, resolverId, resolveTime };
 }
 
 export class LogsServiceLambda implements LogsService {
   async listByAudience(audience: LogAudience, query: LogsListQuery): Promise<LogsListResult> {
-    const collectorSource = env.logsLambdaFunctionName!;
-    const callerId = query.callerId?.trim() || 'guest';
-    const payload: LambdaListCollectorLogsData = {
-      audience,
-      page: query.page,
-      pageSize: query.pageSize,
+    const readSource = env.logsReadLambdaFunctionName;
+    const envelopeCallerId = query.callerId?.trim() || 'guest';
+
+    const data: LambdaGetLogsFilterData = {
+      ...(query.level ? { level: query.level } : {}),
+      ...(query.service ? { service: query.service } : {}),
+      ...(query.filterCallerId ? { callerId: query.filterCallerId } : {}),
+      ...(query.event ? { event: query.event } : {}),
+      ...(query.resolved !== undefined ? { resolved: query.resolved } : {}),
+      ...(query.orderBy ? { orderBy: query.orderBy } : {}),
       ...(query.dateFrom ? { dateFrom: query.dateFrom } : {}),
       ...(query.dateTo ? { dateTo: query.dateTo } : {}),
     };
 
-    logger.debug('Invoking logs lambda: listCollectorLogs', { callerId, payload });
+    const meta = { page: query.page, pageSize: query.pageSize };
+
+    logger.debug('Invoking logs read lambda: getLogs', { envelopeCallerId, data, meta });
 
     const result = await LAMBDA_INVOKER.invokeJson<
-      LambdaSuccessPayload<LambdaListLogsSuccess, LambdaListLogsMeta> | LambdaErrorResponse
-    >(collectorSource, wrapLambdaRequest('listCollectorLogs', callerId, payload));
+      LambdaSuccessPayload<unknown[], LambdaGetLogsResponseMeta> | LambdaErrorResponse
+    >(readSource, wrapLambdaRequest('getLogs', envelopeCallerId, data, meta));
 
     if (isLambdaErrorPayload(result)) {
-      throwFromLogsLambdaError(result, collectorSource);
+      throwFromLogsLambdaError(result, readSource);
     }
 
-    const logs = result.data?.logs;
-    if (!Array.isArray(logs)) {
+    const rows = result.data;
+    if (!Array.isArray(rows)) {
       throw new ServiceError('logs lambda: invalid list response', 502, 'INVALID_LAMBDA_RESPONSE', {
-        collectorSource,
+        collectorSource: readSource,
       });
     }
 
-    const meta = result.meta;
-    const totalItems = meta?.totalItems ?? logs.length;
-    const page = meta?.page ?? query.page;
-    const pageSize = meta?.pageSize ?? query.pageSize;
+    const logs = rows.map((row) =>
+      mapRdsRowToCollector(row as Record<string, unknown>, audience),
+    );
+
+    const m = result.meta;
+    const totalItems = m?.total_items ?? logs.length;
+    const page = m?.page ?? query.page;
+    const pageSize = m?.page_size ?? query.pageSize;
     const totalPages =
-      meta?.totalPages ??
-      (totalItems === 0 ? 0 : Math.ceil(totalItems / pageSize));
+      m?.total_pages ?? (totalItems === 0 ? 0 : Math.ceil(totalItems / pageSize));
 
     return {
       logs,
@@ -88,36 +131,23 @@ export class LogsServiceLambda implements LogsService {
   }
 
   async resolveById(
-    audience: LogAudience,
+    _audience: LogAudience,
     logId: string,
-    resolveTime: string,
-    resolverId: string
-  ): Promise<CollectorLogRecord> {
-    const collectorSource = env.logsLambdaFunctionName!;
-    const payload: LambdaResolveCollectorLogData = {
-      logId,
-      resolveTime,
-      resolverId,
-      audience,
-    };
+    _resolveTime: string,
+    resolverId: string,
+  ) {
+    const writeSource = env.logsWriteLambdaFunctionName;
 
-    logger.debug('Invoking logs lambda: resolveCollectorLog', { resolverId, logId });
+    logger.debug('Invoking logs write lambda: resolveLog', { resolverId, logId });
 
     const result = await LAMBDA_INVOKER.invokeJson<
-      LambdaSuccessPayload<{ log: CollectorLogRecord }> | LambdaErrorResponse
-    >(collectorSource, wrapLambdaRequest('resolveCollectorLog', resolverId, payload));
+      LambdaSuccessPayload<LambdaResolveLogSuccessData> | LambdaErrorResponse
+    >(writeSource, wrapLambdaRequest('resolveLog', resolverId, { logId }));
 
     if (isLambdaErrorPayload(result)) {
-      throwFromLogsLambdaError(result, collectorSource);
+      throwFromLogsLambdaError(result, writeSource);
     }
 
-    const log = result.data?.log;
-    if (!log || typeof log !== 'object') {
-      throw new ServiceError('logs lambda: invalid resolve response', 502, 'INVALID_LAMBDA_RESPONSE', {
-        collectorSource,
-      });
-    }
-
-    return log;
+    return normalizeResolvePayload(result.data);
   }
 }
