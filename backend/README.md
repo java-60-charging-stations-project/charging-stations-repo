@@ -23,6 +23,7 @@ See `backend/package.json`:
 - `npm run build` — build to `dist/`
 - `npm start` — run `dist/server.js`
 - `npm run lint`
+- `npm run valkey:smoke` — optional check that Valkey/Redis cache env is wired (requires `VALKEY_*`; see `.env.example`)
 
 ## `API_PREFIX` and `/health`
 
@@ -40,8 +41,13 @@ See `backend/.env.example`.
 Key ones:
 
 - **Server**: `PORT`, `API_PREFIX`, `CORS_ORIGIN`
-- **AWS/Lambda**: `AWS_REGION`, `HEALTH_LAMBDA_FUNCTION_NAME`, `USER_INFO_LAMBDA_FUNCTION_NAME`, `USER_MANAGEMENT_LAMBDA_FUNCTION_NAME`, `STATIONS_LAMBDA_FUNCTION_NAME`, `STATIONS_LAMBDA_WRITE_FUNCTION_NAME`, `STATIONS_PORTS_READ_LAMBDA_FUNCTION_NAME`, `STATIONS_PORTS_WRITE_LAMBDA_FUNCTION_NAME`, `SESSIONS_READ_LAMBDA_FUNCTION_NAME`
+- **Runtime**: `ENVIRONMENT`, `LOG_LEVEL`
+- **AWS/Lambda gateway**: `AWS_REGION`, `USE_LAMBDA` — when `true`, modules that support it call Lambdas instead of local stubs where a function name is configured
+- **Lambda ARNs/names**: `HEALTH_LAMBDA_FUNCTION_NAME`, `USER_INFO_LAMBDA_FUNCTION_NAME`, `USER_MANAGEMENT_LAMBDA_FUNCTION_NAME`, `STATIONS_LAMBDA_FUNCTION_NAME`, `STATIONS_LAMBDA_WRITE_FUNCTION_NAME`, `STATIONS_PORTS_READ_LAMBDA_FUNCTION_NAME`, `STATIONS_PORTS_WRITE_LAMBDA_FUNCTION_NAME`, `SESSIONS_READ_LAMBDA_FUNCTION_NAME`, optional **`LOGS_LAMBDA_FUNCTION_NAME`** (collector logs list/resolve when `USE_LAMBDA=true`)
 - **Auth (Cognito)**: `AUTH_DISABLED`, `COGNITO_REGION`, `COGNITO_USER_POOL_ID`, `COGNITO_CLIENT_ID`
+- **Valkey / Redis-compatible cache** (optional): `VALKEY_ENABLED`, `VALKEY_URL` or host/port/password, `VALKEY_TLS`, `VALKEY_KEY_PREFIX`, … — see `backend/.env.example`
+
+All keys are documented with examples in **`backend/.env.example`**.
 
 ## Auth and roles
 
@@ -191,8 +197,19 @@ Support helper:
 
 Router is mounted at `/logs` (see `logs.routes.ts`).
 
-- `GET /logs/support` — support/admin log feed for support audience (`SUPPORT` role)
-- `GET /logs/admin` — admin audience log feed (`ADMIN` role)
+- `GET /logs/support` — log list for support audience (`SUPPORT` role)
+- `GET /logs/admin` — log list for admin audience (`ADMIN` role)
+
+Query parameters for both list endpoints:
+
+- **`page`** (default `1`), **`pageSize`** (default `50`, max `200`)
+- **`date_from`**, **`date_to`** — optional ISO datetime (with offset); filter by log `timestamp`, inclusive bounds
+- Responses are sorted **newest first** by `timestamp` on the server (no client sort parameter)
+
+Successful list response shape: **`{ data: { logs }, meta }`** where **`meta`** follows **`PaginationMeta`** (`page`, `pageSize`, `totalItems`, `totalPages`). See **`specification.yaml`** (`CollectorLogCollectionApiResponse`).
+
+With **`USE_LAMBDA=true`** and **`LOGS_LAMBDA_FUNCTION_NAME`** set, list/resolve use the collector-logs Lambda; request **`data`** uses camelCase (**`logId`**, **`resolveTime`**, …) per **`lambda/Readme_lambda.md`**.
+
 - `POST /logs/support/:log_id` — resolve support log
 - `POST /logs/admin/:log_id` — resolve admin log
 
@@ -203,6 +220,12 @@ Resolve body:
   "resolve_time": "2026-04-17T10:15:00.000Z"
 }
 ```
+
+Without **`LOGS_LAMBDA_FUNCTION_NAME`**, list/resolve use an in-memory store (empty unless populated elsewhere).
+
+### Logging / collector hints
+
+Structured logs use **`createLogger`** (`backend/src/utils/logger.ts`). Fatal-path and error responses can emit **`CollectorErrorLog`** JSON for downstream collectors (**`backend/src/common/logContracts.ts`**). Errors that originate from a Lambda invoke carry **`collectorSource`** (function name/ARN) so collectors can dedupe against Lambda-native logs (**`LAMBDA_TRANSPORT_ERROR`** / **`LAMBDA_RESPONSE_ERROR`** events in **`errorHandler`**).
 
 ## Deployment (ECS Fargate + SAM)
 
