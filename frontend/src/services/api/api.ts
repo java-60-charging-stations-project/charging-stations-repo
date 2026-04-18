@@ -1,15 +1,21 @@
 import { config } from '@/config/env';
 import { ApiClientAxios } from './apiClientAxios';
 import type { ApiClient } from './apiClient';
+import { ApiClientMock } from './mock/apiClientMock';
 
-const DEFAULT_TIMEOUT: number = 3000;
+function getApiClient(): ApiClient {
+    const env = config.appEnv.toLowerCase();
+    const apiClientAxios: ApiClient = new ApiClientAxios({
+        baseUrl: config.apiBaseUrl,
+        timeout: config.apiTimeout,
+        apiPrefix: config.apiPrefix,
+    });
 
-const API_BASE_URL: string = config.apiBaseUrl;
-const API_PREFIX: string = config.apiPrefix;
-const API_TIMEOUT: number = config.apiTimeout ?? DEFAULT_TIMEOUT;
+    if (env === "mock") {
+        return new ApiClientMock(apiClientAxios, config.mockApiTimeout);
+    }
 
-export const apiClient: ApiClient = new ApiClientAxios(
-    API_BASE_URL,
-    API_PREFIX,
-    API_TIMEOUT,
-);
+    return apiClientAxios;
+}
+
+export const apiClient: ApiClient = getApiClient();

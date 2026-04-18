@@ -19,9 +19,15 @@ function extractEnvValue(parameterName: string): string | undefined {
 
     const trimmed = value.trim();
     return trimmed === "" ? undefined : trimmed;
-}
+};
 
-export function getStringParameter(parameterName: string, fallback?: string): string {
+export function getStringParameter(parameterName: string, fallback?: string): string | undefined {
+    const envValue = extractEnvValue(parameterName);
+    
+    return envValue ?? fallback;
+};
+
+export function requireStringParameter(parameterName: string, fallback?: string): string {
     const envValue = extractEnvValue(parameterName);
     
     if (envValue === undefined) {
@@ -34,7 +40,7 @@ export function getStringParameter(parameterName: string, fallback?: string): st
     return envValue;
 };
 
-export function getNumberParameter( parameterName: string, fallback?: number): number {
+export function requireNumberParameter( parameterName: string, fallback?: number): number {
     const envValue = extractEnvValue(parameterName);
 
     if (envValue === undefined) {
@@ -53,7 +59,7 @@ export function getNumberParameter( parameterName: string, fallback?: number): n
     return parsedValue;
 };
 
-export function getBooleanParameter(parameterName: string, fallback?: boolean): boolean {
+export function requireBooleanParameter(parameterName: string, fallback?: boolean): boolean {
     const envValue = extractEnvValue(parameterName);
 
     if (envValue === undefined) {

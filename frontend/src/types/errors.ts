@@ -41,4 +41,4 @@ export class NotConfirmedError extends Error {
         super(message, options);
         this.name = this.constructor.name;
     }
-}
+};

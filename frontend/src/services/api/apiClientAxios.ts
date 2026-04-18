@@ -12,7 +12,11 @@ import { type ApiClient } from "./apiClient";
 
 const logger = getLogger("ApiClient");
 
-
+export type ApiClientAxiosOptions = {
+    baseUrl: string;
+    timeout: number;
+    apiPrefix?: string;
+};
 
 const SERVER_ERROR = 'SERVER_ERROR';
 const NETWORK_ERROR = 'NETWORK_ERROR';
@@ -22,7 +26,8 @@ export class ApiClientAxios implements ApiClient {
     private readonly client: AxiosInstance;
     private refreshPromise: Promise<AuthDataType> | null = null;
 
-    constructor(baseUrl: string, apiPrefix: string, timeout: number) {
+    constructor(options: ApiClientAxiosOptions) {
+        const { baseUrl, timeout, apiPrefix = "" } = options;
         if (!baseUrl) {
             throw new Error('API base URL is not configured');
         }
