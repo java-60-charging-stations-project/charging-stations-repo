@@ -53,20 +53,17 @@ const LogsTable: FC<LogsTableProps> = ({ pollingIntervalMs = 10_000 }) => {
     }
     
     const { data: logs, meta } = logsResponse;
-
-    logger.debug(".LogsTable Fetched logsResponse=", logsResponse);
-    logger.debug(".LogsTable Fetched logs=", logs);
-    logger.debug(".LogsTable Fetched meta=", meta);
-
+    
     const resolveLogEntry = async (log_id: string) => {
         try {
+            logger.debug(`.LogsTable Resolving log_id=${log_id}`);
             setResolveId(log_id);
             const request: LogResolveRequest = { role, log_id, resolve_time: new Date().toISOString() };
             const response = await onResolveMutation(request).unwrap();
-            logger.debug(`Log entry log_id=${log_id} resolved with the response: `, response);
+            logger.debug(`.LogsTable Log entry log_id=${log_id} resolved with the response: `, response);
         }
         catch (err) {
-            logger.error(`Error resolving log_id=${log_id}`, err);
+            logger.error(`.LogsTable Error resolving log_id=${log_id}`, err);
             throw err;
         }
         finally {

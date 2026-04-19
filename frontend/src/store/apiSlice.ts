@@ -104,7 +104,7 @@ export const apiSlice = createApi({
         }),
         resolveLog: builder.mutation<LogRecord, LogResolveRequest>({
             query: ({role, resolve_time, log_id}) => ({
-                method: "GET",
+                method: "POST",
                 url: `/logs${buildRolePath(role)}/${log_id}`,
                 data: {resolve_time},
             }),
