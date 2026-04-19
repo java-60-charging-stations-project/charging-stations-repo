@@ -4,6 +4,7 @@ import type { LogRecord } from "@/types/logs";
 
 type LogEntryProps = {
     logRecord: LogRecord;
+    onResolve: () => void;
 };
 
 const DetailLine = ({ label, value }: { label: string; value: string | number }) => (
@@ -13,7 +14,7 @@ const DetailLine = ({ label, value }: { label: string; value: string | number })
     </div>
 );
 
-const LogEntry: FC<LogEntryProps> = ({ logRecord }) => {
+const LogEntry: FC<LogEntryProps> = ({ logRecord, onResolve }) => {
     const [detailsOpen, setDetailsOpen] = useState(false);
     const {
         log_id,
@@ -37,7 +38,7 @@ const LogEntry: FC<LogEntryProps> = ({ logRecord }) => {
                 value={isResolved}
                 disabled={!isResolved}
                 hint={isResolved ? "Resolved" : "Unresolved"}
-                onChange={()=>{}}
+                onChange={(checked: boolean) => checked && onResolve()}
             />
             <span className={textClass}>{timestamp}</span>
             <span className={textClass}>{source}</span>
