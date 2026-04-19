@@ -1,7 +1,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useGetLogsQuery, useResolveLogMutation } from "@/store/apiSlice";
 import Paginator from "./Paginator";
-import { useCallback, useState, type FC } from "react";
+import { useState, type FC } from "react";
 import LogEntry from "./LogEntry";
 import type { LogRecord, LogResolveRequest } from "@/types/logs";
 import { getLogger } from "@/services/logging";
