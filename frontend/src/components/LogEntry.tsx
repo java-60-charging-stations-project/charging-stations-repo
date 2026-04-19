@@ -15,6 +15,21 @@ const DetailLine = ({ label, value }: { label: string; value: string | number })
     </div>
 );
 
+const formatTimestamp = (isoTimestamp?: string): string => {
+    if (!isoTimestamp) return "-";
+    const parsedDate = new Date(isoTimestamp);
+    if (Number.isNaN(parsedDate.getTime())) return isoTimestamp;
+
+    return parsedDate.toLocaleString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+    });
+};
+
 const LogEntry: FC<LogEntryProps> = ({ logRecord, onResolve, isResolving }) => {
     const [detailsOpen, setDetailsOpen] = useState(false);
     const {
@@ -23,40 +38,50 @@ const LogEntry: FC<LogEntryProps> = ({ logRecord, onResolve, isResolving }) => {
         service,
         source_service = "",
         event,
-        resolver_id="-",
-        resolve_time ="-",
+        resolver_id,
+        resolve_time,
         timestamp,
     } = logRecord;
     const isResolved: boolean = !!resolver_id;
     const source = (source_service === "") ? service : source_service;
     const toggleDetails = useCallback(() => setDetailsOpen((prevValue) => !prevValue), []);
-    
-    const containerClass = `w-max flex flex-row items-center gap-2 p-2 rounded${isResolved ? 'bg-green-50' : 'bg-red-50'}`;
-    const textClass = isResolved? "font-normal text-base" : "font-bold text-[20px]";
+
+    const formattedTimestamp = formatTimestamp(timestamp);
+
+    const headerTextClass = isResolved ? "font-normal" : "font-bold";
+    const containerClass = isResolved
+        ? "w-full rounded-md border border-green-200 bg-green-50 px-3 py-2"
+        : "w-full rounded-md border border-red-200 bg-red-50 px-3 py-2";
+
     return (
-        <div  className={containerClass}>
-            <ToggleSwitch
-                value={isResolved}
-                disabled={isResolving && !isResolved}
-                hint={isResolved ? "Resolved" : "Unresolved"}
-                onChange={(checked: boolean) => checked && onResolve()}
-            />
-            <span className={textClass}>{timestamp}</span>
-            <span className={textClass}>{source}</span>
-            <button
-                className="flex h-7 w-7 items-center justify-center rounded border border-neutral-300 bg-neutral-50 text-base leading-none text-neutral-700 hover:bg-neutral-100"
-                onClick={toggleDetails}
-            >
-                <span>{detailsOpen? "-": "+"}</span>
-            </button>
-            { detailsOpen && (
-                <div className="mt-2 space-y-0.5 rounded border border-dashed border-neutral-200 bg-neutral-50/80 px-2 py-1.5">
+        <div className={containerClass}>
+            <div className={`flex w-full items-center gap-3 ${headerTextClass}`}>
+                <ToggleSwitch
+                    value={isResolved}
+                    disabled={isResolving && !isResolved}
+                    hint={isResolved ? "Resolved" : "Unresolved"}
+                    onChange={(checked: boolean) => checked && onResolve()}
+                />
+                <span className="shrink-0 whitespace-nowrap text-sm text-neutral-700">{formattedTimestamp}</span>
+                <span className="min-w-0 flex-1 truncate text-sm text-neutral-900" title={message}>{message}</span>
+                <button
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-neutral-300 bg-neutral-50 text-base leading-none text-neutral-700 hover:bg-neutral-100"
+                    onClick={toggleDetails}
+                    aria-label={detailsOpen ? "Hide details" : "Show details"}
+                >
+                    <span>{detailsOpen ? "-" : "+"}</span>
+                </button>
+            </div>
+            {detailsOpen && (
+                <div className="mt-2 rounded border border-neutral-200 bg-white/90 p-2 text-sm">
+                    <div className="grid gap-x-4 gap-y-1 sm:grid-cols-2">
                     <DetailLine label="Log entry ID" value={log_id} />
-                    <DetailLine label="Message" value={message} />
+                    <DetailLine label="Source" value={source} />
                     <DetailLine label="Event" value={event} />
-                    <DetailLine label="Resolved by" value={resolve_time} />
-                    <DetailLine label="Happened at" value={timestamp} />
-                    <DetailLine label="Resolved at" value={timestamp} />
+                    <DetailLine label="Resolved by" value={resolver_id ?? "-"} />
+                    <DetailLine label="Happened at" value={formattedTimestamp} />
+                    <DetailLine label="Resolved at" value={formatTimestamp(resolve_time)} />
+                    </div>
                 </div>
             )}
         </div>

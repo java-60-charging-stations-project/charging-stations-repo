@@ -104,13 +104,13 @@ const LogsTable: FC<LogsTableProps> = ({ pollingIntervalMs = 10_000 }) => {
     };
 
     return (
-        <>
+        <div className="w-full space-y-2">
             { logs.map((log: LogRecord)=> buildLogEntry(log))}
             <Paginator
                 totalPages={meta?.totalPages ?? 1}
                 activePage={page}
                 onPageChange={(_page: number) => setPage(_page) } />
-        </>
+        </div>
     );
 };
 
