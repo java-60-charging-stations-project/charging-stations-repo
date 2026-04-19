@@ -1,13 +1,12 @@
-import { config } from "@/config/env";
 import { useAuth } from "@/hooks/useAuth";
 import { useGetLogsQuery, useResolveLogMutation } from "@/store/apiSlice";
-import { useSearchParams } from "react-router";
 import Paginator from "./Paginator";
 import { useCallback, useState, type FC } from "react";
 import LogEntry from "./LogEntry";
 import type { LogRecord, LogResolveRequest } from "@/types/logs";
 import { getLogger } from "@/services/logging";
 import { toast } from "react-toastify";
+import { usePaginationParams } from "@/hooks/usePaginationParams";
 
 const logger = getLogger("logs");
 
@@ -34,10 +33,7 @@ type LogsTableProps = {
 const LogsTable: FC<LogsTableProps> = ({pollingIntervalMs = 10_000}) => {
     const { userRole } = useAuth();
     const role = userRole!;
-    const [searchParams, setSearchParams] = useSearchParams();
-    const pageParam = Number(searchParams.get('page'));
-    const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
-    const pageSize: number = Number(searchParams.get('pageSize')) || config.defaultPageSize;
+    const { page, pageSize, setPage } = usePaginationParams();
     const [resolveId, setResolveId] = useState<string | null>(null);
     const [onResolveMutation, { isLoading: isResolving }] = useResolveLogMutation();
     const {
@@ -85,14 +81,6 @@ const LogsTable: FC<LogsTableProps> = ({pollingIntervalMs = 10_000}) => {
             }
         );
     };
-    
-    const setPage = useCallback((page: number) => {
-        setSearchParams((prev) => {
-            const next = new URLSearchParams(prev);
-            next.set('page', String(page));
-            return next;
-        });
-    }, [setSearchParams]);
 
     if (isLoadError) {
         return <p className="text-red-600 font-bold border-2 border-yellow-500 p-2 rounded mb-2">
