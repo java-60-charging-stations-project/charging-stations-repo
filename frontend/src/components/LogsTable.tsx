@@ -2,7 +2,7 @@ import { useGetLogsQuery, useResolveLogMutation } from "@/store/apiSlice";
 import Paginator from "./Paginator";
 import { useState, type FC } from "react";
 import LogEntry from "./LogEntry";
-import type { LogRecord, LogResolveRequest } from "@/types/logs";
+import type { LogRecord, LogRequestFilterParams, LogResolveRequest } from "@/types/logs";
 import { getLogger } from "@/services/logging";
 import { toast } from "react-toastify";
 import { type PaginationParams } from "@/hooks/usePaginationParams";
@@ -30,9 +30,10 @@ type LogsTableProps = {
     pollingIntervalMs?: number;
     role: UserRole;
     paginationParams: PaginationParams;
+    filterParams?: LogRequestFilterParams;
 };
 
-const LogsTable: FC<LogsTableProps> = ({ role, paginationParams, pollingIntervalMs = 10_000 }) => {
+const LogsTable: FC<LogsTableProps> = ({ role, paginationParams, filterParams, pollingIntervalMs = 10_000 }) => {
     const { page, pageSize, setPage } = paginationParams;
     const [resolveId, setResolveId] = useState<string | null>(null);
     const [onResolveMutation, { isLoading: isResolving }] = useResolveLogMutation();
@@ -40,7 +41,7 @@ const LogsTable: FC<LogsTableProps> = ({ role, paginationParams, pollingInterval
         data: logsResponse,
         isError: isLoadError,
         error: loadError,
-    } = useGetLogsQuery({ role, page, pageSize }, {
+    } = useGetLogsQuery({ role, page, pageSize, filterParams }, {
         pollingInterval: pollingIntervalMs,
         skipPollingIfUnfocused: true,
         refetchOnReconnect: true,
