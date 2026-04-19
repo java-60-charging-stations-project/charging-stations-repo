@@ -1349,7 +1349,7 @@ Resources:
     Properties:
       LogGroupName: !Ref ApplicationSharedLambdaLogGroup
       FilterName: audit-high-severity
-      FilterPattern: '?"level": "ERROR" "service" ?"level": "CRITICAL" "service"'
+      FilterPattern: '%\[ERROR\].*service|\[CRITICAL\].*service%'
       DestinationArn: !GetAtt LogSubscriptionProcessorFunction.Arn
 
 Outputs:
