@@ -8,6 +8,11 @@ let client: Redis | undefined;
 let shutdown = false;
 let warnedMissingConfig = false;
 
+/** Avoid log spam: ioredis retries forever; same error repeats on every reconnect attempt. */
+let lastValkeyErrorSignature = '';
+let lastValkeyErrorLoggedAt = 0;
+const VALKEY_ERROR_LOG_THROTTLE_MS = 10_000;
+
 function buildRedis(): Redis {
   const v = env.valkey;
   const baseOptions: RedisOptions = {
@@ -57,7 +62,16 @@ export function getValkey(): Redis | undefined {
   if (!client) {
     client = buildRedis();
     client.on('error', (err) => {
-      logger.error('Valkey client error', { message: err.message });
+      const sig = err.message;
+      const now = Date.now();
+      if (
+        sig !== lastValkeyErrorSignature ||
+        now - lastValkeyErrorLoggedAt >= VALKEY_ERROR_LOG_THROTTLE_MS
+      ) {
+        lastValkeyErrorSignature = sig;
+        lastValkeyErrorLoggedAt = now;
+        logger.error('Valkey client error', { message: sig });
+      }
     });
   }
   return client;

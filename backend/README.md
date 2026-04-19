@@ -229,6 +229,84 @@ With **`USE_LAMBDA=false`**, list/resolve use an in-memory store (empty unless p
 
 Structured logs use **`createLogger`** (`backend/src/utils/logger.ts`). Fatal-path and error responses can emit **`CollectorErrorLog`** JSON for downstream collectors (**`backend/src/common/logContracts.ts`**). Errors that originate from a Lambda invoke carry **`collectorSource`** (function name/ARN) so collectors can dedupe against Lambda-native logs (**`LAMBDA_TRANSPORT_ERROR`** / **`LAMBDA_RESPONSE_ERROR`** events in **`errorHandler`**).
 
+## Valkey / Redis-compatible cache
+
+The backend uses **`ioredis`** against any Redis-compatible endpoint (local Valkey, Redis, AWS ElastiCache for Valkey). **Browsers never connect to Valkey** — only the Node process does. The frontend keeps calling your REST API; responses may be faster if services use **`cacheGet` / `cacheSet`** from **`src/cache`**.
+
+### 1. Configure environment (`backend/.env`)
+
+| Variable | Purpose |
+|----------|---------|
+| **`VALKEY_ENABLED`** | **`true`** to enable the client; **`false`** skips Valkey entirely (recommended when no server is running). |
+| **`VALKEY_URL`** | Single connection URL. For AWS TLS: **`rediss://...`** (often includes auth token). If set, host/port/password below are ignored. |
+| **`VALKEY_HOST`** / **`VALKEY_PORT`** | Alternative to URL for host/port mode (local Docker). Default port **6379**. |
+| **`VALKEY_TLS`** | **`true`** with **`VALKEY_HOST`** when the server expects TLS (e.g. some cloud endpoints). Prefer **`VALKEY_URL=rediss://`** for ElastiCache. |
+| **`VALKEY_PASSWORD`**, **`VALKEY_USERNAME`** | Auth when required by the endpoint. |
+| **`VALKEY_KEY_PREFIX`** | Namespace prefix for keys (default **`charging:`**). |
+| **`VALKEY_CONNECT_TIMEOUT_MS`** | TCP connect timeout (default **10000**). |
+
+Missing **`VALKEY_URL`** and **`VALKEY_HOST`** while **`VALKEY_ENABLED=true`** produces a warning and **no client** — cache helpers no-op safely.
+
+See **`backend/.env.example`** for a commented template.
+
+### 2. Run Valkey locally (Docker)
+
+1. Start **Docker Desktop** on Windows/macOS (wait until it is fully running).
+2. Run an Valkey container (Redis protocol on **6379**):
+
+```bash
+docker run -d --name valkey-local -p 6379:6379 valkey/valkey:8
+```
+
+3. In **`backend/.env`** set:
+
+```env
+VALKEY_ENABLED=true
+VALKEY_HOST=127.0.0.1
+VALKEY_PORT=6379
+VALKEY_TLS=false
+```
+
+### 3. Verify connectivity (smoke test)
+
+From **`backend`**:
+
+```bash
+npm run valkey:smoke
+```
+
+Expect **`READ ok:`** and **`done.`**. Each operation times out after **15s** if nothing listens (so the script does not hang forever).
+
+If you see **`ECONNREFUSED`**: nothing is listening on **`VALKEY_HOST`:`VALKEY_PORT`** — start Docker Valkey or fix host/port.
+
+If **`VALKEY_ENABLED is not true`**: set **`VALKEY_ENABLED=true`** in **`backend/.env`** (loaded automatically when you run npm from **`backend`**).
+
+### 4. Production (AWS ElastiCache for Valkey)
+
+1. Create a Valkey replication group **in the same VPC** as the ECS tasks (or reachable subnets).
+2. Security group for the cluster: **inbound TCP 6379** (or your port) **only from the ECS task security group** (not `0.0.0.0/0`).
+3. Provide the primary endpoint to the task as **`VALKEY_URL`**, typically **`rediss://`** with TLS. Use Secrets Manager / SSM for the URL or password, inject into the task definition env.
+4. ECS task instances must resolve and route to ElastiCache (same VPC / private subnets).
+
+### 5. Using cache in application code
+
+Infrastructure alone does not cache HTTP responses until you call the helpers. Example pattern:
+
+```ts
+import { cacheGetJson, cacheSetJson } from '../cache';
+
+const key = `stations:list:${city ?? 'all'}`;
+const cached = await cacheGetJson<MyDto>(key);
+if (cached) return cached;
+const fresh = await fetchFromLambdaOrDb();
+await cacheSetJson(key, fresh, 60); // TTL seconds
+return fresh;
+```
+
+Paths should match your module layout (**`../../cache`** etc.). Today, only **`scripts/valkey-smoke.ts`** uses these helpers unless you add calls in services/controllers.
+
+Graceful shutdown closes the Valkey socket in **`server.ts`** (**`closeValkey`**).
+
 ## Deployment (ECS Fargate + SAM)
 
 In this repo:
