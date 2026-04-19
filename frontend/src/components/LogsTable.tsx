@@ -5,7 +5,7 @@ import LogEntry from "./LogEntry";
 import type { LogRecord, LogResolveRequest } from "@/types/logs";
 import { getLogger } from "@/services/logging";
 import { toast } from "react-toastify";
-import { usePaginationParams } from "@/hooks/usePaginationParams";
+import { type PaginationParams } from "@/hooks/usePaginationParams";
 import type { UserRole } from "@/types";
 
 const logger = getLogger("logs");
@@ -29,10 +29,11 @@ function extractErrorMessage(error: unknown): string {
 type LogsTableProps = {
     pollingIntervalMs?: number;
     role: UserRole;
+    paginationParams: PaginationParams;
 };
 
-const LogsTable: FC<LogsTableProps> = ({ role, pollingIntervalMs = 10_000 }) => {
-    const { page, pageSize, setPage } = usePaginationParams();
+const LogsTable: FC<LogsTableProps> = ({ role, paginationParams, pollingIntervalMs = 10_000 }) => {
+    const { page, pageSize, setPage } = paginationParams;
     const [resolveId, setResolveId] = useState<string | null>(null);
     const [onResolveMutation, { isLoading: isResolving }] = useResolveLogMutation();
     const {
@@ -46,9 +47,11 @@ const LogsTable: FC<LogsTableProps> = ({ role, pollingIntervalMs = 10_000 }) => 
     });
 
     if (isLoadError || !logsResponse) {
-        return <p className="text-red-600 font-bold border-2 border-yellow-500 p-2 rounded mb-2">
-                    Error: {loadError?.message ?? "No data received"}
-                </p>
+        return (
+            <p className="text-red-600 font-bold border-2 border-yellow-500 p-2 rounded mb-2">
+                Error: {loadError?.message ?? "No data received"}
+            </p>
+        );
     }
     
     const { data: logs, meta } = logsResponse;

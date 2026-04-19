@@ -2,7 +2,14 @@ import { config } from "@/config/env";
 import { useCallback } from "react";
 import { useSearchParams } from "react-router";
 
-export function usePaginationParams() {
+export interface PaginationParams {
+    page: number;
+    pageSize: number;
+    setPage: (page: number) => void;
+    setPageSize: (pageSize: number) => void;
+};
+
+export function usePaginationParams(): PaginationParams {
     const [searchParams, setSearchParams] = useSearchParams();
 
     const getNumber = (key: string, fallback: number) => {

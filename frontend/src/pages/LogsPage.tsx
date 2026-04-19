@@ -1,9 +1,11 @@
 import LogsTable from "@/components/LogsTable";
 import { config } from "@/config/env";
 import { useAuth } from "@/hooks/useAuth";
+import { usePaginationParams } from "@/hooks/usePaginationParams";
 
 const LogsPage = () => {
     const { userRole } = useAuth();
+    const paginationParams = usePaginationParams();
     const isAdmin = config.adminGroupName === userRole;
     const isSupport = config.supportGroupName === userRole;
     if ( !isAdmin || !isSupport ) {
@@ -13,7 +15,10 @@ const LogsPage = () => {
     return (
         <div>
             <h1 className="text-2xl font-bold text-center">{headerText}</h1>
-            <LogsTable role={userRole} />
+            <LogsTable
+                role={userRole}
+                paginationParams={paginationParams}
+            />
         </div>
   );
 };
