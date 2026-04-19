@@ -4,12 +4,17 @@ import type { Session, UserSessionsResponse, UserSessionPortUpdateRequest, UserS
 import type { AdminCreateStationRequest, AdminCreateStationResponse, ChangeStationStateResponse, StationBase, StationPortsCreateResponse, StationPortsListResponse, SupportUpdatePortStateResponse, UpdateStationResponse } from "@/types/stations";
 import type { AddStationPortsPayload, ChangeStationStatePayload, DeleteStationPortPayload, GetStationPayload, UpdateStationPayload, UpdateStationPortStatePayload } from "@/types/rtk_payload";
 import type { UserRole } from "@/types";
-import type { ApiArrayResponse } from "@/types/apiTypes";
+import type { ApiArrayResponse, ApiResponse } from "@/types/apiTypes";
 import type { LogRecord, LogRequest, LogResolveRequest } from "@/types/logs";
+
+
+export function unwrapData<T>(response: ApiResponse<T>): T {
+  return response.data;
+};
 
 function buildRolePath(role: UserRole): string {
     return role === 'ADMIN' ? '/admin' : '/support';
-}
+};
 
 export const apiSlice = createApi({
     reducerPath: 'api',
@@ -21,6 +26,7 @@ export const apiSlice = createApi({
                 url: "/sessions/user",
                 method: "GET",
             }),
+            transformResponse: unwrapData,
             providesTags: ['Session'],
         }),
         getCompletedSessions: builder.query<Session[], void>({
@@ -29,7 +35,8 @@ export const apiSlice = createApi({
                 method: "GET",
                 params: {latest: true},
             }),
-            transformResponse: (response: UserSessionsResponse): Session[] => {
+            transformResponse: (rawResponse: ApiResponse<UserSessionsResponse>): Session[] => {
+                const response = unwrapData(rawResponse);
                 const stateOrder: Record<string, number> = { UNPAID: 0, PAID: 1 };
                 return response.sessions
                     .filter(s => s.state === "PAID" || s.state === "UNPAID")
@@ -47,6 +54,7 @@ export const apiSlice = createApi({
                 method: "POST",
                 data: body,
             }),
+            transformResponse: unwrapData,
             invalidatesTags: ['Session'],
         }),
         cancelBooking: builder.mutation<UserSessionPortUpdateResponse, UserSessionPortUpdateRequest>({
@@ -55,6 +63,7 @@ export const apiSlice = createApi({
                 method: "POST",
                 data: body,
             }),
+            transformResponse: unwrapData,
             invalidatesTags: ['Session'],
         }),
         startCharging: builder.mutation<UserSessionPortUpdateResponse, UserSessionPortUpdateRequest>({
@@ -63,6 +72,7 @@ export const apiSlice = createApi({
                 method: "POST",
                 data: body,
             }),
+            transformResponse: unwrapData,
             invalidatesTags: ['Session'],
         }),
         stopCharging: builder.mutation<UserSessionPortUpdateResponse, UserSessionPortUpdateRequest>({
@@ -71,6 +81,7 @@ export const apiSlice = createApi({
                 method: "POST",
                 data: body,
             }),
+            transformResponse: unwrapData,
             invalidatesTags: ['Session'],
         }),
         payManually: builder.mutation<UserSessionPaymentResponse, UserSessionPaymentRequest>({
@@ -79,6 +90,7 @@ export const apiSlice = createApi({
                 method: "POST",
                 data: body,
             }),
+            transformResponse: unwrapData,
             invalidatesTags: ['Session'],
         }),
         // Logs
@@ -96,6 +108,7 @@ export const apiSlice = createApi({
                 url: `/logs${buildRolePath(role)}/${log_id}`,
                 data: {resolve_time},
             }),
+            transformResponse: unwrapData,
             invalidatesTags: ["Log"],
         }),
         // STATIONS
@@ -104,6 +117,7 @@ export const apiSlice = createApi({
                 url: `${buildRolePath(role)}/stations/${stationId}`,
                 method: "GET",
             }),
+            transformResponse: unwrapData,
             providesTags: (_result, _error, { stationId }) => [{ type: 'Station', id: stationId }],
         }),
         updateStation: builder.mutation<UpdateStationResponse, UpdateStationPayload>({
@@ -112,6 +126,7 @@ export const apiSlice = createApi({
                 method: "PATCH",
                 data: body,
             }),
+            transformResponse: unwrapData,
             invalidatesTags: (_result, _error, { stationId }) => [{ type: 'Station', id: stationId }],
         }),
         updateStationState: builder.mutation<ChangeStationStateResponse, ChangeStationStatePayload>({
@@ -120,6 +135,7 @@ export const apiSlice = createApi({
                 method: "PATCH",
                 data: body,
             }),
+            transformResponse: unwrapData,
             invalidatesTags: (_result, _error, { stationId }) => [{ type: 'Station', id: stationId }],
         }),
         // CREATE AND DELETE STATIONS (admin-only)
@@ -129,12 +145,14 @@ export const apiSlice = createApi({
                 method: "POST",
                 data: body,
             }),
+            transformResponse: unwrapData,
         }),
         deleteStation: builder.mutation<void, string>({
             query: (stationId) => ({
                 url: `/admin/stations/${stationId}`,
                 method: "DELETE",
             }),
+            transformResponse: unwrapData,
             invalidatesTags: (_result, _error, stationId) => [{ type: 'Station', id: stationId }],
         }),
         // STATION PORTS (support-only)
@@ -143,6 +161,7 @@ export const apiSlice = createApi({
                 url: `/support/stations/${stationId}/ports`,
                 method: "GET",
             }),
+            transformResponse: unwrapData,
             providesTags: (_result, _error, stationId) => [{ type: 'Station', id: stationId }],
         }),
         addStationPorts: builder.mutation<StationPortsCreateResponse, AddStationPortsPayload>({
@@ -151,6 +170,7 @@ export const apiSlice = createApi({
                 method: "POST",
                 data: body,
             }),
+            transformResponse: unwrapData,
             invalidatesTags: (_result, _error, { stationId }) => [{ type: 'Station', id: stationId }],
         }),
         deleteStationPort: builder.mutation<void, DeleteStationPortPayload>({
@@ -166,6 +186,7 @@ export const apiSlice = createApi({
                 method: "PATCH",
                 data: body,
             }),
+            transformResponse: unwrapData,
             invalidatesTags: (_result, _error, { stationId }) => [{ type: 'Station', id: stationId }],
         }),
     }),

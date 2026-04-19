@@ -11,26 +11,26 @@ import { usePaginationParams } from "@/hooks/usePaginationParams";
 const logger = getLogger("logs");
 
 function extractErrorMessage(error: unknown): string {
-  if (!error) return 'Unknown error';
+    if (!error) return 'Unknown error';
 
-  if (typeof error === 'object' && error !== null) {
-    const err = error as { data?: { message?: string }; message?: string };
-    if (err.data?.message) {
-      return err.data.message;
+    if (typeof error === 'object' && error !== null) {
+        const err = error as { data?: { message?: string }; message?: string };
+        if (err.data?.message) {
+        return err.data.message;
+        }
+        if (err.message) {
+        return err.message;
+        }
     }
-    if (err.message) {
-      return err.message;
-    }
-  }
 
-  return String(error);
-}
+    return String(error);
+};
 
 type LogsTableProps = {
     pollingIntervalMs?: number;
 };
 
-const LogsTable: FC<LogsTableProps> = ({pollingIntervalMs = 10_000}) => {
+const LogsTable: FC<LogsTableProps> = ({ pollingIntervalMs = 10_000 }) => {
     const { userRole } = useAuth();
     const role = userRole!;
     const { page, pageSize, setPage } = usePaginationParams();
@@ -40,13 +40,23 @@ const LogsTable: FC<LogsTableProps> = ({pollingIntervalMs = 10_000}) => {
         data: logsResponse,
         isError: isLoadError,
         error: loadError,
-    } = useGetLogsQuery({ role, page, pageSize}, {
+    } = useGetLogsQuery({ role, page, pageSize }, {
         pollingInterval: pollingIntervalMs,
         skipPollingIfUnfocused: true,
         refetchOnReconnect: true,
     });
-    const logs = logsResponse?.data;
-    const meta = logsResponse?.meta;
+
+    if (isLoadError || !logsResponse) {
+        return <p className="text-red-600 font-bold border-2 border-yellow-500 p-2 rounded mb-2">
+                    Error: {loadError?.message ?? "No data received"}
+                </p>
+    }
+    
+    const { data: logs, meta } = logsResponse;
+
+    logger.debug(".LogsTable Fetched logsResponse=", logsResponse);
+    logger.debug(".LogsTable Fetched logs=", logs);
+    logger.debug(".LogsTable Fetched meta=", meta);
 
     const resolveLogEntry = async (log_id: string) => {
         try {
@@ -82,23 +92,20 @@ const LogsTable: FC<LogsTableProps> = ({pollingIntervalMs = 10_000}) => {
         );
     };
 
-    if (isLoadError) {
-        return <p className="text-red-600 font-bold border-2 border-yellow-500 p-2 rounded mb-2">
-                    Error: {loadError.message}
-                </p>
-    }
+    const buildLogEntry = (logRecord: LogRecord): React.ReactNode => {
+        return (
+            <LogEntry
+                key={ logRecord.log_id }
+                logRecord={ logRecord }
+                onResolve={ () => onResolve(logRecord.log_id) }
+                isResolving={ isResolving && resolveId === logRecord.log_id }
+            />
+        );
+    };
+
     return (
         <>
-            {
-                logs && logs.map((logRec: LogRecord) => (
-                    <LogEntry
-                        key={logRec.log_id}
-                        logRecord={logRec}
-                        onResolve={() => onResolve(logRec.log_id)}
-                        isResolving={ isResolving && resolveId === logRec.log_id }
-                    />
-                )
-            )}
+            { logs.map((log: LogRecord)=> buildLogEntry(log))}
             <Paginator
                 totalPages={meta?.totalPages ?? 1}
                 activePage={page}
