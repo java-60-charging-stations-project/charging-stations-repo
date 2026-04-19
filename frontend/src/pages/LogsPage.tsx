@@ -18,7 +18,7 @@ const LogsPage = () => {
     return (
         <div>
             <h1 className="text-2xl font-bold text-center">{headerText}</h1>
-            <div className="w-full">
+            <div className="w-full px-2">
                 <label className="flex items-center gap-2 cursor-pointer">
                     <input
                         type="checkbox"
