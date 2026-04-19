@@ -5,6 +5,7 @@ import type { LogRecord } from "@/types/logs";
 type LogEntryProps = {
     logRecord: LogRecord;
     onResolve: () => void;
+    isResolving: boolean;
 };
 
 const DetailLine = ({ label, value }: { label: string; value: string | number }) => (
@@ -14,7 +15,7 @@ const DetailLine = ({ label, value }: { label: string; value: string | number })
     </div>
 );
 
-const LogEntry: FC<LogEntryProps> = ({ logRecord, onResolve }) => {
+const LogEntry: FC<LogEntryProps> = ({ logRecord, onResolve, isResolving }) => {
     const [detailsOpen, setDetailsOpen] = useState(false);
     const {
         log_id,
@@ -36,7 +37,7 @@ const LogEntry: FC<LogEntryProps> = ({ logRecord, onResolve }) => {
         <div  className={containerClass}>
             <ToggleSwitch
                 value={isResolved}
-                disabled={!isResolved}
+                disabled={isResolving && !isResolved}
                 hint={isResolved ? "Resolved" : "Unresolved"}
                 onChange={(checked: boolean) => checked && onResolve()}
             />
