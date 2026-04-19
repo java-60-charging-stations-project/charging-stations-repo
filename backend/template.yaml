@@ -175,7 +175,7 @@ Resources:
     Properties:
       LogGroupName: !Ref TaskLogGroup
       FilterName: audit-high-severity-ecs-backend
-      FilterPattern: '?"level": "ERROR" "service" ?"level": "CRITICAL" "service"'
+      FilterPattern: '%\[ERROR\].*service|\[CRITICAL\].*service%'
       DestinationArn: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaLogSubscriptionProcessorName}"
 
   LoadBalancerSecurityGroup:
