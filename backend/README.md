@@ -43,7 +43,7 @@ Key ones:
 - **Server**: `PORT`, `API_PREFIX`, `CORS_ORIGIN`
 - **Runtime**: `ENVIRONMENT`, `LOG_LEVEL`
 - **AWS/Lambda gateway**: `AWS_REGION`, `USE_LAMBDA` — when `true`, modules that support it call Lambdas instead of local stubs where a function name is configured
-- **Lambda ARNs/names**: `HEALTH_LAMBDA_FUNCTION_NAME`, `USER_INFO_LAMBDA_FUNCTION_NAME`, `USER_MANAGEMENT_LAMBDA_FUNCTION_NAME`, `STATIONS_LAMBDA_FUNCTION_NAME`, `STATIONS_LAMBDA_WRITE_FUNCTION_NAME`, `STATIONS_PORTS_READ_LAMBDA_FUNCTION_NAME`, `STATIONS_PORTS_WRITE_LAMBDA_FUNCTION_NAME`, `SESSIONS_READ_LAMBDA_FUNCTION_NAME`, optional **`LOGS_LAMBDA_FUNCTION_NAME`** (collector logs list/resolve when `USE_LAMBDA=true`)
+- **Lambda ARNs/names**: `HEALTH_LAMBDA_FUNCTION_NAME`, `USER_INFO_LAMBDA_FUNCTION_NAME`, `USER_MANAGEMENT_LAMBDA_FUNCTION_NAME`, `STATIONS_LAMBDA_FUNCTION_NAME`, `STATIONS_LAMBDA_WRITE_FUNCTION_NAME`, `STATIONS_PORTS_READ_LAMBDA_FUNCTION_NAME`, `STATIONS_PORTS_WRITE_LAMBDA_FUNCTION_NAME`, `SESSIONS_READ_LAMBDA_FUNCTION_NAME`, **`LOGS_READ_LAMBDA_FUNCTION_NAME`**, **`LOGS_WRITE_LAMBDA_FUNCTION_NAME`** (RDS logs list `getLogs` / resolve `resolveLog` when `USE_LAMBDA=true`; defaults match `charging-stations-read-logs-rds` / `charging-stations-write-logs-rds`)
 - **Auth (Cognito)**: `AUTH_DISABLED`, `COGNITO_REGION`, `COGNITO_USER_POOL_ID`, `COGNITO_CLIENT_ID`
 - **Valkey / Redis-compatible cache** (optional): `VALKEY_ENABLED`, `VALKEY_URL` or host/port/password, `VALKEY_TLS`, `VALKEY_KEY_PREFIX`, … — see `backend/.env.example`
 
@@ -203,12 +203,12 @@ Router is mounted at `/logs` (see `logs.routes.ts`).
 Query parameters for both list endpoints:
 
 - **`page`** (default `1`), **`pageSize`** (default `50`, max `200`)
-- **`date_from`**, **`date_to`** — optional ISO datetime (with offset); filter by log `timestamp`, inclusive bounds
-- Responses are sorted **newest first** by `timestamp` on the server (no client sort parameter)
+- **`date_from`**, **`date_to`** — optional ISO datetime (with offset); inclusive bounds on **`timestamp`**. Passed to in-memory listing when **`USE_LAMBDA=false`**; forwarded as **`dateFrom`** / **`dateTo`** to RDS Lambda **`getLogs`** when **`USE_LAMBDA=true`** (`lambda/db/read/get_logs_info.py`).
+- **`level`**, **`service`** (substring, case-insensitive), **`caller_id`** (exact match on stored `caller_id`), **`event`** (substring), **`resolved`** (`true` / `false`), **`order_by`** — forwarded to **`getLogs`** when **`USE_LAMBDA=true`** (see `lambda/db/read/get_logs_info.py`).
 
 Successful list response shape: **`{ data: { logs }, meta }`** where **`meta`** follows **`PaginationMeta`** (`page`, `pageSize`, `totalItems`, `totalPages`). See **`specification.yaml`** (`CollectorLogCollectionApiResponse`).
 
-With **`USE_LAMBDA=true`** and **`LOGS_LAMBDA_FUNCTION_NAME`** set, list/resolve use the collector-logs Lambda; request **`data`** uses camelCase (**`logId`**, **`resolveTime`**, …) per **`lambda/Readme_lambda.md`**.
+With **`USE_LAMBDA=true`**, list invokes **`LOGS_READ_LAMBDA_FUNCTION_NAME`** (default `…:function:charging-stations-read-logs-rds`) and resolve invokes **`LOGS_WRITE_LAMBDA_FUNCTION_NAME`** (default `…:function:charging-stations-write-logs-rds`). Resolve uses Lambda action **`resolveLog`**; the write Lambda sets **`resolve_time`** to the current UTC time (the HTTP **`resolve_time`** body field is still required for validation but is ignored on the Lambda path).
 
 - `POST /logs/support/:log_id` — resolve support log
 - `POST /logs/admin/:log_id` — resolve admin log
@@ -221,7 +221,9 @@ Resolve body:
 }
 ```
 
-Without **`LOGS_LAMBDA_FUNCTION_NAME`**, list/resolve use an in-memory store (empty unless populated elsewhere).
+Successful resolve response: **`{ data: { logId, resolverId, resolveTime } }`** (ISO **`resolveTime`** from Lambda).
+
+With **`USE_LAMBDA=false`**, list/resolve use an in-memory store (empty unless populated elsewhere); resolve returns the same **`logId` / `resolverId` / `resolveTime`** shape using the body timestamp.
 
 ### Logging / collector hints
 

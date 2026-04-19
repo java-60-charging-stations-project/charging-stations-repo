@@ -369,11 +369,57 @@ export interface LambdaCreateRdsTablesResponse {
   message: string;
 }
 
-/** Collector logs — backend → Lambda `data` uses camelCase (`lambda/Readme_lambda.md`). */
+/** RDS logs read — `lambda/db/read/get_logs_info.py`, action `getLogs`. */
+
+export type LambdaLogsReadAction = 'getLogs';
+
+/** Filters in `event.data` (camelCase); `callerId` filters column `caller_id`. */
+export interface LambdaGetLogsFilterData {
+  level?: string;
+  service?: string;
+  callerId?: string;
+  event?: string;
+  resolved?: boolean | string;
+  /** Comma-separated tokens; each field uses suffix `+` / `-` for ASC/DESC (see `SORTABLE_COLUMNS` in Lambda). */
+  orderBy?: string;
+  /** ISO 8601 with offset; filters `logs.timestamp >= dateFrom`. */
+  dateFrom?: string;
+  /** ISO 8601 with offset; filters `logs.timestamp <= dateTo`. */
+  dateTo?: string;
+}
+
+export interface LambdaGetLogsRequestMeta {
+  page?: number;
+  pageSize?: number;
+}
+
+/** Pagination meta returned by read Lambda (`total_items`, snake_case). */
+export interface LambdaGetLogsResponseMeta {
+  total_items: number;
+  total_pages: number;
+  page: number;
+  page_size: number;
+}
+
+/** RDS logs write — `lambda/db/write/write_logs_rds.py`. */
+
+export type LambdaLogsWriteAction = 'write_logs' | 'resolveLog';
+
+/** `resolveLog`: only `logId`; resolver is `event.service.callerId`. */
+export interface LambdaResolveLogData {
+  logId: string;
+}
+
+export interface LambdaResolveLogSuccessData {
+  logId: string;
+  resolverId: string;
+  /** ISO datetime string from Lambda JSON. */
+  resolveTime: string;
+}
 
 export type LambdaCollectorLogAudience = 'support' | 'admin';
 
-/** `resolveCollectorLog` action payload. */
+/** @deprecated Use `LambdaGetLogsFilterData` + action `getLogs`. */
 export interface LambdaResolveCollectorLogData {
   logId: string;
   resolveTime: string;
@@ -381,7 +427,7 @@ export interface LambdaResolveCollectorLogData {
   audience: LambdaCollectorLogAudience;
 }
 
-/** `listCollectorLogs` action payload. */
+/** @deprecated Use `LambdaGetLogsFilterData` + `getLogs` meta pagination. */
 export interface LambdaListCollectorLogsData {
   audience: LambdaCollectorLogAudience;
   page: number;

@@ -25,6 +25,7 @@ const ROLE_NAV_ITEMS: Record<UserRole, NavItem[]> = {
   ],
   ADMIN: [
     { label: "Home", to: "/admin" },
+    { label: "Logs", to: "/admin/logs" },
     { label: "Users", to: "/admin/users" },
     { label: "Stations", to: "/admin/stations" },
   ],

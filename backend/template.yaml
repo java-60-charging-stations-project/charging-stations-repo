@@ -57,6 +57,12 @@ Parameters:
   LambdaStationsDynamoWriteName:
     Type: String
     Default: charging-stations-write-station-ports-dynamo
+  LambdaLogsReadName:
+    Type: String
+    Default: charging-stations-read-logs-rds
+  LambdaLogsWriteName:
+    Type: String
+    Default: charging-stations-write-logs-rds
   CognitoCrossAccountRoleArn:
     Type: String
     Description: Cross-account IAM role ARN used by the backend to manage Cognito users
@@ -156,6 +162,20 @@ Resources:
               - Effect: Allow
                 Action: lambda:InvokeFunction
                 Resource: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaStationsDynamoWriteName}"
+        - PolicyName: InvokeLogsReadLambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaLogsReadName}"
+        - PolicyName: InvokeLogsWriteLambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaLogsWriteName}"
         - PolicyName: AssumeCrossAccountCognitoRole
           PolicyDocument:
             Version: "2012-10-17"

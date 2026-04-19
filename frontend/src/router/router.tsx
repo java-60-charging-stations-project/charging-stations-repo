@@ -13,6 +13,7 @@ import SupportLogsPage from '@/pages/support/SupportLogsPage';
 import SupportStationsPage from '@/pages/support/SupportStationsPage';
 import SupportSessionsPage from '@/pages/support/SupportSessionsPage';
 import AdminDashboardPage from '@/pages/admin/AdminDashboardPage';
+import AdminLogsPage from '@/pages/admin/AdminLogsPage';
 import AdminUsersPage from '@/pages/admin/AdminUsersPage';
 import AdminUserEditPage from '@/pages/admin/AdminUserEditPage';
 import AdminStationsPage from '@/pages/admin/AdminStationsPage';
@@ -71,6 +72,7 @@ const router = createBrowserRouter([
                         element: <RoleRoute role={"ADMIN"} />,
                         children: [
                             { index: true, element: <AdminDashboardPage /> },
+                            { path: "logs", element: <AdminLogsPage /> },
                             { path: "users", element: <AdminUsersPage /> },
                             { path: "users/:userId", element: <AdminUserEditPage /> },
                             { path: "stations", element: <AdminStationsPage /> },

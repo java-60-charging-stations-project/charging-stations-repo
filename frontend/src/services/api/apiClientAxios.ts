@@ -10,7 +10,7 @@ import { store } from "@/store/store";
 import { logout } from "@/store/authSlice";
 import { type ApiClient } from "./apiClient";
 
-const logger = getLogger("ApiClient");
+const logger = getLogger("Axios");
 
 export type ApiClientAxiosOptions = {
     baseUrl: string;
@@ -195,13 +195,10 @@ export class ApiClientAxios implements ApiClient {
         config: AxiosRequestConfig,
         signal?: AbortSignal
     ): Promise<T> {
-        logger.debug("REQUEST", {
-            url: config.url,
-            method: config.method,
+        logger.debug(`.request REQUEST ${config.method} ${config.url}`, {
             params: config.params,
             data: config.data,
         });
-
         const response = await this.client.request<T>({
             ...config,
             signal,
@@ -209,7 +206,7 @@ export class ApiClientAxios implements ApiClient {
 
         const { status, data } = response;
 
-        logger.debug("RESPONSE", { status, data });
+        logger.debug(".request RESPONSE", { status, data });
 
         return data;
     }

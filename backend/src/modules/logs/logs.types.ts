@@ -12,6 +12,15 @@ export interface CollectorLogRecord {
   log_id: string;
   resolve_time?: string;
   resolver_id?: string;
+  resolved: boolean;
+  /** Route scope (support vs admin); not persisted in RDS — set by the API layer. */
   audience: LogAudience;
+}
+
+/** Successful `POST /logs/.../:log_id` when backed by RDS Lambda (`resolveLog`). */
+export interface LogsResolvePayload {
+  logId: string;
+  resolverId: string;
+  resolveTime: string;
 }
 
