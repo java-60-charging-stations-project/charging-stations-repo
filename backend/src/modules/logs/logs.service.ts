@@ -3,10 +3,53 @@ import { env } from '../../config/env';
 import type { CollectorLogRecord, LogAudience } from './logs.types';
 import type { LogsListQuery, LogsListResult, LogsService } from './logs.service.interface';
 import { LogsServiceLambda } from './logs.service.lambda';
+import { createLogger } from '../../utils/logger';
 
 export type { LogsListQuery, LogsListResult, LogsService } from './logs.service.interface';
 
-const LOGS_STORE: CollectorLogRecord[] = [];
+const logger = createLogger("logs");
+
+const LOGS_STORE: CollectorLogRecord[] = [
+  {
+    level: 'ERROR',
+    message: 'Failed to connect to charging station API',
+    service: 'stations',
+    event: 'api_connection_failed',
+    source_service: 'charging-station-001',
+    caller_id: 'user-123',
+    request_id: 'req-abc-123',
+    timestamp: '2026-04-19T10:00:00.000Z',
+    log_id: 'log-001',
+    resolved: false,
+    audience: 'support',
+  },
+  {
+    level: 'ERROR',
+    message: 'Session timeout warning for user session',
+    service: 'sessions',
+    event: 'session_timeout_warning',
+    source_service: 'session-manager',
+    caller_id: 'user-456',
+    request_id: 'req-def-456',
+    timestamp: '2026-04-19T11:30:00.000Z',
+    log_id: 'log-002',
+    resolved: false,
+    audience: 'support',
+  },
+  {
+    level: 'ERROR',
+    message: 'User authentication unsuccessful',
+    service: 'auth',
+    event: 'user_login_success',
+    source_service: 'auth-service',
+    caller_id: 'user-789',
+    request_id: 'req-ghi-789',
+    timestamp: '2026-04-19T12:15:00.000Z',
+    log_id: 'log-003',
+    resolved: false,
+    audience: 'admin',
+  },
+];
 
 function logTimestampMs(record: CollectorLogRecord): number {
   const ms = new Date(record.timestamp).getTime();
@@ -14,6 +57,9 @@ function logTimestampMs(record: CollectorLogRecord): number {
 }
 
 class LogsServiceLocal implements LogsService {
+  constructor() {
+    logger.debug("STARTING LogsServiceLocal...");
+  }
   async listByAudience(audience: LogAudience, query: LogsListQuery): Promise<LogsListResult> {
     const dateFromMs = query.dateFrom ? new Date(query.dateFrom).getTime() : undefined;
     const dateToMs = query.dateTo ? new Date(query.dateTo).getTime() : undefined;
@@ -85,8 +131,8 @@ class LogsServiceLocal implements LogsService {
 }
 
 export function buildLogsService(): LogsService {
-  if (env.useLambda) {
-    return new LogsServiceLambda();
+  if (env.environment === 'local') {
+    return new LogsServiceLocal();
   }
-  return new LogsServiceLocal();
+  return new LogsServiceLambda();
 }

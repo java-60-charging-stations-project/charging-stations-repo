@@ -41,9 +41,9 @@ export function wrapLogsCollectionResponse<T>(
     pageSize: number,
     page: number = 1,
     totalPages: number = 1,
-): { data: { logs: T[] }; meta: apiMetadata } {
+): { data: T[]; meta: apiMetadata } {
     return {
-        data: { logs },
+        data: logs,
         meta: {
             page,
             totalPages,
