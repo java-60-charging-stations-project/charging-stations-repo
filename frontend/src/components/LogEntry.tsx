@@ -55,7 +55,7 @@ const LogEntry: FC<LogEntryProps> = ({ logRecord, onResolve, isResolving }) => {
 
     return (
         <div className={containerClass}>
-            <div className={`flex w-full items-center gap-3 ${headerTextClass}`}>
+            <div className={`flex w-full px-2 items-center gap-3 ${headerTextClass}`}>
                 <ToggleSwitch
                     value={isResolved}
                     disabled={isResolving && !isResolved}
