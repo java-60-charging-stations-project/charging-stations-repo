@@ -1,4 +1,3 @@
-import { useAuth } from "@/hooks/useAuth";
 import { useGetLogsQuery, useResolveLogMutation } from "@/store/apiSlice";
 import Paginator from "./Paginator";
 import { useState, type FC } from "react";
@@ -7,6 +6,7 @@ import type { LogRecord, LogResolveRequest } from "@/types/logs";
 import { getLogger } from "@/services/logging";
 import { toast } from "react-toastify";
 import { usePaginationParams } from "@/hooks/usePaginationParams";
+import type { UserRole } from "@/types";
 
 const logger = getLogger("logs");
 
@@ -28,11 +28,10 @@ function extractErrorMessage(error: unknown): string {
 
 type LogsTableProps = {
     pollingIntervalMs?: number;
+    role: UserRole;
 };
 
-const LogsTable: FC<LogsTableProps> = ({ pollingIntervalMs = 10_000 }) => {
-    const { userRole } = useAuth();
-    const role = userRole!;
+const LogsTable: FC<LogsTableProps> = ({ role, pollingIntervalMs = 10_000 }) => {
     const { page, pageSize, setPage } = usePaginationParams();
     const [resolveId, setResolveId] = useState<string | null>(null);
     const [onResolveMutation, { isLoading: isResolving }] = useResolveLogMutation();
