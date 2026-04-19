@@ -95,10 +95,10 @@ export const apiSlice = createApi({
         }),
         // Logs
         getLogs: builder.query<ApiArrayResponse<LogRecord>, LogRequest>({
-            query: ({ role, ...params }: LogRequest) => ({
+            query: ({ role, page, pageSize, filterParams={} }: LogRequest) => ({
                 method: "GET",
                 url: `/logs${buildRolePath(role)}`,
-                params,
+                params: {page, pageSize,...filterParams},
             }),
             providesTags: ["Log"],
         }),
