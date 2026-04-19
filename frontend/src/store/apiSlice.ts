@@ -180,6 +180,9 @@ export const {
     useStartChargingMutation,
     useStopChargingMutation,
     usePayManuallyMutation,
+    // LOGS
+    useGetLogsQuery,
+    useResolveLogMutation,
     // STATIONS
     useGetStationQuery,
     useUpdateStationMutation,
