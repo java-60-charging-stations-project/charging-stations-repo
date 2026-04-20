@@ -264,7 +264,7 @@ def update_station_ports(action: str, port_data: dict, user_id: str| None = None
     random_chance = random.randint(1, 100)
     port_update_success = random_chance <= PORT_UPDATE_SUCCESS_RATE
     if not port_update_success:
-        logger.info(f"port update failed: {port_data}")
+        logger.error(f"port update failed: {port_data}")
         raise LambdaResponseError({"error": f"port update failed", "code": "UNHANDLED_ERROR"})
     if not port_data["port_key"]:
         logger.error(f"port key is required for {action}")

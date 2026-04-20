@@ -35,6 +35,64 @@ On error, Lambdas return:
 }
 ```
 
+## CloudWatch subscription processor (internal)
+
+Lambda: `charging-stations-log-subscription-processor`
+
+Trigger: `AWS::Logs::SubscriptionFilter` (CloudWatch Logs subscription event)
+
+### Input shape (from CloudWatch Logs)
+
+The handler receives the standard `awslogs.data` envelope (base64 + gzip), which expands to:
+
+```json
+{
+  "owner": "aws-account-id",
+  "logGroup": "/charging-stations/<stack>/lambda/application or /ecs/charging-stations-backend",
+  "logStream": "stream-name",
+  "logEvents": [
+    {
+      "id": "cloudwatch-event-id",
+      "timestamp": 1713605103352,
+      "message": "[INFO]\t2026-04-20T09:25:03.352Z\ta9da69ce-afb3-47f5-a8da-41ad65a6455e\t{ \"level\": \"ERROR\", \"service\": \"...\", \"event\": \"...\", \"message\": \"...\", \"caller_id\": \"...\", \"request_id\": \"...\" }"
+    }
+  ]
+}
+```
+
+Notes:
+
+- `message` is often not pure JSON; it may include a Lambda prefix (`[LEVEL]\t<ts>\t<request-id>\t`) before the JSON payload.
+- The processor parses prefix metadata and then parses the JSON tail (from first `{` onward).
+
+### Normalized payload sent to write-logs Lambda
+
+The processor asynchronously invokes `charging-stations-write-logs-rds` with:
+
+```json
+{
+  "service": {
+    "action": "write_logs",
+    "callerId": "log_sub_processor"
+  },
+  "data": [
+    {
+      "logGroup": "string",
+      "logStream": "string",
+      "eventId": "cloudwatch-event-id",
+      "timestamp": "ISO timestamp",
+      "message": "string",
+      "level": "ERROR|CRITICAL|INFO|...",
+      "service": "lambda-or-service-name",
+      "event": "domain-event-name",
+      "source_service": "string|null",
+      "caller_id": "string",
+      "request_id": "uuid|string"
+    }
+  ]
+}
+```
+
 ## Users
 
 ### Get all users
