@@ -31,11 +31,6 @@ SORTABLE_COLUMNS = {
     "resolved": "resolved",
 }
 
-def datetime_to_json(v: Any) -> Any:
-    if isinstance(v, datetime):
-        return v.isoformat()
-
-
 def get_db_config() -> dict:
     return {
         "host": os.environ["DB_HOST"],
@@ -172,8 +167,12 @@ def build_meta_parameters(total_items: int, total_pages: int, parameters: dict) 
     }
 
 def build_json(log_row: dict) -> dict:
-    return datetime_to_json(dict(log_row))
-
+    out = dict(log_row)
+    for k in ("timestamp", "resolve_time"):
+        v = out.get(k)
+        if isinstance(v, datetime):
+            out[k] = v.isoformat()
+    return out
 
 def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponsePayload:
     logger.info(f"Handler called with event: {event}")

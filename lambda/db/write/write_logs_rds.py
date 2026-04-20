@@ -139,8 +139,8 @@ def resolve_log_in_rds(log_id: str, resolver_id: str, resolve_time: str) -> None
             cur.execute(
                 """
                 UPDATE logs
-                SET resolver_id = %s, resolve_time = %s
-                WHERE log_id = %s AND resolve_time IS NULL
+                SET resolver_id = %s, resolve_time = %s, resolved = true
+                WHERE log_id = %s
                 """,
                 (resolver_id, resolve_time, log_id),
             )
@@ -196,7 +196,8 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                 resolve_time = datetime.now(timezone.utc)
                 resolve_log_in_rds(log_id, resolver_id, resolve_time)
                 log_audit("INFO", message="log resolved successfully", status="SUCCESS", **audit_base)
-                return SuccessResponsePayload(data={"logId": log_id, "resolverId": resolver_id, "resolveTime": resolve_time}, meta={})
+                return SuccessResponsePayload(data={"logId": log_id, "resolverId": resolver_id, 
+                "resolveTime": resolve_time.isoformat()}, meta={})
             case _:
                 log_audit("ERROR", message="invalid action", status="ERROR", errorMessage=f"invalid action: {action}", **audit_base)
                 return ErrorResponsePayload(error=f"invalid action: {action}", code="INVALID_REQUEST")
