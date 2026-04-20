@@ -108,7 +108,7 @@ export class StationsServiceLambda implements StationsService {
 
   private async resolvePortKey(stationId: string, portId: string, callerId: string): Promise<string> {
     if (portId.startsWith('PORT#')) {
-      return portId;
+      return portId.slice('PORT#'.length);
     }
 
     const ports = await this.getPortRows(stationId, callerId);

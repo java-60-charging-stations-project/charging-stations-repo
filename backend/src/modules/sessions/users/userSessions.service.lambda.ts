@@ -80,7 +80,18 @@ export class UserSessionsServiceLambda implements UserSessionsIService {
     if (isLambdaErrorPayload(result)) {
       throwFromUserSessionsLambdaError(result, lambdaName);
     };
-    const {user_id, session_id, paid_at}: UserPaymentResponseLambda = result.data;
+    const paidSession = (result.data as UserPaymentResponseLambda).paid_session;
+    if (
+      !paidSession ||
+      typeof paidSession.user_id !== 'string' ||
+      typeof paidSession.session_id !== 'string' ||
+      typeof paidSession.paid_at !== 'string'
+    ) {
+      throw new ServiceError('user sessions lambda: invalid paySessionUser response', 502, 'INVALID_RESPONSE', {
+        collectorSource: lambdaName,
+      });
+    }
+    const { user_id, session_id, paid_at } = paidSession;
     const response: UserPaymentResponse = { userId: user_id, sessionId: session_id, paidAt: paid_at };
     logger.debug(".createManualPayment responding with the Payload: ", response);
     return response;
