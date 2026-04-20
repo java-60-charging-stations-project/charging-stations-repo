@@ -16,7 +16,7 @@ createRoot(document.getElementById('root')!).render(
     <Provider store={store}>
       <RouterProvider router={router} />
       <ToastContainer
-        autoClose={3000}
+        autoClose={5000}
         hideProgressBar={false}
         newestOnTop
         closeOnClick

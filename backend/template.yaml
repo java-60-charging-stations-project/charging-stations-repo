@@ -199,7 +199,7 @@ Resources:
     Properties:
       LogGroupName: !Ref TaskLogGroup
       FilterName: audit-high-severity-ecs-backend
-      FilterPattern: '%"level"\s*:\s*"(ERROR|CRITICAL)".*"service"\s*:%'
+      FilterPattern: '%\x22level\x22\s*:\s*\x22ERROR\x22.*\x22service\x22\s*:|\x22level\x22\s*:\s*\x22CRITICAL\x22.*\x22service\x22\s*:%'
       DestinationArn: !Ref LogSubscriptionDestinationArn
 
   LoadBalancerSecurityGroup:

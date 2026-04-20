@@ -6,6 +6,11 @@ import type { AddStationPortsPayload, ChangeStationStatePayload, DeleteStationPo
 import type { UserRole } from "@/types";
 import type { ApiArrayResponse, ApiResponse } from "@/types/apiTypes";
 import type { LogRecord, LogRequest, LogResolveRequest } from "@/types/logs";
+import { createSelector } from "@reduxjs/toolkit";
+import type { AppStartListening } from "./listenerMiddleware";
+import { getLogger } from "@/services/logging";
+
+const logger = getLogger("apiSlice");
 
 
 export function unwrapData<T>(response: ApiResponse<T>): T {
@@ -191,6 +196,72 @@ export const apiSlice = createApi({
         }),
     }),
 });
+
+// Selectors
+export const selectActiveSessionStateSelector = createSelector(
+    apiSlice.endpoints.getSessions.select(undefined),
+    (selected) => {
+        
+        const session = selected.data?.sessions[0];
+        if (!session) {
+            return null;
+        }
+        return { state: session.state, charge: session.chargeLevelPercent ?? 0 };
+    }
+);
+
+// Middleware
+export const addSessionStateListener = (appListening: AppStartListening) => {
+    appListening({
+        matcher: apiSlice.endpoints.getSessions.matchFulfilled,
+        effect: async (_action, listenerApi) => {
+            const prevState = selectActiveSessionStateSelector(listenerApi.getOriginalState());
+            const currentState = selectActiveSessionStateSelector(listenerApi.getState());
+            if ( prevState?.state === currentState?.state && prevState?.charge === currentState?.charge) {
+                return;
+            }
+            const { toast } = await import ("react-toastify");
+            
+            logger.debug("prevState = ", prevState);
+            logger.debug("currentState = ", currentState);
+            
+            if (prevState && prevState.state === "BOOKED" && !currentState) {
+                toast.warn("Your booked session is expired", {
+                    position: "bottom-right",
+                    className: 'p-0 w-[400px] border border-purple-600/40',
+                    autoClose: 5000,
+                    toastId: "session-expired",
+                });
+            }
+            else if (
+                currentState &&
+                currentState.state === "ACTIVE" &&
+                currentState.charge === 100 &&
+                prevState && prevState.charge < 100
+            ) {
+                toast.success(
+                    "Your charging has completed!", {
+                    position: "bottom-right",
+                    className: 'p-0 w-[400px] border border-purple-600/40',
+                    autoClose: 5000,
+                    toastId: "charging-completed",
+                });
+            }
+            else if (
+                (!prevState || prevState.state === "BOOKED") &&
+                currentState && currentState.state === "ACTIVE"
+            ) {
+                toast.success(
+                    "Your charging has started!", {
+                    position: "bottom-right",
+                    className: 'p-0 w-[400px] border border-purple-600/40',
+                    autoClose: 5000,
+                    toastId: "charging-started",
+                });
+            }
+        },
+    });
+};
 
 export const {
     // SESSIONS
