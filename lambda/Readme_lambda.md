@@ -283,10 +283,22 @@ Copy **`lambda/.env.example`** to **`lambda/.env`** and set values for local run
 
 ## Audit logging (CloudWatch)
 
-Lambdas use **`log_audit`** (from `utils.logger` in the common layer) to write one JSON line per event (e.g. `message`, `userId`, `event`, `status`, `requestId`, `source`/`trigger`).
+Lambdas use **`log_audit`** (from `utils.logger` in the common layer) to emit JSON audit payloads (for example `level`, `message`, `status`, `event`, `service`, `caller_id`, `request_id`).
 
-- **Log groups:** `/aws/lambda/<function-name>`.
-- **Query:** CloudWatch → Logs → Logs Insights; filter by `event`, `status`, `userId`, `requestId` in the message.
+In CloudWatch, many Python Lambda logs are stored as a prefixed message:
+
+`[INFO|ERROR|...]\t<ISO timestamp>\t<request-id>\t{...json...}`
+
+The subscription processor (`charging-stations-log-subscription-processor`) is expected to parse this shape by extracting:
+
+1. Prefix timestamp/request id
+2. JSON body starting at the first `{`
+
+then writing normalized records through `charging-stations-write-logs-rds`.
+
+- **Main app log group (subscription source):** `/charging-stations/${AWS::StackName}/lambda/application`
+- **Processor log group (target function logs):** `/charging-stations/${AWS::StackName}/lambda/application/audit`
+- **Query:** CloudWatch → Logs → Logs Insights; filter by `event`, `status`, `service`, `request_id`.
 - **Log level:** Optional `LOGGER_LEVEL` per function in the template (`Environment.Variables.LOGGER_LEVEL`, e.g. `INFO` or `DEBUG`).
 
 ---
