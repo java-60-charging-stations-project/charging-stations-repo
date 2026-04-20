@@ -9,6 +9,7 @@ import type { LogRecord, LogRequest, LogResolveRequest } from "@/types/logs";
 import { createSelector } from "@reduxjs/toolkit";
 import type { AppStartListening } from "./listenerMiddleware";
 import { getLogger } from "@/services/logging";
+import { isFreshUnpaidSession, isStaleUnpaidSession } from "@/utils/sessionStatus";
 
 const logger = getLogger("apiSlice");
 
@@ -201,62 +202,62 @@ export const apiSlice = createApi({
 export const selectActiveSessionStateSelector = createSelector(
     apiSlice.endpoints.getSessions.select(undefined),
     (selected) => {
-        
-        const session = selected.data?.sessions[0];
-        if (!session) {
-            return null;
-        }
-        return { state: session.state, charge: session.chargeLevelPercent ?? 0 };
+        return selected.data?.sessions[0] ?? null;
     }
 );
 
 // Middleware
+function isUnchanged(prev: Session | null, curr: Session | null): boolean {
+    return (prev?.state === curr?.state && prev?.chargeLevelPercent === prev?.chargeLevelPercent);
+};
+function isPaymentFailed(prev: Session | null, curr: Session | null): boolean {
+    return  isFreshUnpaidSession(prev) && isStaleUnpaidSession(curr);
+}
+function isBookingExpired(prev: Session | null, curr: Session | null): boolean {
+    if (
+        ( prev !== null && prev.state === "BOOKED" ) &&
+        ( curr === null || curr.state === "UNPAID" || curr.state === "PAID" )
+    ) {
+        return true;
+    }
+
+    return false;
+};
+function isChargeCompleted(prev: Session | null, curr: Session | null): boolean {
+    const prevPct = prev === null? 0: (prev.chargeLevelPercent ?? 0);
+    return (curr !== null && curr.state === "ACTIVE" && curr.chargeLevelPercent === 100 && prevPct < 100);
+};
+
 export const addSessionStateListener = (appListening: AppStartListening) => {
     appListening({
         matcher: apiSlice.endpoints.getSessions.matchFulfilled,
         effect: async (_action, listenerApi) => {
-            const prevState = selectActiveSessionStateSelector(listenerApi.getOriginalState());
-            const currentState = selectActiveSessionStateSelector(listenerApi.getState());
-            if ( prevState?.state === currentState?.state && prevState?.charge === currentState?.charge) {
+            const prev = selectActiveSessionStateSelector(listenerApi.getOriginalState());
+            const curr = selectActiveSessionStateSelector(listenerApi.getState());
+            logger.debug(`Effect is running, prevState = ${prev?.state}, currState=${curr?.state}`);
+            if ( isUnchanged(prev, curr) ) {
                 return;
             }
-            const { toast } = await import ("react-toastify");
+            const { toast } = await import("react-toastify");
+            const position = "bottom-right";
+            const className = "p-0 w-100 border border-purple-600/40";
+            const autoClose = 5000;
             
-            logger.debug("prevState = ", prevState);
-            logger.debug("currentState = ", currentState);
-            
-            if (prevState && prevState.state === "BOOKED" && !currentState) {
-                toast.warn("Your booked session is expired", {
-                    position: "bottom-right",
-                    className: 'p-0 w-[400px] border border-purple-600/40',
-                    autoClose: 5000,
-                    toastId: "session-expired",
+            if ( isBookingExpired(prev, curr) ) {
+                toast.warn("Your booking has expired", {
+                    toastId: "session-expired", position, className, autoClose,
                 });
             }
-            else if (
-                currentState &&
-                currentState.state === "ACTIVE" &&
-                currentState.charge === 100 &&
-                prevState && prevState.charge < 100
-            ) {
+            else if ( isChargeCompleted(prev, curr) ) {
                 toast.success(
-                    "Your charging has completed!", {
-                    position: "bottom-right",
-                    className: 'p-0 w-[400px] border border-purple-600/40',
-                    autoClose: 5000,
-                    toastId: "charging-completed",
+                    "Your charging is complete", {
+                    toastId: "charging-completed", position, className, autoClose,
                 });
             }
-            else if (
-                (!prevState || prevState.state === "BOOKED") &&
-                currentState && currentState.state === "ACTIVE"
-            ) {
-                toast.success(
-                    "Your charging has started!", {
-                    position: "bottom-right",
-                    className: 'p-0 w-[400px] border border-purple-600/40',
-                    autoClose: 5000,
-                    toastId: "charging-started",
+            else if (isPaymentFailed(prev, curr)) {
+                toast.error(
+                    "Your payment has failed!", {
+                    toastId: "payment-failed", position, className, autoClose,   
                 });
             }
         },

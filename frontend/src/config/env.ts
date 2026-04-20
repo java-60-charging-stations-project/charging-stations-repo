@@ -19,6 +19,7 @@ export const config = {
     pollingIntervalMs: requireNumberParameter("VITE_POLLING_INTERVAL_MS", 30_000),
     userSessionsPollingInterval: requireNumberParameter("VITE_USER_SESSION_POLLING_INTERVAL_MS", 5_000),
     unpaidSessionGracePeriodMs: requireNumberParameter("VITE_UNPAID_SESSION_GRACE_PERIOD_MS", 15_000),
+    toasterAutoCloseMs: requireNumberParameter("VITE_TOASTER_AUTO_CLOSE_MS", 5_000),
     // MOCK PARAMETERS
     mockApiTimeout: requireNumberParameter("VITE_MOCK_API_TIMEOUT", 1000),
 };

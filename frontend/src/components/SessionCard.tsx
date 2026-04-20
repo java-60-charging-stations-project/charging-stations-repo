@@ -8,6 +8,7 @@ import {
   usePayManuallyMutation,
 } from "@/store/apiSlice";
 import { getLogger } from "@/services/logging";
+import { config } from "@/config/env";
 
 const logger = getLogger("UserSession");
 
@@ -141,8 +142,8 @@ export default function SessionCard({ session }: { session: Session }) {
           {DateFormatted("Started at", session.startedAt)}
           {DateFormatted("Booked at", session.timeBookedAt)}
           {DateFormatted("Booked until", session.timeBookedBefore)}
-          {NumberFormatted("Tariff", session.tariff)}
-          {NumberFormatted("Current Cost", session.currentCost)}
+          {NumberFormatted("Tariff", session.tariff, ` ${config.currency.code}`)}
+          {NumberFormatted("Current Cost", session.currentCost, ` ${config.currency.code}`)}
           {NumberFormatted("Duration", session.durationMinutes, " min")}
         </div>
       )}
@@ -151,8 +152,8 @@ export default function SessionCard({ session }: { session: Session }) {
         <div className="mb-3 grid gap-1 text-sm text-slate-700 sm:grid-cols-2">
           {DateFormatted("Started at", session.startedAt)}
           {DateFormatted("Stopped at", session.stoppedAt)}
-          {NumberFormatted("Tariff", session.tariff)}
-          {NumberFormatted("Current Cost", session.currentCost)}
+          {NumberFormatted("Tariff", session.tariff, ` ${config.currency.code}`)}
+          {NumberFormatted("Current Cost", session.currentCost, ` ${config.currency.code}`)}
           {NumberFormatted("Energy consumed", session.energyConsumedKwh, " kWh")}
           {NumberFormatted("Charge", session.chargeLevelPercent, "%")}
           {NumberFormatted("Duration", session.durationMinutes, " min")}
@@ -168,8 +169,8 @@ export default function SessionCard({ session }: { session: Session }) {
             {DateFormatted("Booked at", session.timeBookedAt)}
             {DateFormatted("Stopped at", session.stoppedAt)}
             {DateFormatted("Ended at", session.endedAt)}
-            {NumberFormatted("Tariff", session.tariff)}
-            {NumberFormatted("Total Cost", session.currentCost)}
+            {NumberFormatted("Tariff", session.tariff, ` ${config.currency.code}`)}
+            {NumberFormatted("Total Cost", session.currentCost, ` ${config.currency.code}`)}
             {NumberFormatted("Energy consumed", session.energyConsumedKwh, " kWh")}
             {NumberFormatted("Final charge", session.chargeLevelPercent, "%")}
             {NumberFormatted("Total duration", session.durationMinutes, " min")}
@@ -189,8 +190,8 @@ export default function SessionCard({ session }: { session: Session }) {
             {DateFormatted("Booked at", session.timeBookedAt)}
             {DateFormatted("Stopped at", session.stoppedAt)}
             {DateFormatted("Ended at", session.endedAt)}
-            {NumberFormatted("Tariff", session.tariff)}
-            {NumberFormatted("Total Cost", session.currentCost)}
+            {NumberFormatted("Tariff", session.tariff, ` ${config.currency.code}`)}
+            {NumberFormatted("Total Cost", session.currentCost, ` ${config.currency.code}`)}
             {NumberFormatted("Energy consumed", session.energyConsumedKwh, " kWh")}
             {NumberFormatted("Final charge", session.chargeLevelPercent, "%")}
             {NumberFormatted("Total duration", session.durationMinutes, " min")}

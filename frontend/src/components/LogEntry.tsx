@@ -64,7 +64,12 @@ const LogEntry: FC<LogEntryProps> = ({ logRecord, onResolve, isResolving }) => {
                     hint={resolved ? "Resolved" : "Unresolved"}
                     onChange={(checked: boolean) => checked && onResolve()}
                 />
-                <span className="min-w-0 flex-1 truncate text-sm text-neutral-900" title={level}>{level}</span>
+                {(level === "ERROR" || level === "CRITICAL") ? (
+                    <span className="px-1 text-sm font-bold text-error-700" title={level}>{level}</span>
+                ) : (
+                    <span className="px-1 text-sm text-neutral-900" title={level}>{level}</span>
+                )
+                }
                 <span className="shrink-0 whitespace-nowrap text-sm text-neutral-700">{formattedTimestamp}</span>
                 <span className="min-w-0 flex-1 truncate text-sm text-neutral-900" title={message}>{message}</span>
                 <button
