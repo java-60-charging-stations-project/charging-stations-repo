@@ -3,6 +3,10 @@ Transform: AWS::Serverless-2016-10-31
 Description: Charging stations backend on ECS Fargate behind ALB
 
 Parameters:
+  LogSubscriptionDestinationArn:
+    Type: String
+    Description: ARN of CloudWatch Logs destination in Lambda account (from lambda stack output)
+    Default: arn:aws:logs:il-central-1:852215679994:destination:charging-stations-backend-audit-destination
   VpcId:
     Type: AWS::EC2::VPC::Id
     Description: VPC ID
@@ -195,8 +199,8 @@ Resources:
     Properties:
       LogGroupName: !Ref TaskLogGroup
       FilterName: audit-high-severity-ecs-backend
-      FilterPattern: '%\[ERROR\].*service|\[CRITICAL\].*service%'
-      DestinationArn: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaLogSubscriptionProcessorName}"
+      FilterPattern: '%"level"\s*:\s*"(ERROR|CRITICAL)".*"service"\s*:%'
+      DestinationArn: !Ref LogSubscriptionDestinationArn
 
   LoadBalancerSecurityGroup:
     Type: AWS::EC2::SecurityGroup

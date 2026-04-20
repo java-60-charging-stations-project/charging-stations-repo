@@ -1299,8 +1299,6 @@ Resources:
   # Receives ERROR/CRITICAL-shaped audit JSON from the shared app log group
   LogSubscriptionProcessorFunction:
     Type: AWS::Serverless::Function
-    DependsOn:
-      - ApplicationAuditLogGroup
     Properties:
       FunctionName: charging-stations-log-subscription-processor
       Handler: log_sub_processor.handler
@@ -1324,15 +1322,15 @@ Resources:
               Action: lambda:InvokeFunction
               Resource: !GetAtt WriteLogsRDSFunction.Arn
 
+
   LogSubscriptionPermApplicationShared:
     Type: AWS::Lambda::Permission
     Properties:
       FunctionName: !Ref LogSubscriptionProcessorFunction
       Action: lambda:InvokeFunction
       Principal: logs.amazonaws.com
-      SourceArn: !Sub
-        - "${Arn}:*"
-        - Arn: !GetAtt ApplicationSharedLambdaLogGroup.Arn
+      SourceArn: !Sub 
+        "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${ApplicationSharedLambdaLogGroup}:*"
 
   LogSubscriptionPermExternalBackend:
     Type: AWS::Lambda::Permission
@@ -1343,15 +1341,93 @@ Resources:
       SourceArn: !Sub
         arn:aws:logs:${AWS::Region}:${InvokerAccountIdA}:log-group:${ExternalAuditLogSourceLogGroupName}:*
 
-  AuditLogSubscriptionApplicationShared:
+  # IAM role CloudWatch Logs assumes to invoke the processor (used by Logs Destination target).
+  LogSubscriptionDestinationDeliveryRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-log-subscription-delivery"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: logs.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringLike:
+                aws:SourceArn: !Sub
+                  "arn:aws:logs:${AWS::Region}:${InvokerAccountIdA}:log-group:${ExternalAuditLogSourceLogGroupName}:*"
+      Policies:
+        - PolicyName: InvokeLogSubscriptionProcessor
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !GetAtt LogSubscriptionProcessorFunction.Arn
+
+  LogSubscriptionPermDestinationDeliveryRole:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref LogSubscriptionProcessorFunction
+      Action: lambda:InvokeFunction
+      Principal: !GetAtt LogSubscriptionDestinationDeliveryRole.Arn
+
+  LogSubscriptionLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: "lambda:InvokeFunction"
+      FunctionName: !GetAtt LogSubscriptionProcessorFunction.Arn
+      Principal: logs.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+  # Cross-account senders subscribe to this ARN (not the raw Lambda ARN).
+  BackendAuditLogsDestination:
+    Type: AWS::Logs::Destination
+    DependsOn:
+      - LogSubscriptionDestinationDeliveryRole
+      - LogSubscriptionProcessorFunction
+    Properties:
+      DestinationName: charging-stations-backend-audit-destination
+      RoleArn: !GetAtt LogSubscriptionDestinationDeliveryRole.Arn
+      TargetArn: !GetAtt LogSubscriptionProcessorFunction.Arn
+      DestinationPolicy: !Sub 
+        - |
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": { "AWS": "${SenderAccount}" },
+                "Action": "logs:PutSubscriptionFilter",
+                "Resource": "arn:aws:logs:${DestRegion}:${DestAccount}:destination:${DestName}"
+              }
+            ]
+          }
+        - SenderAccount: !Ref InvokerAccountIdA
+          DestRegion: !Ref AWS::Region
+          DestAccount: !Ref AWS::AccountId
+          DestName: charging-stations-backend-audit-destination
+
+  AuditLogSubscriptionApplicationSharedA:
     Type: AWS::Logs::SubscriptionFilter
-    DependsOn: LogSubscriptionPermApplicationShared
+    DependsOn: 
+      - LogSubscriptionPermApplicationShared
     Properties:
       LogGroupName: !Ref ApplicationSharedLambdaLogGroup
-      FilterName: audit-high-severity
-      FilterPattern: '%\[ERROR\].*service|\[CRITICAL\].*service%'
+      FilterName: audit-high-severity-ERROR
+      FilterPattern: '"\"level\": \"ERROR\"" "\"service\": "'
       DestinationArn: !GetAtt LogSubscriptionProcessorFunction.Arn
 
+  AuditLogSubscriptionApplicationSharedB:
+    Type: AWS::Logs::SubscriptionFilter
+    DependsOn: 
+      - LogSubscriptionPermApplicationShared
+    Properties:
+      LogGroupName: !Ref ApplicationSharedLambdaLogGroup
+      FilterName: audit-high-severity-CRITICAL
+      FilterPattern: '"\"level\": \"CRITICAL\"" "\"service\": "'
+      DestinationArn: !GetAtt LogSubscriptionProcessorFunction.Arn
+  
 Outputs:
   UserPoolId:
     Description: Cognito User Pool ID (backend API / Fargate env)
@@ -1384,3 +1460,9 @@ Outputs:
     Value: !GetAtt LogSubscriptionProcessorFunction.Arn
     Export:
       Name: !Sub ${AWS::StackName}-LogSubscriptionProcessorFunctionArn
+  BackendAuditLogsDestinationArn:
+    Description: CloudWatch Logs destination ARN for backend cross-account subscription
+    Value: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:destination:charging-stations-backend-audit-destination"
+    Export:
+      Name: !Sub "${AWS::StackName}-BackendAuditLogsDestinationArn"
+  
