@@ -1,12 +1,12 @@
-import { useAuth } from "@/hooks/useAuth";
 import { useGetLogsQuery, useResolveLogMutation } from "@/store/apiSlice";
 import Paginator from "./Paginator";
 import { useState, type FC } from "react";
 import LogEntry from "./LogEntry";
-import type { LogRecord, LogResolveRequest } from "@/types/logs";
+import type { LogRecord, LogRequestFilterParams, LogResolveRequest } from "@/types/logs";
 import { getLogger } from "@/services/logging";
 import { toast } from "react-toastify";
-import { usePaginationParams } from "@/hooks/usePaginationParams";
+import { type PaginationParams } from "@/hooks/usePaginationParams";
+import type { UserRole } from "@/types";
 
 const logger = getLogger("logs");
 
@@ -28,28 +28,31 @@ function extractErrorMessage(error: unknown): string {
 
 type LogsTableProps = {
     pollingIntervalMs?: number;
+    role: UserRole;
+    paginationParams: PaginationParams;
+    filterParams?: LogRequestFilterParams;
 };
 
-const LogsTable: FC<LogsTableProps> = ({ pollingIntervalMs = 10_000 }) => {
-    const { userRole } = useAuth();
-    const role = userRole!;
-    const { page, pageSize, setPage } = usePaginationParams();
+const LogsTable: FC<LogsTableProps> = ({ role, paginationParams, filterParams, pollingIntervalMs = 10_000 }) => {
+    const { page, pageSize, setPage } = paginationParams;
     const [resolveId, setResolveId] = useState<string | null>(null);
     const [onResolveMutation, { isLoading: isResolving }] = useResolveLogMutation();
     const {
         data: logsResponse,
         isError: isLoadError,
         error: loadError,
-    } = useGetLogsQuery({ role, page, pageSize }, {
+    } = useGetLogsQuery({ role, page, pageSize, filterParams }, {
         pollingInterval: pollingIntervalMs,
         skipPollingIfUnfocused: true,
         refetchOnReconnect: true,
     });
 
     if (isLoadError || !logsResponse) {
-        return <p className="text-red-600 font-bold border-2 border-yellow-500 p-2 rounded mb-2">
-                    Error: {loadError?.message ?? "No data received"}
-                </p>
+        return (
+            <p className="text-red-600 font-bold border-2 border-yellow-500 p-2 rounded mb-2">
+                Error: {loadError?.message ?? "No data received"}
+            </p>
+        );
     }
     
     const { data: logs, meta } = logsResponse;

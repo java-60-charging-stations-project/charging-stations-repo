@@ -17,13 +17,17 @@ export type LogRecord = {
     resolve_time?: string;
 };
 
+export type LogRequestFilterParams = {
+    dateFrom?: string;
+    dateTo?: string;
+    resolved?: boolean;
+};
+
 export type LogRequest = {
     role: UserRole;
     page: number;
     pageSize: number;
-    dateFrom?: string;
-    dateTo?: string;
-    resolved?: boolean;
+    filterParams?: LogRequestFilterParams;
 };
 
 export type LogResolveRequest = {

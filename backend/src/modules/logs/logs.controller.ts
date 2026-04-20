@@ -28,8 +28,8 @@ function parseOptionalTrimmed(value: unknown): string | undefined {
 function parseOptionalResolved(value: unknown): boolean | undefined {
   if (value === undefined || value === null || value === '') return undefined;
   const s = String(value).toLowerCase();
-  if (s === 'true') return true;
-  if (s === 'false') return false;
+  if (s === 'true' || s === '1') return true;
+  if (s === 'false' || s === '0') return false;
   throw new BadRequestError('resolved must be true or false', 'INVALID_REQUEST');
 }
 

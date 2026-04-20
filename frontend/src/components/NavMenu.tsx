@@ -19,13 +19,13 @@ const ROLE_NAV_ITEMS: Record<UserRole, NavItem[]> = {
   ],
   SUPPORT: [
     { label: "Home", to: "/support" },
-    { label: "Logs", to: "/support/logs" },
+    { label: "Logs", to: "/support/logs?resolved=false" },
     { label: "Stations", to: "/support/stations" },
     { label: "Sessions", to: "/support/sessions" },
   ],
   ADMIN: [
     { label: "Home", to: "/admin" },
-    { label: "Logs", to: "/admin/logs" },
+    { label: "Logs", to: "/admin/logs?resolved=false" },
     { label: "Users", to: "/admin/users" },
     { label: "Stations", to: "/admin/stations" },
   ],
