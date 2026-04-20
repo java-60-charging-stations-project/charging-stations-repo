@@ -41,15 +41,17 @@ const LogEntry: FC<LogEntryProps> = ({ logRecord, onResolve, isResolving }) => {
         resolver_id,
         resolve_time,
         timestamp,
+        resolved,
+        request_id,
+        level
     } = logRecord;
-    const isResolved: boolean = !!resolver_id;
     const source = (source_service === "") ? service : source_service;
     const toggleDetails = useCallback(() => setDetailsOpen((prevValue) => !prevValue), []);
 
     const formattedTimestamp = formatTimestamp(timestamp);
 
-    const headerTextClass = isResolved ? "font-normal" : "font-bold";
-    const containerClass = isResolved
+    const headerTextClass = resolved ? "font-normal" : "font-bold";
+    const containerClass = resolved
         ? "w-full rounded-md border border-green-200 bg-green-50 px-3 py-2"
         : "w-full rounded-md border border-red-200 bg-red-50 px-3 py-2";
 
@@ -57,11 +59,12 @@ const LogEntry: FC<LogEntryProps> = ({ logRecord, onResolve, isResolving }) => {
         <div className={containerClass}>
             <div className={`flex w-full px-2 items-center gap-3 ${headerTextClass}`}>
                 <ToggleSwitch
-                    value={isResolved}
-                    disabled={isResolving && !isResolved}
-                    hint={isResolved ? "Resolved" : "Unresolved"}
+                    value={resolved}
+                    disabled={isResolving && !resolved}
+                    hint={resolved ? "Resolved" : "Unresolved"}
                     onChange={(checked: boolean) => checked && onResolve()}
                 />
+                <span className="min-w-0 flex-1 truncate text-sm text-neutral-900" title={level}>{level}</span>
                 <span className="shrink-0 whitespace-nowrap text-sm text-neutral-700">{formattedTimestamp}</span>
                 <span className="min-w-0 flex-1 truncate text-sm text-neutral-900" title={message}>{message}</span>
                 <button
@@ -78,6 +81,7 @@ const LogEntry: FC<LogEntryProps> = ({ logRecord, onResolve, isResolving }) => {
                     <DetailLine label="Log entry ID" value={log_id} />
                     <DetailLine label="Source" value={source} />
                     <DetailLine label="Event" value={event} />
+                    <DetailLine label="Request ID" value={request_id ?? "-"} />
                     <DetailLine label="Resolved by" value={resolver_id ?? "-"} />
                     <DetailLine label="Happened at" value={formattedTimestamp} />
                     <DetailLine label="Resolved at" value={formatTimestamp(resolve_time)} />
