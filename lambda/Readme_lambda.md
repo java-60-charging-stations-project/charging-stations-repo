@@ -129,6 +129,8 @@ The template provisions **RDS** (PostgreSQL, IAM auth), **VPC endpoints** (RDS A
 | **charging-stations-write-station-rds** | Write station to RDS; change state; delete (soft); update station `ports` count from stream-forwarded ops. | Admin, cross-account, or Dynamo stream consumer invoke. |
 | **charging-stations-get-station-info** | Read station(s) from RDS. | Backend or cross-account. |
 | **charging-stations-get-session-info** | Read archived session rows from RDS `sessions` table. | Backend or cross-account. |
+| **charging-stations-get-logs-info** | Read logs from RDS with filtering/sorting/pagination. | Backend or cross-account. |
+| **charging-stations-write-logs-rds** | Internal log writer (`write_logs`) and resolver (`resolveLog`). | Log subscription processor / backend. |
 | **charging-stations-write-station-ports-dynamo** | Insert/update/delete ports in DynamoDB single-table; for user port updates it also creates a session item in the same transaction. | Support / backend. |
 | **charging-stations-payment-notification** | Internal notification lambda; fetches user contact and sends SES payment-failure email. | Invoked by write-station-ports-dynamo. |
 | **charging-stations-station-entities-stream-consumer** | DynamoDB stream: forward station-port updates, session payment, and paid-session archive events. | DynamoDB stream trigger. |
@@ -173,6 +175,8 @@ See **`lambda_request_responces.md`** for full shapes. Summary:
 - **WriteStationRDS** – Success `data` uses **snake_case**: `station_id`, `updated_at`, `deleted_at` (ISO strings where applicable).
 - **GetStationInfo** – Station objects in **snake_case**; `location` as GeoJSON when selected.
 - **GetSessionInfo** – archived session objects from RDS `sessions`, with ISO datetime strings in response.
+- **WriteLogsRDS** – `write_logs` (batch upsert by `request_id`) and `resolveLog` (set `resolved=true`, `resolver_id`, `resolve_time` by `logId`).
+- **GetLogsInfo** – `getLogs` with filters (`level`, `service`, `callerId`, `event`, `resolved`), sortable `orderBy`, and pagination (`page`, `pageSize`, max 200).
 - **WriteStationPortsDynamo** – `insertStationPorts`, port updates, `deleteStationPorts` (see **`lambda_request_responces.md`**).
 - **GetPortsSessionsDynamo** – supports `getSessionByUser` (`data.latest=true` for history/all states on `user_id-index`) and `getSessionByStation` (sessions by station partition).
 - **StationEntitiesStreamConsumer** – Dynamo stream: forwards port insert/remove and free-state changes to station RDS updates, `UNPAID` transitions to payment, and `PAID` transitions to RDS session archive (details in **`lambda_request_responces.md`**).

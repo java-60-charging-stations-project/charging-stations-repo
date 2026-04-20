@@ -93,6 +93,168 @@ The processor asynchronously invokes `charging-stations-write-logs-rds` with:
 }
 ```
 
+### Write logs to RDS (`charging-stations-write-logs-rds`)
+
+Action: `write_logs` (internal, used by `charging-stations-log-subscription-processor`)
+
+Request:
+
+```json
+{
+  "service": {
+    "action": "write_logs",
+    "callerId": "log_sub_processor"
+  },
+  "data": [
+    {
+      "message": "string",
+      "level": "ERROR|CRITICAL|INFO|...",
+      "service": "charging-stations-write-station-ports-dynamo",
+      "event": "supportUpdateStationPorts",
+      "source_service": "string|null",
+      "caller_id": "string",
+      "request_id": "uuid|string",
+      "timestamp": "ISO timestamp"
+    }
+  ]
+}
+```
+
+Behavior:
+
+- `level` is upper-cased before persistence.
+- `request_id` is idempotency key (`ON CONFLICT (request_id)` upsert).
+- If `source_service` is not null, existing row is not updated on conflict.
+
+Response (success):
+
+```json
+{
+  "data": {
+    "logs": [
+      {
+        "message": "string",
+        "level": "ERROR",
+        "service": "string",
+        "event": "string",
+        "source_service": null,
+        "caller_id": "string",
+        "request_id": "uuid",
+        "timestamp": "ISO timestamp"
+      }
+    ]
+  },
+  "meta": {}
+}
+```
+
+### Resolve log (`charging-stations-write-logs-rds`)
+
+Action: `resolveLog`
+
+Request:
+
+```json
+{
+  "service": {
+    "action": "resolveLog",
+    "callerId": "resolver-user-id"
+  },
+  "data": {
+    "logId": "log-uuid"
+  }
+}
+```
+
+Behavior:
+
+- Sets `resolver_id = callerId`, `resolve_time = now(UTC)`, `resolved = true` for the given `log_id`.
+
+Response (success):
+
+```json
+{
+  "data": {
+    "logId": "log-uuid",
+    "resolverId": "resolver-user-id",
+    "resolveTime": "ISO timestamp"
+  },
+  "meta": {}
+}
+```
+
+Response (error):
+
+```json
+{
+  "error": "log not found",
+  "code": "NOT_FOUND"
+}
+```
+
+### Get logs (`charging-stations-get-logs-info`)
+
+Action: `getLogs`
+
+Request:
+
+```json
+{
+  "service": {
+    "action": "getLogs",
+    "callerId": "string"
+  },
+  "data": {
+    "level": "ERROR|CRITICAL|INFO|null",
+    "service": "string|null",
+    "callerId": "string|null",
+    "event": "string|null",
+    "resolved": true,
+    "orderBy": "timestamp-,level+"
+  },
+  "meta": {
+    "page": 1,
+    "pageSize": 50
+  }
+}
+```
+
+Notes:
+
+- `resolved` also accepts string `"true"` / `"false"`.
+- `pageSize` is capped at 200.
+- Default sort is `timestamp DESC`.
+- `orderBy` columns: `logId`, `level`, `message`, `service`, `event`, `sourceService`, `callerId`, `requestId`, `timestamp`, `resolveTime`, `resolverId`, `resolved`.
+
+Response (success):
+
+```json
+{
+  "data": [
+    {
+      "log_id": "uuid",
+      "level": "ERROR",
+      "message": "string",
+      "service": "string",
+      "event": "string",
+      "source_service": null,
+      "caller_id": "string",
+      "request_id": "uuid",
+      "timestamp": "ISO timestamp",
+      "resolve_time": "ISO timestamp|null",
+      "resolver_id": "string|null",
+      "resolved": false
+    }
+  ],
+  "meta": {
+    "total_items": 123,
+    "total_pages": 3,
+    "page": 1,
+    "page_size": 50
+  }
+}
+```
+
 ## Users
 
 ### Get all users
