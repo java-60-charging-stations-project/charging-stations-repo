@@ -2,7 +2,8 @@ import { configureStore, type Action, type ThunkAction } from "@reduxjs/toolkit"
 import authReducer from "./authSlice";
 import { restoreSession } from "./authSlice";
 import { tokenStorage } from "@/services/tokenStorage";
-import { apiSlice } from "./apiSlice";
+import { addSessionStateListener, apiSlice } from "./apiSlice";
+import { listenerMiddleware, startAppListening } from "./listenerMiddleware";
 
 export const store = configureStore({
   reducer: {
@@ -10,9 +11,14 @@ export const store = configureStore({
     [apiSlice.reducerPath]: apiSlice.reducer,
   },
   middleware: getDefaultMiddleware => (
-    getDefaultMiddleware().concat(apiSlice.middleware)
+    getDefaultMiddleware()
+      .prepend(listenerMiddleware.middleware)
+      .concat(apiSlice.middleware)
   )
 });
+
+// Add listene middleware
+addSessionStateListener(startAppListening);
 
 if (tokenStorage.getRefreshToken()) {
   store.dispatch(restoreSession());
