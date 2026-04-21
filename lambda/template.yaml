@@ -919,6 +919,7 @@ Resources:
           STATIONS_DYNAMO_TABLE: !Ref StationEntitiesTable
           SESSION_STATE_INDEX_NAME: state-station-index
           BOOKING_TIMEOUT_MINUTES: !Ref BookingTimeoutMinutes
+          NOTIFICATION_LAMBDA_FUNCTION_NAME: !Ref PaymentNotificationFunction
       Policies:
         - Version: '2012-10-17'
           Statement:
@@ -968,7 +969,6 @@ Resources:
       - ChargingStationsRDSPostgresDB
       - ApplicationSharedLambdaLogGroup
     Properties:
-      Runtime: python3.12
       LoggingConfig:
         LogGroup: !Sub "/charging-stations/${AWS::StackName}/lambda/application"
       FunctionName: charging-stations-payment-notification
@@ -976,8 +976,7 @@ Resources:
       CodeUri: notification
       Layers:
         - !Ref CommonToolsLayer
-        - !Sub "arn:aws:lambda:${AWS::Region}:770693421928:layer:Klayers-p312-psycopg2-binary:2"
-      Description: Sends payment failure notifications via SES
+      Description: Sends notifications via SES
       VpcConfig:
         SecurityGroupIds:
           - !Ref LambdaSecurityGroup
