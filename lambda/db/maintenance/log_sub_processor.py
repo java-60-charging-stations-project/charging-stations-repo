@@ -46,7 +46,7 @@ def _parse_prefixed_json_message(message_raw: str) -> Tuple[Optional[datetime], 
         if isinstance(payload, dict):
             return prefix_ts_dt, payload
     except json.JSONDecodeError:
-        logger.error(f"Message not parsed: {payload}")
+        logger.error(f"Message not parsed: {json_part}")
         pass
     return prefix_ts_dt, None
 
@@ -64,7 +64,14 @@ def cloudwatch_subscription_to_records(payload: dict[str, Any]) -> list[dict[str
             logger.error(f"Message not parsed: {message_raw}")
             continue
         ts_ms = ev.get("timestamp") or int(datetime.now(timezone.utc).timestamp() * 1000)
-        ts = prefix_ts_dt or datetime.fromtimestamp(ts_ms / 1000.0, tz=timezone.utc)
+        json_ts = message_dict.get("timestamp")
+        if isinstance(json_ts, str):
+            try:
+                json_ts = datetime.fromisoformat(json_ts.replace("Z", "+00:00"))
+            except ValueError:
+                json_ts = None
+        fallback_ts = datetime.fromtimestamp(ts_ms / 1000.0, tz=timezone.utc)
+        ts = prefix_ts_dt or json_ts or fallback_ts
         try:
             out.append(
                 {

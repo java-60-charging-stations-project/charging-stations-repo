@@ -3,10 +3,6 @@ Transform: AWS::Serverless-2016-10-31
 Description: Charging stations backend on ECS Fargate behind ALB
 
 Parameters:
-  LogSubscriptionDestinationArn:
-    Type: String
-    Description: ARN of CloudWatch Logs destination in Lambda account (from lambda stack output)
-    Default: arn:aws:logs:il-central-1:852215679994:destination:charging-stations-backend-audit-destination
   VpcId:
     Type: AWS::EC2::VPC::Id
     Description: VPC ID
@@ -194,14 +190,6 @@ Resources:
       LogGroupName: /ecs/charging-stations-backend
       RetentionInDays: 14
 
-  BackendAuditLogSubscriptionToProcessor:
-    Type: AWS::Logs::SubscriptionFilter
-    Properties:
-      LogGroupName: !Ref TaskLogGroup
-      FilterName: audit-high-severity-ecs-backend
-      FilterPattern: '%\x22level\x22\s*:\s*\x22ERROR\x22.*\x22service\x22\s*:|\x22level\x22\s*:\s*\x22CRITICAL\x22.*\x22service\x22\s*:%'
-      DestinationArn: !Ref LogSubscriptionDestinationArn
-
   LoadBalancerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -304,6 +292,43 @@ Resources:
         - ContainerName: charging-stations-backend
           ContainerPort: !Ref ContainerPort
           TargetGroupArn: !Ref ApplicationTargetGroup
+
+  SourceLogRouterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python3.13
+      FunctionName: charging-stations-source-log-router
+      Handler: log_router.handler
+      CodeUri: scripts/log_router
+      Timeout: 30
+      MemorySize: 128
+      Environment:
+        Variables:
+          LOG_PROCESSOR_FUNCTION_ARN: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaLogSubscriptionProcessorName}"
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action: lambda:InvokeFunction
+              Resource: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaLogSubscriptionProcessorName}"
+
+  SourceLogRouterInvokePermissionFromLogs:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref SourceLogRouterFunction
+      Action: lambda:InvokeFunction
+      Principal: logs.amazonaws.com
+      SourceArn: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/ecs/charging-stations-backend:*"
+  
+  BackendAuditLogSubscriptionToSourceRouter:
+    Type: AWS::Logs::SubscriptionFilter
+    DependsOn:
+      - SourceLogRouterInvokePermissionFromLogs
+    Properties:
+      LogGroupName: /ecs/charging-stations-backend
+      FilterName: audit-high-severity-ecs-backend
+      FilterPattern: '{ ($.level = "ERROR" || $.level = "CRITICAL") && $.service = * && $.source_service = "*" }'
+      DestinationArn: !GetAtt SourceLogRouterFunction.Arn
 
 Outputs:
   LoadBalancerArn:
