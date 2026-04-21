@@ -4,7 +4,7 @@ export type LogAudience = 'support' | 'admin';
 
 export type LogRecord = {
     log_id: string;
-    level: "DEBUG" | "INFO" | "WARN" | "ERROR";
+    level: "DEBUG" | "INFO" | "WARN" | "ERROR" | "CRITICAL";
     message: string;
     service: string;
     source_service?: string;
@@ -15,6 +15,7 @@ export type LogRecord = {
     request_id?: string;
     timestamp: string;
     resolve_time?: string;
+    resolved: boolean;
 };
 
 export type LogRequestFilterParams = {

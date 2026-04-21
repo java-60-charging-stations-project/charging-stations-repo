@@ -8,6 +8,7 @@ import {
   usePayManuallyMutation,
 } from "@/store/apiSlice";
 import { getLogger } from "@/services/logging";
+import { config } from "@/config/env";
 
 const logger = getLogger("UserSession");
 
@@ -49,7 +50,25 @@ function ActionButton({
       {isLoading ? "Processing…" : label}
     </button>
   );
-}
+};
+
+function DateFormatted(label: string, value?: string | null) {
+  return (
+      <p>
+        <span className="font-medium">{label}:</span>{" "}
+        {formatDate(value)}
+      </p>
+  );
+};
+
+function NumberFormatted(label: string, value?: number | string | null, suffix = "") {
+  return (
+      <p>
+        <span className="font-medium">{label}:</span>{" "}
+        {formatNumeric(value, suffix)}
+      </p>
+  );
+};
 
 export default function SessionCard({ session }: { session: Session }) {
   const [cancelBooking, { isLoading: isCancelling }] = useCancelBookingMutation();
@@ -69,6 +88,7 @@ export default function SessionCard({ session }: { session: Session }) {
   const isBooked = session.state === "BOOKED";
   const isActive = session.state === "ACTIVE";
   const isUnpaid = session.state === "UNPAID";
+  const isPaid = session.state === "PAID";
   const isFreshUnpaid = isFreshUnpaidSession(session);
   const usesActiveColors = isActive || isFreshUnpaid;
   const showAsPaying = isPaying || isFreshUnpaid;
@@ -116,76 +136,44 @@ export default function SessionCard({ session }: { session: Session }) {
           {displayState}
         </span>
       </div>
-
+      
       {isBooked && (
         <div className="mb-3 space-y-1 text-sm text-slate-700">
-          <p>
-            <span className="font-medium">Booked at:</span>{" "}
-            {formatDate(session.timeBookedAt)}
-          </p>
-          <p>
-            <span className="font-medium">Booked until:</span>{" "}
-            {formatDate(session.timeBookedBefore)}
-          </p>
+          {DateFormatted("Started at", session.startedAt)}
+          {DateFormatted("Booked at", session.timeBookedAt)}
+          {DateFormatted("Booked until", session.timeBookedBefore)}
+          {NumberFormatted("Tariff", session.tariff, ` ${config.currency.code}`)}
+          {NumberFormatted("Current Cost", session.currentCost, ` ${config.currency.code}`)}
+          {NumberFormatted("Duration", session.durationMinutes, " min")}
         </div>
       )}
 
       {isActive && (
         <div className="mb-3 grid gap-1 text-sm text-slate-700 sm:grid-cols-2">
-          <p>
-            <span className="font-medium">Started at:</span>{" "}
-            {formatDate(session.startedAt)}
-          </p>
-          <p>
-            <span className="font-medium">Stopped at:</span>{" "}
-            {formatDate(session.stoppedAt)}
-          </p>
-          <p>
-            <span className="font-medium">Tariff:</span>{" "}
-            {formatNumeric(session.tariff)}
-          </p>
-          <p>
-            <span className="font-medium">Current Cost:</span>{" "}
-            {formatNumeric(session.currentCost)}
-          </p>
-          <p>
-            <span className="font-medium">Energy consumed:</span>{" "}
-            {formatNumeric(session.energyConsumedKwh, " kWh")}
-          </p>
-          <p>
-            <span className="font-medium">Charge:</span>{" "}
-            {formatNumeric(session.chargeLevelPercent, "%")}
-          </p>
-          <p>
-            <span className="font-medium">Duration:</span>{" "}
-            {formatNumeric(session.durationMinutes, " min")}
-          </p>
-          <p>
-            <span className="font-medium">Time until 100%:</span>{" "}
-            {formatNumeric(session.estimatedMinutesRemaining, " min")}
-          </p>
+          {DateFormatted("Started at", session.startedAt)}
+          {DateFormatted("Stopped at", session.stoppedAt)}
+          {NumberFormatted("Tariff", session.tariff, ` ${config.currency.code}`)}
+          {NumberFormatted("Current Cost", session.currentCost, ` ${config.currency.code}`)}
+          {NumberFormatted("Energy consumed", session.energyConsumedKwh, " kWh")}
+          {NumberFormatted("Charge", session.chargeLevelPercent, "%")}
+          {NumberFormatted("Duration", session.durationMinutes, " min")}
+          {NumberFormatted("Time until 100%", session.estimatedMinutesRemaining, " min")}
+          
         </div>
       )}
 
       {isUnpaid && (
         <>
           <div className="mb-3 grid gap-1 text-sm text-slate-700 sm:grid-cols-2">
-            <p>
-              <span className="font-medium">Started at:</span>{" "}
-              {formatDate(session.startedAt)}
-            </p>
-            <p>
-              <span className="font-medium">Ended at:</span>{" "}
-              {formatDate(session.endedAt)}
-            </p>
-            <p>
-              <span className="font-medium">Current Cost:</span>{" "}
-              {formatNumeric(session.currentCost)}
-            </p>
-            <p>
-              <span className="font-medium">Energy consumed:</span>{" "}
-              {formatNumeric(session.energyConsumedKwh, " kWh")}
-            </p>
+            {DateFormatted("Started at", session.startedAt)}
+            {DateFormatted("Booked at", session.timeBookedAt)}
+            {DateFormatted("Stopped at", session.stoppedAt)}
+            {DateFormatted("Ended at", session.endedAt)}
+            {NumberFormatted("Tariff", session.tariff, ` ${config.currency.code}`)}
+            {NumberFormatted("Total Cost", session.currentCost, ` ${config.currency.code}`)}
+            {NumberFormatted("Energy consumed", session.energyConsumedKwh, " kWh")}
+            {NumberFormatted("Final charge", session.chargeLevelPercent, "%")}
+            {NumberFormatted("Total duration", session.durationMinutes, " min")}
             {isPayError && (
               <p>
                 <span className="font-medium">Payment error:</span>{" "}
@@ -195,6 +183,21 @@ export default function SessionCard({ session }: { session: Session }) {
           </div>
         </>
       )}
+      {
+        isPaid && (
+          <div className="mb-3 grid gap-1 text-sm text-slate-700 sm:grid-cols-2">
+            {DateFormatted("Started at", session.startedAt)}
+            {DateFormatted("Booked at", session.timeBookedAt)}
+            {DateFormatted("Stopped at", session.stoppedAt)}
+            {DateFormatted("Ended at", session.endedAt)}
+            {NumberFormatted("Tariff", session.tariff, ` ${config.currency.code}`)}
+            {NumberFormatted("Total Cost", session.currentCost, ` ${config.currency.code}`)}
+            {NumberFormatted("Energy consumed", session.energyConsumedKwh, " kWh")}
+            {NumberFormatted("Final charge", session.chargeLevelPercent, "%")}
+            {NumberFormatted("Total duration", session.durationMinutes, " min")}
+          </div>
+        )
+      }
 
       <div className="flex gap-2">
         {isBooked && (

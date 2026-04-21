@@ -115,10 +115,12 @@ export interface UserPaymentRequest {
 };
 
 export interface UserPaymentResponseLambda {
-  user_id: string;
-  session_id: string;
-  paid_at: string;
-};
+  paid_session: {
+    user_id: string;
+    session_id: string;
+    paid_at: string;
+  };
+}
 
 export interface UserPaymentResponse {
   userId: string;
