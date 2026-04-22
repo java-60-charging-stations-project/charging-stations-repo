@@ -1360,6 +1360,46 @@ Resources:
       FilterPattern: '"\"level\": \"CRITICAL\"" "\"service\": "'
       DestinationArn: !GetAtt LogSubscriptionProcessorFunction.Arn
   
+  CommandQueueDlq:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${AWS::StackName}-command-dlq.fifo"
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      MessageRetentionPeriod: 1209600 # 14 days
+
+  CommandQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${AWS::StackName}-command.fifo"
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      VisibilityTimeout: 120
+      MessageRetentionPeriod: 345600 # 4 days
+      ReceiveMessageWaitTimeSeconds: 20
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt CommandQueueDlq.Arn
+        maxReceiveCount: 5
+
+  CommandQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref CommandQueue
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowBackendAccountASend
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${InvokerAccountIdA}:root"
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt CommandQueue.Arn
+            Condition:
+              StringNotEquals:
+                aws:PrincipalAccount: ""
+
 Outputs:
   UserPoolId:
     Description: Cognito User Pool ID (backend API / Fargate env)
@@ -1392,5 +1432,20 @@ Outputs:
     Value: !GetAtt LogSubscriptionProcessorFunction.Arn
     Export:
       Name: !Sub ${AWS::StackName}-LogSubscriptionProcessorFunctionArn
+  CommandQueueUrl:
+    Description: FIFO command queue URL for backend producers
+    Value: !Ref CommandQueue
+    Export:
+      Name: !Sub "${AWS::StackName}-CommandQueueUrl"
+  CommandQueueArn:
+    Description: FIFO command queue ARN for IAM policies
+    Value: !GetAtt CommandQueue.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-CommandQueueArn"
+  CommandQueueDlqArn:
+    Description: FIFO command DLQ ARN
+    Value: !GetAtt CommandQueueDlq.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-CommandQueueDlqArn"
 
   

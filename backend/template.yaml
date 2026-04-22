@@ -71,6 +71,10 @@ Parameters:
     Type: String
     Default: charging-stations-log-subscription-processor
     Description: Lambda function name in LambdaAccountId that receives CloudWatch Logs subscription deliveries
+  LambdaCommandQueueName:
+    Type: String
+    Default: sam-db-lambdas-command.fifo
+    Description: FIFO command queue name in LambdaAccountId that receives commands from the backend
   DesiredCount:
     Type: Number
     Default: 1
@@ -183,6 +187,14 @@ Resources:
               - Effect: Allow
                 Action: sts:AssumeRole
                 Resource: !Ref CognitoCrossAccountRoleArn
+        - PolicyName: SendCommandQueueMessages
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                Resource: !Sub "arn:aws:sqs:${LambdaRegion}:${LambdaAccountId}:${LambdaCommandQueueName}"
 
   TaskLogGroup:
     Type: AWS::Logs::LogGroup
@@ -255,6 +267,9 @@ Resources:
           EnvironmentFiles:
             - Type: s3
               Value: arn:aws:s3:::charge-st-backend-config-773769103104/backend/prod.env
+          Environment:
+            - Name: COMMAND_QUEUE_URL
+              Value: !Sub "https://sqs.${LambdaRegion}.amazonaws.com/${LambdaAccountId}/${LambdaCommandQueueName}"
           LogConfiguration:
             LogDriver: awslogs
             Options:
