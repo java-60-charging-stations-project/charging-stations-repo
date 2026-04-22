@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose';
 import type { AuthRequestLogContext } from '../common/logContracts';
-import { InternalServerError, ServiceError, UnauthorizedError } from '../common/serviceErrors';
+import { ForbiddenError, InternalServerError, ServiceError, UnauthorizedError } from '../common/serviceErrors';
 import { env } from '../config/env';
 import { createLogger } from '../utils/logger';
 import { ADMIN_GROUP, SUPPORT_GROUP } from '../common/authRoles';
@@ -71,7 +71,7 @@ export async function verifyCognitoJwt(req: Request, res: Response, next: NextFu
   const token = getBearerToken(req);
   if (!token) {
     logger.warn('Missing Authorization Bearer token', buildAuthRequestLogContext(req));
-    return res.status(401).json({ code: 401, error: { message: 'Missing Authorization Bearer token' } });
+    return next(new UnauthorizedError('Missing Authorization Bearer token', 'MISSING_AUTH_TOKEN'));
   }
 
   const issuer = `https://cognito-idp.${env.cognitoRegion}.amazonaws.com/${env.cognitoUserPoolId}`;
@@ -107,19 +107,17 @@ export async function verifyCognitoJwt(req: Request, res: Response, next: NextFu
 
     if (!req.user.sub) {
       logger.error('Invalid token: missing sub', buildAuthRequestLogContext(req));
-      return res.status(401).json({ code: 401, error: { message: 'Invalid token (missing sub)' } });
+      return next(new UnauthorizedError('Invalid token (missing sub)', 'INVALID_TOKEN_SUB'));
     }
 
     return next();
   } catch (e) {
-    if (e instanceof ServiceError && e.statusCode >= 500) {
+    if (e instanceof ServiceError) {
       logger.error('JWT / auth configuration error', {
         ...buildAuthRequestLogContext(req),
         error: e.message,
       });
-      return res.status(e.statusCode).json({
-        error: { code: e.errorCode, message: e.message },
-      });
+      return next(e);
     }
     const message = e instanceof Error ? e.message : 'Invalid token';
     logger.error('JWT verification failed', {
@@ -127,13 +125,7 @@ export async function verifyCognitoJwt(req: Request, res: Response, next: NextFu
       error: message,
     });
     const errCode = e instanceof UnauthorizedError ? e.errorCode : undefined;
-    return res.status(401).json({
-      code: 401,
-      error: {
-        message,
-        ...(errCode ? { code: errCode } : {}),
-      },
-    });
+    return next(new UnauthorizedError(message, errCode ?? 'INVALID_TOKEN'));
   }
 }
 
@@ -148,7 +140,7 @@ export function requireGroups(allowed: string[]) {
         originalUrl: req.originalUrl,
         requiredGroups: allowed,
       });
-      return res.status(403).json({ code: 403, error: { message: 'Forbidden' } });
+      return next(new ForbiddenError('Forbidden'));
     }
     next();
   };

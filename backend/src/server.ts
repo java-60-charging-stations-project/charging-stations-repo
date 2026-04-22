@@ -5,7 +5,6 @@ import { closeValkey } from './cache/valkeyClient';
 const app = createApp();
 
 const server = app.listen(env.port, () => {
-  // eslint-disable-next-line no-console
   console.log(`Backend server listening on port ${env.port}. Prefix: ${env.apiPrefix || '(none)'}`);
 });
 

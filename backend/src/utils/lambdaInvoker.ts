@@ -42,7 +42,6 @@ export class AwsLambdaInvoker implements LambdaInvoker {
     }
 
     if (!raw) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       logger.debug('Lambda response is empty object', invokeMeta);
       return {} as any;
     }

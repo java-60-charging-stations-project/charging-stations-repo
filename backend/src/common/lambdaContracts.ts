@@ -382,10 +382,6 @@ export interface LambdaGetLogsFilterData {
   resolved?: boolean | string;
   /** Comma-separated tokens; each field uses suffix `+` / `-` for ASC/DESC (see `SORTABLE_COLUMNS` in Lambda). */
   orderBy?: string;
-  /** ISO 8601 with offset; filters `logs.timestamp >= dateFrom`. */
-  dateFrom?: string;
-  /** ISO 8601 with offset; filters `logs.timestamp <= dateTo`. */
-  dateTo?: string;
 }
 
 export interface LambdaGetLogsRequestMeta {
