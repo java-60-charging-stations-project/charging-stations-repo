@@ -4,5 +4,8 @@
     "backend",
     "frontend",
     "packages/*"
-  ]
+  ],
+  "dependencies": {
+    "@react-google-maps/api": "^2.20.8"
+  }
 }
