@@ -125,20 +125,15 @@ export class UsersServiceLambda implements UsersService {
   }
 
   async updateOwnProfile(userId: string, payload: UpdateProfilePayload): Promise<void> {
-    logger.debug('Invoking userManagement lambda: updateOwnProfile', { userId });
-    const result = await LAMBDA_INVOKER.invokeJson<Record<string, unknown> | LambdaErrorResponse>(
-      env.userManagementLambdaFunctionName,
-      wrapLambdaRequest(
-        'updateOwnProfile',
-        userId,
-        {
-          userId,
-          payload
-        }
-      )
+    logger.warn('updateOwnProfile is not supported by write-user-rds lambda contract', {
+      userId,
+      collectorSource: env.userManagementLambdaFunctionName,
+    });
+    throw new ServiceError(
+      'updateOwnProfile is not supported by current user-management Lambda contract',
+      501,
+      'NOT_IMPLEMENTED',
+      { collectorSource: env.userManagementLambdaFunctionName }
     );
-    if (isLambdaErrorPayload(result)) {
-      throwFromUserLambdaError(result, env.userManagementLambdaFunctionName);
-    }
   }
 }

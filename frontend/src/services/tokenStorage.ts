@@ -6,19 +6,21 @@ export const tokenStorage = {
     getAccessToken: () => accessToken,
 
     setAccessToken: (token: string) => {
-    accessToken = token
+        accessToken = token;
+        sessionStorage.setItem("accessToken", token);
     },
 
     setRefreshToken: (token: string) => {
-    sessionStorage.setItem("refreshToken", token)
+        sessionStorage.setItem("refreshToken", token);
     },
 
     getRefreshToken: () => {
-        return sessionStorage.getItem("refreshToken")
+        return sessionStorage.getItem("refreshToken");
     },
 
     clear: () => {
         accessToken = null
-        sessionStorage.removeItem("refreshToken")
+        sessionStorage.removeItem("refreshToken");
+        sessionStorage.removeItem("accessToken");
     }
 };

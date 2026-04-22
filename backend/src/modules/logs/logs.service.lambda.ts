@@ -87,8 +87,6 @@ export class LogsServiceLambda implements LogsService {
       ...(query.event ? { event: query.event } : {}),
       ...(query.resolved !== undefined ? { resolved: query.resolved } : {}),
       ...(query.orderBy ? { orderBy: query.orderBy } : {}),
-      ...(query.dateFrom ? { dateFrom: query.dateFrom } : {}),
-      ...(query.dateTo ? { dateTo: query.dateTo } : {}),
     };
 
     const meta = { page: query.page, pageSize: query.pageSize };
