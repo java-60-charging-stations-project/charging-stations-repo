@@ -8,11 +8,13 @@ from utils.error_handlers import LambdaResponseError
 from utils.price_calculator import calculate_price
 from data_types.contract_types import SuccessResponsePayload, ErrorResponsePayload
 import random
+import json
 
 AWS_REGION = os.environ["AWS_REGION"]
 STATIONS_DYNAMO_TABLE = os.environ["STATIONS_DYNAMO_TABLE"]
 SESSION_STATE_INDEX = os.environ["SESSION_STATE_INDEX_NAME"]
 BOOKING_TIMEOUT_MINUTES = int(os.environ["BOOKING_TIMEOUT_MINUTES"])
+NOTIFICATION_LAMBDA_FUNCTION_NAME = os.environ["NOTIFICATION_LAMBDA_FUNCTION_NAME"]
 
 _dynamo = None
 _stations_table = None
@@ -32,7 +34,7 @@ def _query_sessions_by_state(table, state: str) -> list[dict]:
         "KeyConditionExpression": Key("state").eq(state),
         "ProjectionExpression": (
             "station_id, entity_key, #st, tariff, energy_consumed_kwh, "
-            "time_booked_at, started_at, stopped_at, charge_level_percent"
+            "time_booked_at, started_at, stopped_at, charge_level_percent, user_id"
         ),
         "FilterExpression": "contains(entity_key, :session_marker)",
         "ExpressionAttributeNames": {"#st": "state"},
@@ -74,6 +76,7 @@ def handler(event, context) -> SuccessResponsePayload | ErrorResponsePayload:
         for session in sessions:
             station_id = session["station_id"]
             entity_key = session["entity_key"]
+            user_id = session["user_id"]
             try:
                 if session.get("state") not in {"BOOKED", "ACTIVE"}:
                     skipped += 1
@@ -90,6 +93,20 @@ def handler(event, context) -> SuccessResponsePayload | ErrorResponsePayload:
                         additional_charge_percent = random.randint(1, min(remaining_charge_percent, 3))
                         new_charge_percent = charge_level_percent + additional_charge_percent
                         if new_charge_percent >= 100:
+                            logger.info(f"Session {station_id}/{entity_key} charge level percent is 100, stopping charging")
+                            client = boto3.client("lambda", region_name=AWS_REGION)
+                            resp = client.invoke(
+                                FunctionName=NOTIFICATION_LAMBDA_FUNCTION_NAME,
+                                InvocationType="Event",
+                                Payload=json.dumps({"service": 
+                                {"action": "notify_charging_stopped", "callerId": "charge_sim_price_calc"}, 
+                                "data": {"station_id": station_id, "entity_key": entity_key, "user_id": user_id}}).encode("utf-8"),
+                            )
+                            if resp.get("StatusCode") != 202:
+                                logger.error(f"error stopping charging: {resp}")
+                            if resp.get("FunctionError"):
+                                logger.error(f"error stopping charging: {resp.get('FunctionError')}")
+                            logger.info(f"charging stopped notification invoked successfully: {resp}")
                             session["stopped_at"] = now.isoformat()
                             new_charge_percent = 100
                             additional_charge_percent = 100 - charge_level_percent
