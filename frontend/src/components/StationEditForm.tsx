@@ -10,6 +10,7 @@ import useFromParam from "@/hooks/useFromParam";
 import { useCreateStationMutation, useGetStationQuery, useUpdateStationMutation } from "@/store/apiSlice";
 import type { UserRole } from "@/types";
 import EasySpinner from "./EasySpinner";
+import MapBaseComponent from "./MapBaseComponent";
 
 const logger = getLogger("StationEditForm");
 
@@ -305,6 +306,7 @@ const StationEditForm: FC<StationEditFormProps> = ({
                     </>
                 )}
             </form>
+            <MapBaseComponent />
             {station && <StationStateActions station={station} userRole={userRole}/>}
         </>
     );

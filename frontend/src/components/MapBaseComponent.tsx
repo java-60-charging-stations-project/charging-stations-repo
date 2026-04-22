@@ -25,9 +25,9 @@ const MapBaseComponent: FC<MapBaseComponentProps> = ({onClick=defaultOnClick}) =
 
     return (
         <GoogleMap
-            mapContainerStyle={{ width: "100%", height: "300px" }}
+            mapContainerStyle={{ width: "100%", height: "500px" }}
             center={startingPosition}
-            zoom={8}
+            zoom={14}
             onClick={onClick}
         />
     );
