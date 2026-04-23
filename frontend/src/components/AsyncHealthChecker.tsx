@@ -2,7 +2,6 @@ import { apiClient } from "@/services/api";
 import { useCallback, useState } from "react";
 import type { FC } from "react";
 import { getLogger } from "@/services/logging";
-import type { HealthResponse } from "@/types/responseTypes";
 import { config } from "@/config/env";
 import SimpleButton, { type ButtonColor, type ButtonSize } from "./SimpleButton";
 import EasySpinner from "./EasySpinner";
@@ -60,23 +59,7 @@ const AsyncHealthChecker: FC<AsyncHealthCheckerProps> = ({
 
   const buttonCaption = caption ?? `Check ${endpoint}`;
 
-  const runSync = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const { code, status } = await apiClient.get<HealthResponse>(`${API_BASE_URL}${endpoint}`);
-      logger.info("Health check successful", { endpoint, code, status });
-      setIsHealthy("healthy");
-      setCheckInfo(`Healthy, check time: ${getTime()}. Status="${status}"`);
-    } catch (error) {
-      logger.error("Health check failed", { endpoint, error });
-      setIsHealthy("unhealthy");
-      setCheckInfo(`Check failure at ${getTime()}`);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [endpoint]);
-
-  const runAsync = useCallback(async () => {
+  const handleClick = useCallback(async () => {
     setIsLoading(true);
     setIsHealthy("pending");
     setCheckInfo(`Sending request at ${getTime()}...`);
@@ -147,14 +130,6 @@ const AsyncHealthChecker: FC<AsyncHealthCheckerProps> = ({
       setIsLoading(false);
     }
   }, [endpoint, responseEndpoint, pollingInterval, requestCount]);
-
-  const handleClick = useCallback(async () => {
-    if (config.lambdaCallMode === "sync") {
-      await runSync();
-    } else {
-      await runAsync();
-    }
-  }, [runSync, runAsync]);
 
   return (
     <div className="w-full border-2 border-gray-950 p-4 rounded-md">

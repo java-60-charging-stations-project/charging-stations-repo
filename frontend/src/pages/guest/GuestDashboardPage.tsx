@@ -1,8 +1,12 @@
 import HealthChecker from '@/components/HealthChecker';
+import AsyncHealthChecker from '@/components/AsyncHealthChecker';
 import GuestStationsTable from '@/components/GuestStationsTable';
 import NavMenu from '@/components/NavMenu';
+import { config } from '@/config/env';
 
 const GuestDashboardPage = () => {
+  const isSyncLambdaMode = config.lambdaCallMode === 'sync';
+
   return (
     <>
       <div className="min-h-screen w-full bg-slate-50 text-slate-900">
@@ -21,14 +25,26 @@ const GuestDashboardPage = () => {
                 buttonSize="xs"
                 caption="Check backend"
               />
-              <HealthChecker 
-                defaultInfo="Click to check!"
-                endpoint='/health/api'
-                checkerName='Check backend + lambda'
-                buttonColor="tertiary"
-                buttonSize="xs"
-                caption="Check lambdas"
-              />
+              {isSyncLambdaMode ? (
+                <HealthChecker
+                  defaultInfo="Click to check!"
+                  endpoint='/health/api'
+                  checkerName='Check backend + lambda'
+                  buttonColor="tertiary"
+                  buttonSize="xs"
+                  caption="Check lambdas"
+                />
+              ) : (
+                <AsyncHealthChecker
+                  defaultInfo="Click to check!"
+                  endpoint='/health/api'
+                  responseEndpoint='/health-response'
+                  checkerName='Check backend + lambda'
+                  buttonColor="tertiary"
+                  buttonSize="xs"
+                  caption="Check lambdas"
+                />
+              )}
             </div>
           </div>
         </div>
