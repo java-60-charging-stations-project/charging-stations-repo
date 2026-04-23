@@ -654,6 +654,10 @@ Resources:
       FunctionName: charging-stations-health
       Handler: app.handler
       CodeUri: routes/health
+      Environment:
+        Variables:
+          DYNAMO_WRITE_LAMBDA: !Ref WriteStationPortsFunction
+          AWS_LAMBDA_HOST_ACCOUNT: !Ref AWS::AccountId
       Layers:
         - !Ref CommonLoggerLayer
       Description: Health check - returns {"code":200,"status":"running"}
@@ -1379,12 +1383,12 @@ Resources:
       QueueName: !Sub "${AWS::StackName}-command.fifo"
       FifoQueue: true
       ContentBasedDeduplication: false
-      VisibilityTimeout: 120
+      VisibilityTimeout: 20
       MessageRetentionPeriod: 345600 # 4 days
       ReceiveMessageWaitTimeSeconds: 20
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt CommandQueueDlq.Arn
-        maxReceiveCount: 5
+        maxReceiveCount: 3
 
   CommandQueuePolicy:
     Type: AWS::SQS::QueuePolicy
@@ -1405,6 +1409,42 @@ Resources:
               StringNotEquals:
                 aws:PrincipalAccount: ""
 
+  CommandRouterFunction:
+    Type: AWS::Serverless::Function
+    DependsOn:
+      - ApplicationSharedLambdaLogGroup
+      - CommandQueue
+    Properties:
+      Runtime: python3.13
+      LoggingConfig:
+        LogGroup: !Sub "/charging-stations/${AWS::StackName}/lambda/application"
+      FunctionName: charging-stations-command-router
+      Handler: command_handler.handler
+      CodeUri: routes
+      Layers:
+        - !Ref CommonToolsLayer
+      Description: Routes backend command messages from SQS to target lambdas
+      Timeout: 15
+      Environment:
+        Variables:
+          AWS_LAMBDA_HOST_ACCOUNT: !Ref AWS::AccountId
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - lambda:InvokeFunction
+              Resource: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:charging-stations-*"
+      Events:
+        CommandQueueEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt CommandQueue.Arn
+            BatchSize: 10
+            Enabled: true
+            FunctionResponseTypes:
+              - ReportBatchItemFailures
+  
 Outputs:
   UserPoolId:
     Description: Cognito User Pool ID (backend API / Fargate env)
