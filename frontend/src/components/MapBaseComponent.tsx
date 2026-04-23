@@ -9,6 +9,7 @@ const logger = getLogger("maps");
 
 interface MapBaseComponentProps {
     position: LatLng;
+    markedPoint?: LatLng;
     zoom?: number;
     onClick?: ((position: LatLng) => void) | undefined;
 };
@@ -19,13 +20,14 @@ const defaultOnClick = (position: LatLng) => {
 
 const MapBaseComponent: FC<MapBaseComponentProps> = ({
     position,
+    markedPoint,
     zoom = 14,
     onClick = defaultOnClick
 }) => {
     const { isLoaded, loadError } = useLoadScript({
         googleMapsApiKey: config.mapsGKey,
     });
-    const [latLng, setLatLng] = useState<LatLng | null>(null);
+    const [markerPosition, setLatLng] = useState<LatLng | undefined>(markedPoint);
 
     const handleClick = useCallback((event: google.maps.MapMouseEvent) => {
         const clickedPosition = event.latLng;
@@ -50,11 +52,11 @@ const MapBaseComponent: FC<MapBaseComponentProps> = ({
     return (
         <GoogleMap
             mapContainerStyle={{ width: "100%", height: "500px" }}
-            center={latLng ?? position}
+            center={markerPosition ?? position}
             zoom={zoom}
             onClick={handleClick}
         >
-            {latLng && <Marker position={latLng} />}
+            {markerPosition && <Marker position={markerPosition} />}
         </GoogleMap>
     );
 };
