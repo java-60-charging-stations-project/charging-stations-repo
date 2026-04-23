@@ -14,6 +14,7 @@ import MapBaseComponent from "./MapBaseComponent";
 import Modal from "./Modal";
 import type { AddressData, LatLng } from "@/types/maps";
 import { extractAddress } from "@/utils/mapUtils";
+import owners from "@/config/owners.json";
 
 const logger = getLogger("StationEditForm");
 
@@ -243,7 +244,19 @@ const StationEditForm: FC<StationEditFormProps> = ({
                     <input className="w-full" disabled={isLocked || isEditing} {...register("name", { required: "Station name is required" })} />
                 </FieldRow>
                 <FieldRow label="Owner" error={errors.owner?.message}>
-                    <input className="w-full" disabled={isLocked || isEditing} {...register("owner", { required: "Owner is required" })} />
+                    <select
+                        className="w-full"
+                        disabled={isLocked || isEditing}
+                        defaultValue=""
+                        {...register("owner", { required: "Owner is required" })}
+                    >
+                        <option value="">--- Select station owner ---</option>
+                        {owners.map((ownerName) => (
+                            <option key={ownerName} value={ownerName}>
+                                {ownerName}
+                            </option>
+                        ))}
+                    </select>
                 </FieldRow>
                 <div className="mb-1 flex items-center flex-wrap">
                     <label className={LABEL}>{ratesTitle}</label>
