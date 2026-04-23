@@ -5,6 +5,10 @@ import { wrapLambdaRequest } from '../../common/wrappers';
 import { addHealthCommandToQuery, CommandQueueResponse } from '../../utils/sqsCommandQueue';
 import { randomUUID } from 'crypto';
 import { ServiceError } from '../../common/serviceErrors';
+import { apiResponse, LambdaErrorResponse } from '../../common/wrapperTypes';
+import { isLambdaErrorPayload } from '../../common/lambdaContracts';
+
+const logger = createLogger('health.service');
 
 export interface HealthRecordRequest {
   userId: string;
@@ -34,8 +38,6 @@ export interface HealthResponse {
 };
 
 const LAMBDA_INVOKER: LambdaInvoker = new AwsLambdaInvoker(env.awsRegion);
-
-const logger = createLogger('health.service');
 
 const defaultCallerId = "guest";
 
@@ -95,9 +97,21 @@ export async function invokeHealthRecordLambda(
       userId: effectiveUserId,
       messageId,
     });
-    const lambdaResponse = await LAMBDA_INVOKER.invokeJson<HealthLambdaResponse>(lambdaName, payload);
+    const lambdaResponse = await LAMBDA_INVOKER.
+      invokeJson<apiResponse<HealthLambdaResponse> | LambdaErrorResponse>(lambdaName, payload);
     logger.debug(`Lambda response: ${JSON.stringify(lambdaResponse)}`);
-    const healthy = lambdaResponse.health_record === null ? false : true;
+    if (isLambdaErrorPayload(lambdaResponse)) {
+      throw new ServiceError(
+        "Error response lambda",
+        502,
+        "ERROR_LAMBDA_RESPONSE",
+        { collectorSource: lambdaName }
+      );
+    }
+    const response: HealthLambdaResponse = lambdaResponse.data;
+    logger.debug(`Unpacked response=${JSON.stringify(response)}`);
+    const healthy = response.health_record? true : false;
+    logger.debug(`Final response: healthy = ${healthy}`);
     return { healthy };
   } catch (error) {
     logger.error(`Error invoking ${lambdaName} action=${actionName}: ${error}`);
@@ -120,7 +134,7 @@ export async function executeHealthRequest(callerId?: string): Promise<HealthRes
   const requestId = randomUUID();
   try {
     const response = await addHealthCommandToQuery(effectiveCaller, requestId);
-    logger.debug("SQS response = ", response.messageId);
+    logger.debug(`SQS response = ${response.messageId}`);
 
     return response;
   }
