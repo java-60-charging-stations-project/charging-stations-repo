@@ -50,7 +50,7 @@ const MapBaseComponent: FC<MapBaseComponentProps> = ({
     return (
         <GoogleMap
             mapContainerStyle={{ width: "100%", height: "500px" }}
-            center={position}
+            center={latLng ?? position}
             zoom={zoom}
             onClick={handleClick}
         >
