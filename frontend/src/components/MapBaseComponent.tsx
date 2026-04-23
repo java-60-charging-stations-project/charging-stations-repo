@@ -1,35 +1,61 @@
 import { config } from "@/config/env";
 import { getLogger } from "@/services/logging";
-import { GoogleMap, useLoadScript } from "@react-google-maps/api";
-import type { FC } from "react";
+import type { LatLng } from "@/types/maps";
+import { GoogleMap, useLoadScript, Marker } from "@react-google-maps/api";
+import { useCallback, useState, type FC } from "react";
+import EasySpinner from "./EasySpinner";
 
 const logger = getLogger("maps");
 
 interface MapBaseComponentProps {
-    onClick?: ((e: google.maps.MapMouseEvent) => void) | undefined;
+    position: LatLng;
+    zoom?: number;
+    onClick?: ((position: LatLng) => void) | undefined;
 };
 
-const defaultOnClick = (e: google.maps.MapMouseEvent) => {
-    logger.debug(`Clicked coordinates: lat=${e.latLng?.lat()}, lng=${e.latLng?.lng()} `);
-}
+const defaultOnClick = (position: LatLng) => {
+    logger.debug(`Clicked coordinates: lat=${position.lat}, lng=${position.lng} `);
+};
 
-const MapBaseComponent: FC<MapBaseComponentProps> = ({onClick=defaultOnClick}) => {
+const MapBaseComponent: FC<MapBaseComponentProps> = ({
+    position,
+    zoom = 14,
+    onClick = defaultOnClick
+}) => {
     const { isLoaded, loadError } = useLoadScript({
         googleMapsApiKey: config.mapsGKey,
     });
+    const [latLng, setLatLng] = useState<LatLng | null>(null);
 
-    if (!isLoaded) return <div>Loading...</div>;
-    if (loadError) return <div>Error loading map: { loadError.message }</div>
+    const handleClick = useCallback((event: google.maps.MapMouseEvent) => {
+        const clickedPosition = event.latLng;
+        if (!clickedPosition) return;
+        const ll = { lat: clickedPosition.lat(), lng: clickedPosition.lng() };
 
-    const startingPosition = { lat: config.mapsStartLat, lng: config.mapsStartLng };
+        setLatLng(ll);
+        onClick?.(ll);
+    }, [onClick]);
+
+    if (!isLoaded) {
+        return (
+            <div>
+                <EasySpinner size="lg" />
+                <p>Loading map...</p>
+            </div>
+        );
+    } else if (loadError) {
+        return <div>Error loading map: {loadError.message}</div>;
+    }
 
     return (
         <GoogleMap
             mapContainerStyle={{ width: "100%", height: "500px" }}
-            center={startingPosition}
-            zoom={14}
-            onClick={onClick}
-        />
+            center={position}
+            zoom={zoom}
+            onClick={handleClick}
+        >
+            {latLng && <Marker position={latLng} />}
+        </GoogleMap>
     );
 };
 

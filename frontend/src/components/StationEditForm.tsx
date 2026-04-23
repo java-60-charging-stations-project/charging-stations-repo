@@ -306,7 +306,9 @@ const StationEditForm: FC<StationEditFormProps> = ({
                     </>
                 )}
             </form>
-            <MapBaseComponent />
+            <MapBaseComponent
+                position={{ lat: config.mapsStartLat, lng: config.mapsStartLng }}
+            />
             {station && <StationStateActions station={station} userRole={userRole}/>}
         </>
     );
