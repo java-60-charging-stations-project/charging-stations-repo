@@ -328,7 +328,7 @@ Resources:
       BuildProperties:
         EntryPoints:
           - logRouter.ts
-        Minify: true
+        Minify: false
         Sourcemap: true
         Target: es2020
 
