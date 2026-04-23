@@ -347,7 +347,7 @@ Resources:
     Properties:
       LogGroupName: /ecs/charging-stations-backend
       FilterName: audit-high-severity-ecs-backend
-      FilterPattern: '{ ($.level = "ERROR" || $.level = "CRITICAL") && $.service = * && $.source_service = "*" }'
+      FilterPattern: '{ ($.level = "ERROR" || $.level = "CRITICAL") && $.source_service IS NULL }'
       DestinationArn: !GetAtt SourceLogRouterFunction.Arn
 
 Outputs:
