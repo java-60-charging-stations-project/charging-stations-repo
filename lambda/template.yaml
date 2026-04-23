@@ -661,6 +661,14 @@ Resources:
       Layers:
         - !Ref CommonLoggerLayer
       Description: Health check - returns {"code":200,"status":"running"}
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - lambda:InvokeFunction
+              Resource:
+                - !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:charging-stations-write-station-ports-dynamo"
 
   # Cross-account: only when InvokerAccountId is provided
   HealthInvokePermissionA:
@@ -840,6 +848,7 @@ Resources:
               - started_at
               - stopped_at
               - charge_level_percent
+              - user_id
         - IndexName: booking-state-time-index
           KeySchema:
             - AttributeName: state
