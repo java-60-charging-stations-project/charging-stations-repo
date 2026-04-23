@@ -178,7 +178,7 @@ See **`lambda_request_responces.md`** for full shapes. Summary:
 - **WriteLogsRDS** – `write_logs` (batch upsert by `request_id`) and `resolveLog` (set `resolved=true`, `resolver_id`, `resolve_time` by `logId`).
 - **GetLogsInfo** – `getLogs` with filters (`level`, `service`, `callerId`, `event`, `resolved`), sortable `orderBy`, and pagination (`page`, `pageSize`, max 200).
 - **WriteStationPortsDynamo** – `insertStationPorts`, port updates, `deleteStationPorts` (see **`lambda_request_responces.md`**).
-- **GetPortsSessionsDynamo** – supports `getSessionByUser` (`data.latest=true` for history/all states on `user_id-index`) and `getSessionByStation` (sessions by station partition).
+- **GetPortsSessionsDynamo** – supports `getSessionByUser` (`data.latest=true` for history/all states on `user_id-index`), `getSessionByStation` (sessions by station partition), and `getHealthRecord` (`data.messageId`, `data.userId`) which returns `data.health_record` only when the record has not expired (`exp_time >= now`).
 - **StationEntitiesStreamConsumer** – Dynamo stream: forwards port insert/remove and free-state changes to station RDS updates, `UNPAID` transitions to payment, and `PAID` transitions to RDS session archive (details in **`lambda_request_responces.md`**).
 
 ### Maintenance cron Lambdas

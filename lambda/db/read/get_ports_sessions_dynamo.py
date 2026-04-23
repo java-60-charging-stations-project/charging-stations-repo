@@ -1,5 +1,6 @@
 import os
 import boto3
+import time
 from typing import Any
 from utils.logger import logger, log_audit
 from utils.error_handlers import LambdaResponseError
@@ -106,10 +107,11 @@ def get_session_by_port(station_id: str, entity_key: str) -> dict | None:
         logger.error(f"error getting dynamo stations table: {e}")
         raise LambdaResponseError({"error": f"error getting dynamo stations table: {e}", "code": "DATABASE_ERROR"})
     session_key = f"{entity_key}#SESSION#"
+    filter_expression = Attr("state").is_in(["ACTIVE", "BOOKED"])
     try:
         resp = table.query(
             KeyConditionExpression=Key("station_id").eq(station_id) & Key("entity_key").begins_with(session_key),
-            FilterExpression=Attr("state").is_in(["ACTIVE", "BOOKED"]),
+            FilterExpression=filter_expression,
         )
         items = resp.get("Items", [])
         return items[0] if items else None
@@ -134,6 +136,23 @@ def get_has_free_ports_by_station(station_id: str) -> bool:
     except Exception as e:
         logger.error(f"error checking free ports by station: {e}")
         raise LambdaResponseError({"error": f"error checking free ports by station: {e}", "code": "DATABASE_ERROR"})
+
+def get_health_record(station_id: str, entity_key: str) -> dict | None:
+    try:
+        table = get_dynamo_stations_table()
+    except Exception as e:
+        logger.error(f"error getting dynamo stations table: {e}")
+        raise LambdaResponseError({"error": f"error getting dynamo stations table: {e}", "code": "DATABASE_ERROR"})
+    try:
+        resp = table.query(
+            KeyConditionExpression=Key("station_id").eq(station_id) & Key("entity_key").eq(entity_key),
+            FilterExpression=Attr("exp_time").gte(int(time.time())),
+        )
+        items = resp.get("Items", [])
+        return items[0] if items else None
+    except Exception as e:
+        logger.error(f"error getting health record: {e}")
+        raise LambdaResponseError({"error": f"error getting health record: {e}", "code": "DATABASE_ERROR"})
 
 def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponsePayload:
     logger.info(f"Handler called with event: {event}")
@@ -182,6 +201,12 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                 session = get_session_by_port(station_id, entity_key)
                 log_audit("INFO", message="session by port retrieved successfully", status="SUCCESS", **audit_base)
                 return SuccessResponsePayload(data={"session": session if session else None}, meta={})
+            case "getHealthRecord":
+                station_id = event["data"]["messageId"]
+                entity_key = event["data"]["userId"]
+                health_record = get_health_record(station_id, entity_key)
+                log_audit("INFO", message="health record retrieved successfully", status="SUCCESS", **audit_base)
+                return SuccessResponsePayload(data={"health_record": health_record}, meta={})
             case _:
                 log_audit("ERROR", message=f"invalid action {action}", status="ERROR", errorMessage=f"invalid action {action}", **audit_base)
                 return ErrorResponsePayload(error=f"invalid action {action}", code="INVALID_REQUEST")
