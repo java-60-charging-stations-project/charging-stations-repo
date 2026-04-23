@@ -8,6 +8,20 @@ function readBool(name: string, defaultValue: boolean): boolean {
   return ['1', 'true', 'yes', 'y', 'on'].includes(raw.toLowerCase());
 }
 
+function extractEnvValue(parameterName: string): string | undefined {
+    const value = process.env[parameterName];
+    if (value === undefined) return undefined;
+
+    const trimmed = value.trim();
+    return trimmed === "" ? undefined : trimmed;
+};
+
+function getStringParameter(parameterName: string, fallback?: string): string | undefined {
+    const envValue = extractEnvValue(parameterName);
+    
+    return envValue ?? fallback;
+};
+
 export const env = {
   port: Number(process.env.PORT ?? 8000),
   apiPrefix: String(process.env.API_PREFIX ?? ''),
@@ -74,6 +88,7 @@ export const env = {
   ),
 
   // misc
+  lambdaCallMode: getStringParameter("LAMBDA_CALL_MODE", "sync")?.toLowerCase(),
   environment: String(process.env.ENVIRONMENT ?? 'local'),
   logLevel: String(process.env.LOG_LEVEL ?? 'info'),
 
@@ -104,4 +119,7 @@ export const env = {
     /** When true, TLS uses default Node verification (works with AWS ElastiCache CA). */
     tlsRejectUnauthorized: readBool('VALKEY_TLS_REJECT_UNAUTHORIZED', true),
   },
+
+  // SQS parameters
+  commandQueueUrl: getStringParameter("COMMAND_QUEUE_URL", ""),
 };

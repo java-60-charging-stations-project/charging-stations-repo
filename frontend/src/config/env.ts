@@ -26,4 +26,5 @@ export const config = {
     mapsStartLng: requireNumberParameter("VITE_MAPS_START_LNG", 35.077271),
     // MOCK PARAMETERS
     mockApiTimeout: requireNumberParameter("VITE_MOCK_API_TIMEOUT", 1000),
+    lambdaCallMode: requireStringParameter("VITE_LAMBDA_CALL_MODE", "async"),
 };

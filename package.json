@@ -6,6 +6,7 @@
     "packages/*"
   ],
   "dependencies": {
+    "@aws-sdk/client-sqs": "^3.1035.0",
     "@react-google-maps/api": "^2.20.8"
   }
 }
