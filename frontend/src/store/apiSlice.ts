@@ -208,7 +208,7 @@ export const selectActiveSessionStateSelector = createSelector(
 
 // Middleware
 function isUnchanged(prev: Session | null, curr: Session | null): boolean {
-    return (prev?.state === curr?.state && prev?.chargeLevelPercent === prev?.chargeLevelPercent);
+    return (prev?.state === curr?.state && prev?.chargeLevelPercent === curr?.chargeLevelPercent);
 };
 function isPaymentFailed(prev: Session | null, curr: Session | null): boolean {
     return  isFreshUnpaidSession(prev) && isStaleUnpaidSession(curr);
