@@ -667,10 +667,10 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                 log_audit("INFO", message="session paid successfully", status="SUCCESS", **audit_base)
                 return SuccessResponsePayload(data={"paid_session": paid_session}, meta={})
             case "write_health_record":
-                message_id = event["data"]["messageId"]
-                user_id = event["data"]["userId"]
+                message_id = event["data"]["message_id"]
+                user_id = event["data"]["user_id"]
                 write_health_record(message_id, user_id)
-                log_audit("INFO", message="health record written successfully", status="SUCCESS", **audit_base)
+                log_audit("INFO", message=f"health record written successfully: {message_id}", status="SUCCESS", **audit_base)
                 return SuccessResponsePayload(data={"result": "Successfully wrote health record"}, meta={})
             case _:
                 log_audit("ERROR", message=f"invalid action {action}", status="ERROR", errorMessage=f"invalid action {action}", **audit_base)

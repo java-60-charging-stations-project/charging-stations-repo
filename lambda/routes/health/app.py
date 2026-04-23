@@ -8,7 +8,7 @@ from data_types.contract_types import ErrorResponsePayload, SuccessResponsePaylo
 
 AWS_REGION = os.environ["AWS_REGION"]
 AWS_LAMBDA_HOST_ACCOUNT = os.environ["AWS_LAMBDA_HOST_ACCOUNT"]
-DYNAMO_WRITE_LAMBDA = os.environ["HEALTH_DYNAMO_TABLE"]
+DYNAMO_WRITE_LAMBDA = os.environ["DYNAMO_WRITE_LAMBDA"]
 
 client = boto3.client("lambda", region_name=AWS_REGION)
 
@@ -19,14 +19,18 @@ def invoke_health_write_dynamo(caller_id: str, message_id: str) -> dict:
     }
     resp = client.invoke(
         FunctionName=f"arn:aws:lambda:{AWS_REGION}:{AWS_LAMBDA_HOST_ACCOUNT}:function:{DYNAMO_WRITE_LAMBDA}",
-        InvocationType="Event",
+        InvocationType="RequestResponse",
         Payload=json.dumps(payload).encode("utf-8"),
     )
-    if resp.get("StatusCode") != 202:
+    if resp.get("StatusCode") != 200:
         raise LambdaResponseError({"error": f"error writing health record: {resp.get('error')}", "code": "DATABASE_ERROR"})
     if resp.get("FunctionError"):
         raise LambdaResponseError({"error": f"error writing health record: {resp['FunctionError']}", "code": "DATABASE_ERROR"})
-    return {"result": "Successfully invoked health write dynamo lambda"}
+    raw = resp["Payload"].read().decode("utf-8") or "{}"
+    response_json = json.loads(raw)
+    if response_json.get("error"):
+        raise LambdaResponseError({"error": f"error writing health record: {response_json.get('error')}", "code": "INVALID_REQUEST"})
+    return response_json["data"]
 
 def handler(event: dict, context: Any) -> dict|ErrorResponsePayload|SuccessResponsePayload:
     logger.info(f"Handler called with event: {event}")
@@ -61,9 +65,9 @@ def handler(event: dict, context: Any) -> dict|ErrorResponsePayload|SuccessRespo
     try:
         match action:
             case "getHealth":
-                message_id = event["service"]["messageId"]
+                message_id = event["data"]["messageId"]
                 result = invoke_health_write_dynamo(caller_id, message_id)
-                log_audit("INFO", message="health record written successfully", status="SUCCESS", **audit_base)
+                log_audit("INFO", message=f"health record written successfully: {message_id}", status="SUCCESS", **audit_base)
                 return SuccessResponsePayload(data=result, meta={})
             case _:
                 log_audit("ERROR", message="invalid action", status="ERROR", errorMessage=f"invalid action: {action}", **audit_base)
@@ -72,8 +76,8 @@ def handler(event: dict, context: Any) -> dict|ErrorResponsePayload|SuccessRespo
         log_audit("ERROR", message="missing data", status="ERROR", errorMessage=f"missing data: {e}", **audit_base)
         return ErrorResponsePayload(error=f"missing data: {e}", code="INVALID_REQUEST")
     except LambdaResponseError as e:
-        log_audit("ERROR", message="error writing health record", status="ERROR", errorMessage=e.response.get("error"), **audit_base)
+        log_audit("ERROR", message=f"error writing health record: {message_id}", status="ERROR", errorMessage=e.response.get("error"), **audit_base)
         return ErrorResponsePayload(error=e.response["error"], code=e.response["code"])
     except Exception as e:
-        log_audit("ERROR", message="error writing health record", status="ERROR", errorMessage=str(e), **audit_base)
+        log_audit("ERROR", message=f"error writing health record: {message_id}", status="ERROR", errorMessage=str(e), **audit_base)
         return ErrorResponsePayload(error=f"error writing health record: {e}", code="UNHANDLED_ERROR")
