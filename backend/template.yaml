@@ -308,9 +308,9 @@ Resources:
   SourceLogRouterFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Runtime: python3.12
+      Runtime: nodejs20.x
       FunctionName: charging-stations-source-log-router
-      Handler: log_router.handler
+      Handler: logRouter.handler
       CodeUri: scripts/log_router
       Timeout: 30
       MemorySize: 128
@@ -323,6 +323,14 @@ Resources:
             - Effect: Allow
               Action: lambda:InvokeFunction
               Resource: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaLogSubscriptionProcessorName}"
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+          - logRouter.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
 
   SourceLogRouterInvokePermissionFromLogs:
     Type: AWS::Lambda::Permission
