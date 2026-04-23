@@ -1232,6 +1232,53 @@ Request:
 }
 ```
 
+---
+
+### `getHealthRecord`
+
+Lambda: `charging-stations-get-ports-sessions-dynamo`  
+Action: `getHealthRecord`
+
+Reads one health record by exact DynamoDB key (`station_id = messageId`, `entity_key = userId`) and returns it only when `exp_time >= now`.
+
+Request:
+
+```json
+{
+  "service": { "action": "getHealthRecord", "callerId": "string" },
+  "data": {
+    "messageId": "health-message-id",
+    "userId": "user-uuid"
+  }
+}
+```
+
+Response (success, active record):
+
+```json
+{
+  "data": {
+    "health_record": {
+      "station_id": "health-message-id",
+      "entity_key": "user-uuid",
+      "exp_time": 1770000000
+    }
+  },
+  "meta": {}
+}
+```
+
+Response (success, missing/expired record):
+
+```json
+{
+  "data": {
+    "health_record": null
+  },
+  "meta": {}
+}
+```
+
 Response (success):
 
 ```json
