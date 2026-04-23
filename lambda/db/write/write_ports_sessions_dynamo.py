@@ -632,6 +632,11 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                 paid_session = pay_session(session_data)
                 log_audit("INFO", message="session paid successfully", status="SUCCESS", **audit_base)
                 return SuccessResponsePayload(data={"paid_session": paid_session}, meta={})
+            case "write_health_record":
+                health_record = event["data"]["healthRecord"]
+                write_health_record(health_record)
+                log_audit("INFO", message="health record written successfully", status="SUCCESS", **audit_base)
+                return SuccessResponsePayload(data={"health_record": health_record}, meta={})
             case _:
                 log_audit("ERROR", message=f"invalid action {action}", status="ERROR", errorMessage=f"invalid action {action}", **audit_base)
                 return ErrorResponsePayload(error=f"invalid action {action}", code="INVALID_REQUEST")
