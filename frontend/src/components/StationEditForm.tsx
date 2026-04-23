@@ -11,7 +11,8 @@ import { useCreateStationMutation, useGetStationQuery, useUpdateStationMutation 
 import type { UserRole } from "@/types";
 import EasySpinner from "./EasySpinner";
 import MapBaseComponent from "./MapBaseComponent";
-import type { LatLng } from "@/types/maps";
+import Modal from "./Modal";
+import type { AddressData, LatLng } from "@/types/maps";
 import { extractAddress } from "@/utils/mapUtils";
 
 const logger = getLogger("StationEditForm");
@@ -45,6 +46,9 @@ const StationEditForm: FC<StationEditFormProps> = ({
     const { register, handleSubmit, reset, setValue, formState: { errors, isSubmitting } } = useForm<StationFormData>();
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [createSuccess, setCreateSuccess] = useState(false);
+    const [isMapModalOpen, setIsMapModalOpen] = useState(false);
+    const [stationLatLng, setStationLatLng] = useState<LatLng | undefined>(undefined);
+    const [stationAddress, setStationAddress] = useState<AddressData | null>(null);
     const isSupportUser = userRole === "SUPPORT";
     
     const navigate = useNavigate();
@@ -131,23 +135,36 @@ const StationEditForm: FC<StationEditFormProps> = ({
         }
     };
 
-    const handleMapClick = async (position: LatLng) => {
-        const { lat, lng } = position;
-        const setterConfig = { shouldValidate: true, shouldDirty: true };
-        // Set form values
-        setValue("location.latitude", lat, setterConfig);
-
-        setValue("location.longitude", lng, setterConfig);
-
-        const extracted = await extractAddress(position);
-        logger.debug("Extracted address", extracted);
-        
-        setValue("address", extracted.address ?? "", setterConfig);
-        setValue("city", extracted.city ?? "", setterConfig);
-    }
-
     const ratesTitle = `Rates in ${config.currency.code}`;
     const isBusy = isSubmitting || isUpdating || isCreating;
+
+    const handleMapClick = async (position: LatLng) => {
+        try {
+            const extracted = await extractAddress(position);
+            setStationLatLng(position);
+            setStationAddress(extracted);
+        } catch (err) {
+            logger.error('Failed to extract address from map click', err);
+        }
+    };
+
+    const handleMapModalClose = () => {
+        const lat = stationLatLng?.lat;
+        const lng = stationLatLng?.lng;
+        const address = stationAddress?.address;
+        const city = stationAddress?.city;
+        
+        if (lat) {
+            setValue("location.latitude", lat, { shouldValidate: true, shouldDirty: true });
+        }
+        if (lng) {
+            setValue("location.longitude", lng, { shouldValidate: true, shouldDirty: true });
+        }
+        setValue("address", address ?? "", { shouldValidate: true, shouldDirty: true });
+        setValue("city", city ?? "", { shouldValidate: true, shouldDirty: true });
+
+        setIsMapModalOpen(false);
+    };
 
     if (stationId && isLoading) {
         return (
@@ -164,9 +181,24 @@ const StationEditForm: FC<StationEditFormProps> = ({
             <h1 className="text-center">{stationId ? "Station details" : "Create a new station"}</h1>
             {isError && loadError?.message && <p className="text-red-500 text-xs">{loadError.message}</p>}
             <form onSubmit={handleSubmit(onSubmit)} className="w-full text-xs">
-                <FieldRow label="City" error={errors.city?.message}>
-                    <input className="w-full" disabled={isLocked || isEditing} {...register("city", { required: "City is required" })} />
-                </FieldRow>
+                <div className="mb-1 flex items-center flex-wrap">
+                    <label className={LABEL}>City</label>
+                    <div className="flex-1 flex gap-2 min-w-0 items-center">
+                        <input
+                            className="flex-1 min-w-0"
+                            disabled={isLocked || isEditing}
+                            {...register("city", { required: "City is required" })}
+                        />
+                        {config.useGMaps && isLocked === false && (
+                            <EasyButton onClick={() => setIsMapModalOpen(true)}>
+                                Map
+                            </EasyButton>
+                        )}
+                    </div>
+                    {errors.city?.message && (
+                        <p className="w-full text-right text-red-500 text-xs mt-0.5 pr-0">{errors.city.message}</p>
+                    )}
+                </div>
                 <FieldRow label="Address" error={errors.address?.message}>
                     <input className="w-full" disabled={isLocked || isEditing} {...register("address", { required: "Address is required" })} />
                 </FieldRow>
@@ -323,11 +355,25 @@ const StationEditForm: FC<StationEditFormProps> = ({
                     </>
                 )}
             </form>
-            <MapBaseComponent
-                position={{ lat: config.mapsStartLat, lng: config.mapsStartLng }}
-                onClick={handleMapClick}
-            />
             {station && <StationStateActions station={station} userRole={userRole}/>}
+            <Modal
+                isOpen={isMapModalOpen}
+                onClose={handleMapModalClose}
+                showCloseButton={true}
+                panelClassName="max-w-3xl"
+            >
+                <h2 className="text-lg font-bold mb-2">Choose the station on location on the map:</h2>
+                <MapBaseComponent
+                    position={stationLatLng ?? { lat: config.mapsStartLat, lng: config.mapsStartLng }}
+                    markedPoint={stationLatLng}
+                    onClick={handleMapClick}
+                />
+                <div className="mt-3 text-sm space-y-1">
+                    <p>Address: {stationAddress?.address ?? ""}</p>
+                    <p>Latitude: {stationLatLng?.lat ?? ""}</p>
+                    <p>Longitude: {stationLatLng?.lng ?? ""}</p>
+                </div>
+            </Modal>
         </>
     );
 };

@@ -1,4 +1,4 @@
-import { getStringParameter, requireNumberParameter, requireStringParameter } from "./configUtils";
+import { getStringParameter, requireBooleanParameter, requireNumberParameter, requireStringParameter } from "./configUtils";
 
 export const config = {
     apiPrefix: getStringParameter("VITE_API_URL_PREFIX"),
@@ -20,6 +20,7 @@ export const config = {
     userSessionsPollingInterval: requireNumberParameter("VITE_USER_SESSION_POLLING_INTERVAL_MS", 5_000),
     unpaidSessionGracePeriodMs: requireNumberParameter("VITE_UNPAID_SESSION_GRACE_PERIOD_MS", 15_000),
     toasterAutoCloseMs: requireNumberParameter("VITE_TOASTER_AUTO_CLOSE_MS", 5_000),
+    useGMaps: requireBooleanParameter("VITE_USE_G_MAPS", true),
     mapsGKey: requireStringParameter("VITE_MAPS_G_KEY"),
     mapsStartLat: requireNumberParameter("VITE_MAPS_START_LAT", 32.842345),
     mapsStartLng: requireNumberParameter("VITE_MAPS_START_LNG", 35.077271),
