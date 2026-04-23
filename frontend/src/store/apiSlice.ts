@@ -242,7 +242,7 @@ export const addSessionStateListener = (appListening: AppStartListening) => {
         effect: async (_action, listenerApi) => {
             const prev = selectActiveSessionStateSelector(listenerApi.getOriginalState());
             const curr = selectActiveSessionStateSelector(listenerApi.getState());
-            logger.debug(`Effect is running, prevState = ${prev?.state}, currState=${curr?.state}`);
+            logger.debug(`.mw Effect is running, prevState = ${prev?.state}, currState=${curr?.state}`);
             if ( isUnchanged(prev, curr) ) {
                 return;
             }
