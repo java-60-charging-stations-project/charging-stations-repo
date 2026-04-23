@@ -1,10 +1,7 @@
 import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda';
 
 const AWS_REGION = process.env.AWS_REGION ?? 'il-central-1';
-const AWS_LAMBDA_HOST_ACCOUNT = process.env.AWS_LAMBDA_HOST_ACCOUNT;
 const LOG_PROCESSOR_FUNCTION_ARN = process.env.LOG_PROCESSOR_FUNCTION_ARN;
-
-void AWS_LAMBDA_HOST_ACCOUNT;
 
 type LambdaEvent = Record<string, unknown>;
 type LambdaContext = Record<string, unknown>;
