@@ -67,10 +67,6 @@ Parameters:
     Type: String
     Description: Cross-account IAM role ARN used by the backend to manage Cognito users
     Default: arn:aws:iam::852215679994:role/sam-db-lambdas-cognito-cross-account
-  LambdaLogSubscriptionProcessorName:
-    Type: String
-    Default: charging-stations-log-subscription-processor
-    Description: Lambda function name in LambdaAccountId that receives CloudWatch Logs subscription deliveries
   LambdaCommandQueueName:
     Type: String
     Default: sam-db-lambdas-command.fifo
@@ -304,44 +300,6 @@ Resources:
         - ContainerName: charging-stations-backend
           ContainerPort: !Ref ContainerPort
           TargetGroupArn: !Ref ApplicationTargetGroup
-
-  SourceLogRouterFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      Runtime: python3.12
-      FunctionName: charging-stations-source-log-router
-      Handler: log_router.handler
-      CodeUri: scripts/log_router
-      Timeout: 30
-      MemorySize: 128
-      Environment:
-        Variables:
-          LOG_PROCESSOR_FUNCTION_ARN: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaLogSubscriptionProcessorName}"
-      Policies:
-        - Version: "2012-10-17"
-          Statement:
-            - Effect: Allow
-              Action: lambda:InvokeFunction
-              Resource: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaLogSubscriptionProcessorName}"
-
-  SourceLogRouterInvokePermissionFromLogs:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !Ref SourceLogRouterFunction
-      Action: lambda:InvokeFunction
-      Principal: logs.amazonaws.com
-      SourceArn: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/ecs/charging-stations-backend:*"
-
-  BackendAuditLogSubscriptionToSourceRouter:
-    Type: AWS::Logs::SubscriptionFilter
-    DependsOn:
-      - SourceLogRouterInvokePermissionFromLogs
-    Properties:
-      LogGroupName: /ecs/charging-stations-backend
-      FilterName: audit-high-severity-ecs-backend
-      FilterPattern: '{ ($.level = "ERROR" || $.level = "CRITICAL") && $.service = * && $.source_service = "*" }'
-      DestinationArn: !GetAtt SourceLogRouterFunction.Arn
-
 Outputs:
   LoadBalancerArn:
     Description: ARN of the application load balancer
