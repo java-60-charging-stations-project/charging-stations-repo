@@ -109,7 +109,6 @@ def create_tables() -> None:
                     message TEXT,
                     service TEXT,
                     event TEXT,
-                    source_service TEXT,
                     caller_id TEXT,
                     request_id TEXT NOT NULL UNIQUE,
                     timestamp TIMESTAMPTZ,
