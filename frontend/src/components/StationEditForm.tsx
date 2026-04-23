@@ -11,6 +11,8 @@ import { useCreateStationMutation, useGetStationQuery, useUpdateStationMutation 
 import type { UserRole } from "@/types";
 import EasySpinner from "./EasySpinner";
 import MapBaseComponent from "./MapBaseComponent";
+import type { LatLng } from "@/types/maps";
+import { extractAddress } from "@/utils/mapUtils";
 
 const logger = getLogger("StationEditForm");
 
@@ -40,7 +42,7 @@ const StationEditForm: FC<StationEditFormProps> = ({
     userRole = "ADMIN",
     stationId,
 }) => {
-    const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<StationFormData>();
+    const { register, handleSubmit, reset, setValue, formState: { errors, isSubmitting } } = useForm<StationFormData>();
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [createSuccess, setCreateSuccess] = useState(false);
     const isSupportUser = userRole === "SUPPORT";
@@ -128,6 +130,21 @@ const StationEditForm: FC<StationEditFormProps> = ({
             setSubmitError(message);
         }
     };
+
+    const handleMapClick = async (position: LatLng) => {
+        const { lat, lng } = position;
+        const setterConfig = { shouldValidate: true, shouldDirty: true };
+        // Set form values
+        setValue("location.latitude", lat, setterConfig);
+
+        setValue("location.longitude", lng, setterConfig);
+
+        const extracted = await extractAddress(position);
+        logger.debug("Extracted address", extracted);
+        
+        setValue("address", extracted.address ?? "", setterConfig);
+        setValue("city", extracted.city ?? "", setterConfig);
+    }
 
     const ratesTitle = `Rates in ${config.currency.code}`;
     const isBusy = isSubmitting || isUpdating || isCreating;
@@ -308,6 +325,7 @@ const StationEditForm: FC<StationEditFormProps> = ({
             </form>
             <MapBaseComponent
                 position={{ lat: config.mapsStartLat, lng: config.mapsStartLng }}
+                onClick={handleMapClick}
             />
             {station && <StationStateActions station={station} userRole={userRole}/>}
         </>
