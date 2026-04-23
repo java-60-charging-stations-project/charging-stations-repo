@@ -4,9 +4,12 @@ import { BadRequestError } from '../../common/serviceErrors';
 
 export function healthRouter(): Router {
   const router = Router();
+  router.get('/health', async (req, res) => {
+    res.status(200).json({code: 200, status: "healthy"});
+  });
 
   // Single health endpoint backed by Lambda.
-  router.get('/health', async (req, res) => {
+  router.get('/health/api', async (req, res) => {
     const callerId = req.user?.sub;
     const result = await executeHealthRequest(callerId);
     res.status(200).json(result);

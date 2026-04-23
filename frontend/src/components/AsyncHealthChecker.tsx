@@ -2,11 +2,8 @@ import { apiClient } from "@/services/api";
 import { useCallback, useState } from "react";
 import type { FC } from "react";
 import { getLogger } from "@/services/logging";
-import { config } from "@/config/env";
 import SimpleButton, { type ButtonColor, type ButtonSize } from "./SimpleButton";
 import EasySpinner from "./EasySpinner";
-
-const API_BASE_URL = config.apiBaseUrl;
 
 const logger = getLogger();
 
@@ -66,7 +63,7 @@ const AsyncHealthChecker: FC<AsyncHealthCheckerProps> = ({
 
     let messageId: string;
     try {
-      const response = await apiClient.get<CommandQueueResponse>(`${API_BASE_URL}${endpoint}`);
+      const response = await apiClient.get<CommandQueueResponse>(endpoint);
       messageId = response.messageId;
       if (!messageId) {
         throw new Error("No messageId received from command queue");
@@ -87,7 +84,7 @@ const AsyncHealthChecker: FC<AsyncHealthCheckerProps> = ({
       for (let attempt = 1; attempt <= requestCount; attempt += 1) {
         try {
           const result = await apiClient.get<HealthRecordResponse>(
-            `${API_BASE_URL}${responseEndpoint}`,
+            responseEndpoint,
             { params: { messageId } },
           );
           if (result.healthy) {
