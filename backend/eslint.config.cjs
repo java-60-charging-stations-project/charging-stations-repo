@@ -14,6 +14,10 @@ module.exports = tseslint.config(
       globals: {
         ...globals.node,
       },
+      parserOptions: {
+        tsconfigRootDir: __dirname,
+        project: ['./tsconfig.json'],
+      },
     },
     rules: {
       'no-unused-vars': 'off',
