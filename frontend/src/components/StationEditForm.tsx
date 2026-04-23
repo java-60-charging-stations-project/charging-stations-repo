@@ -44,7 +44,7 @@ const StationEditForm: FC<StationEditFormProps> = ({
     userRole = "ADMIN",
     stationId,
 }) => {
-    const { register, handleSubmit, reset, setValue, formState: { errors, isSubmitting } } = useForm<StationFormData>();
+    const { register, handleSubmit, reset, setValue, getValues, formState: { errors, isSubmitting } } = useForm<StationFormData>();
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [createSuccess, setCreateSuccess] = useState(false);
     const [isMapModalOpen, setIsMapModalOpen] = useState(false);
@@ -139,6 +139,26 @@ const StationEditForm: FC<StationEditFormProps> = ({
     const ratesTitle = `Rates in ${config.currency.code}`;
     const isBusy = isSubmitting || isUpdating || isCreating;
 
+    const tryGenerateStationName = (overrides?: { owner?: string; city?: string }) => {
+        const owner = (overrides?.owner ?? getValues("owner") ?? "").trim();
+        const city = (overrides?.city ?? getValues("city") ?? "").trim();
+        const currentName = (getValues("name") ?? "").trim();
+
+        if (!owner || !city || currentName) {
+            return;
+        }
+
+        const firstOwnerWord = owner.split(/\s+/)[0];
+        if (!firstOwnerWord) {
+            return;
+        }
+
+        setValue("name", `${firstOwnerWord} ${city} One`, {
+            shouldValidate: true,
+            shouldDirty: true,
+        });
+    };
+
     const handleMapClick = async (position: LatLng) => {
         try {
             const extracted = await extractAddress(position);
@@ -163,6 +183,8 @@ const StationEditForm: FC<StationEditFormProps> = ({
         }
         setValue("address", address ?? "", { shouldValidate: true, shouldDirty: true });
         setValue("city", city ?? "", { shouldValidate: true, shouldDirty: true });
+
+        tryGenerateStationName({ city: city ?? "" });
 
         setIsMapModalOpen(false);
     };
@@ -240,23 +262,32 @@ const StationEditForm: FC<StationEditFormProps> = ({
                         </div>
                     </div>
                 </div>
+                <FieldRow label="Owner" error={errors.owner?.message}>
+                    {(() => {
+                        const ownerField = register("owner", { required: "Owner is required" });
+                        return (
+                            <select
+                                className="w-full"
+                                disabled={isLocked || isEditing}
+                                defaultValue=""
+                                {...ownerField}
+                                onChange={(e) => {
+                                    ownerField.onChange(e);
+                                    tryGenerateStationName({ owner: e.target.value });
+                                }}
+                            >
+                                <option value="">--- Select station owner ---</option>
+                                {owners.map((ownerName) => (
+                                    <option key={ownerName} value={ownerName}>
+                                        {ownerName}
+                                    </option>
+                                ))}
+                            </select>
+                        );
+                    })()}
+                </FieldRow>
                 <FieldRow label="Station Name" error={errors.name?.message}>
                     <input className="w-full" disabled={isLocked || isEditing} {...register("name", { required: "Station name is required" })} />
-                </FieldRow>
-                <FieldRow label="Owner" error={errors.owner?.message}>
-                    <select
-                        className="w-full"
-                        disabled={isLocked || isEditing}
-                        defaultValue=""
-                        {...register("owner", { required: "Owner is required" })}
-                    >
-                        <option value="">--- Select station owner ---</option>
-                        {owners.map((ownerName) => (
-                            <option key={ownerName} value={ownerName}>
-                                {ownerName}
-                            </option>
-                        ))}
-                    </select>
                 </FieldRow>
                 <div className="mb-1 flex items-center flex-wrap">
                     <label className={LABEL}>{ratesTitle}</label>
