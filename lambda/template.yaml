@@ -1441,7 +1441,6 @@ Resources:
           Properties:
             Queue: !GetAtt CommandQueue.Arn
             BatchSize: 10
-            MaximumBatchingWindowInSeconds: 5
             Enabled: true
             FunctionResponseTypes:
               - ReportBatchItemFailures
