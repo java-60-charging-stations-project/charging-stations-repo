@@ -225,14 +225,15 @@ function isBookingExpired(prev: Session | null, curr: Session | null): boolean {
 };
 function isChargeCompleted(prev: Session | null, curr: Session | null): boolean {
     const prevPct = prev === null? 0: (prev.chargeLevelPercent ?? 0);
-    return (
+    const currPct = curr === null? 0: (curr.chargeLevelPercent ?? 0);
+    const result = (
         curr !== null &&
         curr.state === "ACTIVE" &&
-        curr.chargeLevelPercent !== null &&
-        curr.chargeLevelPercent !== undefined &&
-        curr.chargeLevelPercent >= 99.99
+        currPct >= 100
         && prevPct < 100
     );
+    logger.debug(`isChargeCompleted: prevState = ${prev?.state}, currState = ${curr?.state}, prevPct = ${prevPct}, currPct = ${currPct}, result = ${result}`);
+    return result;
 };
 
 export const addSessionStateListener = (appListening: AppStartListening) => {
@@ -254,18 +255,24 @@ export const addSessionStateListener = (appListening: AppStartListening) => {
                 toast.warn("Your booking has expired", {
                     toastId: "session-expired", position, className, autoClose,
                 });
+                logger.debug("! Booking expired");
+                return;
             }
-            else if ( isChargeCompleted(prev, curr) ) {
+            if ( isChargeCompleted(prev, curr) ) {
                 toast.success(
                     "Your charging is complete", {
                     toastId: "charging-completed", position, className, autoClose,
                 });
+                logger.debug("! Charging completed");
+                return;
             }
-            else if (isPaymentFailed(prev, curr)) {
+            if (isPaymentFailed(prev, curr)) {
                 toast.error(
                     "Your payment has failed!", {
                     toastId: "payment-failed", position, className, autoClose,   
                 });
+                logger.debug("! Payment failed");
+                return;
             }
         },
     });
