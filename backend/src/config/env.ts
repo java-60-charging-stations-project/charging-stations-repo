@@ -88,7 +88,7 @@ export const env = {
   ),
 
   // misc
-  lambdaCallMode: getStringParameter("LAMBDA_CALL_MODE", "sync"),
+  lambdaCallMode: getStringParameter("LAMBDA_CALL_MODE", "sync")?.toLowerCase(),
   environment: String(process.env.ENVIRONMENT ?? 'local'),
   logLevel: String(process.env.LOG_LEVEL ?? 'info'),
 

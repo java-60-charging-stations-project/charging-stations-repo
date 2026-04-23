@@ -267,9 +267,6 @@ Resources:
           EnvironmentFiles:
             - Type: s3
               Value: arn:aws:s3:::charge-st-backend-config-773769103104/backend/prod.env
-          Environment:
-            - Name: COMMAND_QUEUE_URL
-              Value: !Sub "https://sqs.${LambdaRegion}.amazonaws.com/${LambdaAccountId}/${LambdaCommandQueueName}"
           LogConfiguration:
             LogDriver: awslogs
             Options:
