@@ -225,7 +225,14 @@ function isBookingExpired(prev: Session | null, curr: Session | null): boolean {
 };
 function isChargeCompleted(prev: Session | null, curr: Session | null): boolean {
     const prevPct = prev === null? 0: (prev.chargeLevelPercent ?? 0);
-    return (curr !== null && curr.state === "ACTIVE" && curr.chargeLevelPercent === 100 && prevPct < 100);
+    return (
+        curr !== null &&
+        curr.state === "ACTIVE" &&
+        curr.chargeLevelPercent !== null &&
+        curr.chargeLevelPercent !== undefined &&
+        curr.chargeLevelPercent >= 99.99
+        && prevPct < 100
+    );
 };
 
 export const addSessionStateListener = (appListening: AppStartListening) => {
