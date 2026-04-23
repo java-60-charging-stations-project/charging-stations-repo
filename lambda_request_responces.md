@@ -85,7 +85,6 @@ The processor asynchronously invokes `charging-stations-write-logs-rds` with:
       "level": "ERROR|CRITICAL|INFO|...",
       "service": "lambda-or-service-name",
       "event": "domain-event-name",
-      "source_service": "string|null",
       "caller_id": "string",
       "request_id": "uuid|string"
     }
@@ -111,7 +110,6 @@ Request:
       "level": "ERROR|CRITICAL|INFO|...",
       "service": "charging-stations-write-station-ports-dynamo",
       "event": "supportUpdateStationPorts",
-      "source_service": "string|null",
       "caller_id": "string",
       "request_id": "uuid|string",
       "timestamp": "ISO timestamp"
@@ -123,8 +121,6 @@ Request:
 Behavior:
 
 - `level` is upper-cased before persistence.
-- `request_id` is idempotency key (`ON CONFLICT (request_id)` upsert).
-- If `source_service` is not null, existing row is not updated on conflict.
 
 Response (success):
 
@@ -137,7 +133,6 @@ Response (success):
         "level": "ERROR",
         "service": "string",
         "event": "string",
-        "source_service": null,
         "caller_id": "string",
         "request_id": "uuid",
         "timestamp": "ISO timestamp"
@@ -224,7 +219,7 @@ Notes:
 - `resolved` also accepts string `"true"` / `"false"`.
 - `pageSize` is capped at 200.
 - Default sort is `timestamp DESC`.
-- `orderBy` columns: `logId`, `level`, `message`, `service`, `event`, `sourceService`, `callerId`, `requestId`, `timestamp`, `resolveTime`, `resolverId`, `resolved`.
+- `orderBy` columns: `logId`, `level`, `message`, `service`, `event`, `callerId`, `requestId`, `timestamp`, `resolveTime`, `resolverId`, `resolved`.
 
 Response (success):
 
@@ -237,7 +232,6 @@ Response (success):
       "message": "string",
       "service": "string",
       "event": "string",
-      "source_service": null,
       "caller_id": "string",
       "request_id": "uuid",
       "timestamp": "ISO timestamp",
