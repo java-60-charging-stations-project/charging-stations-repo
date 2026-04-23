@@ -6,6 +6,24 @@ import { addHealthCommandToQuery, CommandQueueResponse } from '../../utils/sqsCo
 import { randomUUID } from 'crypto';
 import { ServiceError } from '../../common/serviceErrors';
 
+export interface HealthRecordRequest {
+  userId: string;
+  messageId: string;
+};
+
+export interface HealthRecordResponse {
+  healthy: boolean;
+};
+
+type HealthLambdaResponse = { health_record: null } | {
+  health_record: {
+    "station_id": string;
+    "entity_key": string;
+    "exp_time": number;
+  }
+}
+
+
 /**
  * `charging-stations-health` returns this directly — not `LambdaSuccessPayload`
  * (`lambda/routes/health/app.py`).
@@ -13,7 +31,7 @@ import { ServiceError } from '../../common/serviceErrors';
 export interface HealthResponse {
   code: number;
   status: string;
-}
+};
 
 const LAMBDA_INVOKER: LambdaInvoker = new AwsLambdaInvoker(env.awsRegion);
 
@@ -53,6 +71,44 @@ export async function invokeHealthLambda(callerId?: string): Promise<HealthRespo
     );
   }
 };
+
+/**
+ * Invokes the `charging-stations-get-ports-sessions-dynamo` Lambda with action `getHealthRecord`
+ * and payload `{ userId, messageId }`. Falls back to `defaultCallerId` when `userId` is empty.
+ * Returns the raw Lambda response so the caller can forward it as-is.
+ */
+export async function invokeHealthRecordLambda(
+  messageId: string,
+  userId?: string
+): Promise<HealthRecordResponse> {
+  const effectiveUserId = userId?.trim() || defaultCallerId;
+  const lambdaName = env.stationsPortsReadLambdaFunctionName;
+  const actionName = 'getHealthRecord';
+  const payload = wrapLambdaRequest<HealthRecordRequest, Record<string, never>>(
+    actionName,
+    effectiveUserId,
+    { userId: effectiveUserId, messageId }
+  );
+
+  try {
+    logger.debug(`Invoking ${lambdaName} action=${actionName}`, {
+      userId: effectiveUserId,
+      messageId,
+    });
+    const lambdaResponse = await LAMBDA_INVOKER.invokeJson<HealthLambdaResponse>(lambdaName, payload);
+    logger.debug(`Lambda response: ${JSON.stringify(lambdaResponse)}`);
+    const healthy = lambdaResponse.health_record === null ? false : true;
+    return { healthy };
+  } catch (error) {
+    logger.error(`Error invoking ${lambdaName} action=${actionName}: ${error}`);
+    throw new ServiceError(
+      `Error invoking ${lambdaName}`,
+      502,
+      'NO_RESPONSE',
+      { collectorSource: lambdaName }
+    );
+  }
+}
 
 export async function executeHealthRequest(callerId?: string): Promise<HealthResponse | CommandQueueResponse> {
   const effectiveCaller = callerId?.trim() || 'guest';
