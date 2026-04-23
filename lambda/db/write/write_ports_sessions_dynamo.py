@@ -1,4 +1,5 @@
 import os
+import time
 import uuid
 import boto3
 import json
@@ -24,6 +25,8 @@ PAYMENT_SUCCESS_RATE = int(os.environ["PAYMENT_SUCCESS_RATE"])
 PORT_UPDATE_SUCCESS_RATE = int(os.environ["PORT_UPDATE_SUCCESS_RATE"])
 WRITE_STATION_RDS_FUNCTION_NAME = os.environ["WRITE_STATION_RDS_FUNCTION_NAME"]
 NOTIFICATION_LAMBDA_FUNCTION_NAME = os.environ["NOTIFICATION_LAMBDA_FUNCTION_NAME"]
+EXPIRATION_TIME_SECONDS_HEALTH_CHECK_SECONDS = int(os.environ["EXPIRATION_TIME_SECONDS_HEALTH_CHECK_SECONDS"])
+EXPIRATION_TIME_PAID_SESSION_SECONDS = int(os.environ["EXPIRATION_TIME_PAID_SESSION_SECONDS"])
 
 _dynamo_client = None
 _serializer = TypeSerializer()
@@ -497,7 +500,8 @@ def pay_session(session_data: dict) -> dict:
         "ConditionExpression": "attribute_exists(station_id)"}})
     transact_items.append({
         "Update": {"TableName": STATIONS_DYNAMO_TABLE,
-        "Key": {"station_id": {"S": str(session_data["station_id"])}, "entity_key": {"S": entity_key}},
+        "Key": {"station_id": {"S": str(session_data["station_id"])}, "entity_key": {"S": entity_key},
+        "exp_time": {"N": str(int(time.time() + EXPIRATION_TIME_PAID_SESSION_SECONDS))}},
         "UpdateExpression": "SET #st = :paid, updated_at = :ts, paid_at = :ts, last_event_id = :last_event_id",
         "ConditionExpression": """attribute_exists(station_id) AND attribute_exists(entity_key) AND 
         (attribute_not_exists(paid_at) OR attribute_type(paid_at, :type_null))
@@ -528,6 +532,36 @@ def pay_session(session_data: dict) -> dict:
     except Exception as e:
         logger.error(f"error updating station ports: {e}")
         raise LambdaResponseError({"error": f"error updating station ports: {e}", "code": "UNHANDLED_ERROR"})
+
+def write_health_record(message_id: str, user_id: str) -> dict:
+    try:
+        client = get_dynamo_client()
+    except Exception as e:
+        logger.error(f"error getting dynamo client for write health record: {e}")
+        raise LambdaResponseError({"error": f"error getting dynamo client for write health record: {e}", "code": "DATABASE_ERROR"})
+    transact_items: list[dict] = []
+    condition = "attribute_not_exists(station_id) AND attribute_not_exists(entity_key)"
+    transact_items.append({
+        "Put": {"TableName": STATIONS_DYNAMO_TABLE, "Item": to_av_map({"station_id": message_id, "entity_key": user_id,
+            "exp_time": int(time.time() + EXPIRATION_TIME_SECONDS_HEALTH_CHECK_SECONDS)}), "ConditionExpression": condition}})
+    if (not isinstance(message_id, str) or not message_id.strip()) or (not isinstance(user_id, str) or not user_id.strip()):
+        raise LambdaResponseError({"error": "message_id and user_id must be non-empty strings", "code": "INVALID_REQUEST"})
+    try:
+        client.transact_write_items(TransactItems=transact_items)
+        logger.info(f"health record written successfully: {message_id} {user_id}")
+        return {"result": "Successfully wrote health record"}
+    except ClientError as e:
+        err_code = e.response.get("Error", {}).get("Code", "")
+        if err_code == "ConditionalCheckFailedException":
+            logger.error(f"health record not found: {e}")
+            raise LambdaResponseError({"error": f"health record not found: {e}", "code": "INVALID_REQUEST"})
+        logger.error(f"error writing health record: {e}")
+        raise LambdaResponseError({"error": f"error writing health record: {e}", "code": "DATABASE_ERROR"})
+    except LambdaResponseError:
+        raise
+    except Exception as e:
+        logger.error(f"error writing health record: {e}")
+        raise LambdaResponseError({"error": f"error writing health record: {e}", "code": "UNHANDLED_ERROR"})
 
 def build_session_object(session_data: dict) -> dict:
     try:
@@ -633,10 +667,11 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                 log_audit("INFO", message="session paid successfully", status="SUCCESS", **audit_base)
                 return SuccessResponsePayload(data={"paid_session": paid_session}, meta={})
             case "write_health_record":
-                health_record = event["data"]["healthRecord"]
-                write_health_record(health_record)
+                message_id = event["data"]["messageId"]
+                user_id = event["data"]["userId"]
+                write_health_record(message_id, user_id)
                 log_audit("INFO", message="health record written successfully", status="SUCCESS", **audit_base)
-                return SuccessResponsePayload(data={"health_record": health_record}, meta={})
+                return SuccessResponsePayload(data={"result": "Successfully wrote health record"}, meta={})
             case _:
                 log_audit("ERROR", message=f"invalid action {action}", status="ERROR", errorMessage=f"invalid action {action}", **audit_base)
                 return ErrorResponsePayload(error=f"invalid action {action}", code="INVALID_REQUEST")

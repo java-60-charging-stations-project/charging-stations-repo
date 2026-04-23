@@ -793,6 +793,9 @@ Resources:
     Properties:
       TableName: charging-stations-station-entities
       BillingMode: PAY_PER_REQUEST
+      TimeToLiveSpecification:
+        AttributeName: exp_time
+        Enabled: true
       AttributeDefinitions:
         - AttributeName: station_id
           AttributeType: S
@@ -1049,6 +1052,8 @@ Resources:
           PORT_UPDATE_SUCCESS_RATE: "80" # 80% chance of successful port update
           WRITE_STATION_RDS_FUNCTION_NAME: !Ref WriteStationRDSFunction
           NOTIFICATION_LAMBDA_FUNCTION_NAME: !Ref PaymentNotificationFunction
+          EXPIRATION_TIME_SECONDS_HEALTH_CHECK_SECONDS: 10 # 10 seconds
+          EXPIRATION_TIME_PAID_SESSION_SECONDS: 86400 # 24 hours
       Policies:
         - Version: '2012-10-17'
           Statement:
