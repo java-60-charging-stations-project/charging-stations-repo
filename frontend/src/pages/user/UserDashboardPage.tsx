@@ -10,7 +10,7 @@ const pollingInterval = config.userSessionsPollingInterval;
 const UserDashboardPage = () => {
   const { data, isLoading, error } = useGetSessionsQuery(undefined, {
     pollingInterval,
-    skipPollingIfUnfocused: true,
+    skipPollingIfUnfocused: false,
     refetchOnReconnect: true,
   });
   logger.debug("Data from hook: ", data);

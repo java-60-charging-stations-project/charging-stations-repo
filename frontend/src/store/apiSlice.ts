@@ -1,7 +1,7 @@
 import { clientBaseQuery } from "@/services/api/clientBaseQuery";
 import { createApi } from "@reduxjs/toolkit/query/react";
 import type { Session, UserSessionsResponse, UserSessionPortUpdateRequest, UserSessionPortUpdateResponse, UserSessionPaymentResponse, UserSessionPaymentRequest } from '@/types/sessions';
-import type { AdminCreateStationRequest, AdminCreateStationResponse, ChangeStationStateResponse, StationBase, StationPortsCreateResponse, StationPortsListResponse, SupportUpdatePortStateResponse, UpdateStationResponse } from "@/types/stations";
+import type { AdminCreateStationRequest, AdminCreateStationResponse, ChangeStationStateResponse, StationBase, StationPort, StationPortsCreateResponse, StationPortsListResponse, SupportUpdatePortStateResponse, UpdateStationResponse } from "@/types/stations";
 import type { AddStationPortsPayload, ChangeStationStatePayload, DeleteStationPortPayload, GetStationPayload, UpdateStationPayload, UpdateStationPortStatePayload } from "@/types/rtk_payload";
 import type { UserRole } from "@/types";
 import type { ApiArrayResponse, ApiResponse } from "@/types/apiTypes";
@@ -98,6 +98,26 @@ export const apiSlice = createApi({
             }),
             transformResponse: unwrapData,
             invalidatesTags: ['Session'],
+        }),
+        // User station page
+        getUserStation: builder.query<StationBase, string>({
+            query: (stationId) => ({
+                url: `/user/stations/${stationId}`,
+                method: "GET",
+            }),
+            transformResponse: unwrapData,
+            providesTags: (_result, _error, stationId) => [{ type: 'Station', id: stationId }],
+        }),
+        getUserStationPorts: builder.query<StationPort[], string>({
+            query: (stationId) => ({
+                url: `/user/stations/${stationId}/ports`,
+                method: "GET",
+            }),
+            transformResponse: (rawResponse: ApiResponse<StationPortsListResponse>): StationPort[] => {
+                const response = unwrapData(rawResponse);
+                return response.ports.sort((a, b) => a.portCode.localeCompare(b.portCode));
+            },
+            providesTags: (_result, _error, stationId) => [{ type: 'Station', id: stationId }],
         }),
         // Logs
         getLogs: builder.query<ApiArrayResponse<LogRecord>, LogRequest>({
@@ -213,16 +233,7 @@ function isUnchanged(prev: Session | null, curr: Session | null): boolean {
 function isPaymentFailed(prev: Session | null, curr: Session | null): boolean {
     return  isFreshUnpaidSession(prev) && isStaleUnpaidSession(curr);
 }
-function isBookingExpired(prev: Session | null, curr: Session | null): boolean {
-    if (
-        ( prev !== null && prev.state === "BOOKED" ) &&
-        ( curr === null || curr.state === "UNPAID" || curr.state === "PAID" )
-    ) {
-        return true;
-    }
 
-    return false;
-};
 function isChargeCompleted(prev: Session | null, curr: Session | null): boolean {
     const prevPct = prev === null? 0: (prev.chargeLevelPercent ?? 0);
     const currPct = curr === null? 0: (curr.chargeLevelPercent ?? 0);
@@ -251,13 +262,6 @@ export const addSessionStateListener = (appListening: AppStartListening) => {
             const className = "p-0 w-100 border border-purple-600/40";
             const autoClose = 5000;
             
-            if ( isBookingExpired(prev, curr) ) {
-                toast.warn("Your booking has expired", {
-                    toastId: "session-expired", position, className, autoClose,
-                });
-                logger.debug("! Booking expired");
-                return;
-            }
             if ( isChargeCompleted(prev, curr) ) {
                 toast.success(
                     "Your charging is complete", {
@@ -287,6 +291,9 @@ export const {
     useStartChargingMutation,
     useStopChargingMutation,
     usePayManuallyMutation,
+    // User station page
+    useGetUserStationQuery,
+    useGetUserStationPortsQuery,
     // LOGS
     useGetLogsQuery,
     useResolveLogMutation,

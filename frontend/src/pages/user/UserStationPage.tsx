@@ -1,40 +1,102 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import {
   useGetSessionsQuery,
+  useGetUserStationPortsQuery,
+  useGetUserStationQuery,
   useStartBookingMutation,
   useStartChargingMutation,
 } from "@/store/apiSlice";
-import { fetchStationById, fetchStationPorts } from "@/services/api/userApi";
-import type { StationBase, StationPort } from "@/types/stations";
+import type { StationPort } from "@/types/stations";
 import EasySpinner from "@/components/EasySpinner";
-import Modal from "@/components/Modal";
-import SimpleButton from "@/components/SimpleButton";
+import EasyButton from "@/components/EasyButton";
 import { config } from "@/config/env";
+import { getLogger } from "@/services/logging";
+import { toast } from "react-toastify";
+
+const logger = getLogger("User.Station");
+const TOAST_AUTO_CLOSE = 3000;
 
 const pollingInterval = config.userSessionsPollingInterval;
+
+type PortCardProps = {
+  port: StationPort;
+  onStartCharging: (portCode: string) => void;
+  isCharging: boolean;
+  isDisabled: boolean;
+  maxWidthClassName?: string;
+};
+
+const statusBadgeClassName: Record<StationPort["status"], string> = {
+  FREE: "border border-emerald-300 bg-emerald-50 text-emerald-700",
+  BOOKED: "border border-amber-300 bg-amber-50 text-amber-700",
+  OCCUPIED: "border border-blue-300 bg-blue-50 text-blue-700",
+  DISABLED: "border border-slate-300 bg-slate-100 text-slate-700",
+  ERROR: "border border-rose-300 bg-rose-50 text-rose-700",
+};
+
+const PortCard = ({
+  port,
+  onStartCharging,
+  isCharging,
+  isDisabled,
+  maxWidthClassName = "max-w-sm",
+}: PortCardProps) => {
+  const isFree = port.status === "FREE";
+
+  return (
+    <article
+      className={`w-full ${maxWidthClassName} rounded-md border border-slate-200 bg-white p-4 shadow-sm`}
+    >
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <span
+          className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusBadgeClassName[port.status]}`}
+        >
+          {port.status}
+        </span>
+        <span className="text-base font-bold text-slate-900">{port.portCode}</span>
+      </div>
+
+      <EasyButton
+        onClick={() => onStartCharging(port.portCode)}
+        disabled={!isFree || isDisabled}
+        className="w-full disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {isCharging ? (
+          <span className="inline-flex items-center gap-2">
+            <EasySpinner size="sm" />
+            Charging...
+          </span>
+        ) : (
+          "Charging"
+        )}
+      </EasyButton>
+    </article>
+  );
+};
 
 const UserStationPage = () => {
   const { stationId } = useParams<{ stationId: string }>();
   const navigate = useNavigate();
-
-  const [station, setStation] = useState<StationBase | null>(null);
-  const [ports, setPorts] = useState<StationPort[]>([]);
-  const [isLoadingPorts, setIsLoadingPorts] = useState(true);
-  const [portsError, setPortsError] = useState<string | null>(null);
-
-  const [chargeModalOpen, setChargeModalOpen] = useState(false);
-  const [selectedPortCode, setSelectedPortCode] = useState("");
-
+  const [chargingPortCode, setChargingPortCode] = useState<string | null>(null);
+  
   const { data: sessionsData } = useGetSessionsQuery(undefined, {
+    pollingInterval,
+    skipPollingIfUnfocused: false,
+    refetchOnReconnect: true,
+  });
+  const { data: station } = useGetUserStationQuery(stationId!, {
+    skip: !stationId,
+  });
+  const { data: ports, refetch: refetchPorts, isLoading: isLoadingPorts } = useGetUserStationPortsQuery(stationId!, {
+    skip: !stationId,
     pollingInterval,
     skipPollingIfUnfocused: true,
     refetchOnReconnect: true,
   });
 
-  const [startBooking, { isLoading: isBooking, error: bookingError }] =
-    useStartBookingMutation();
-  const [startCharging, { isLoading: isCharging, error: chargingError }] =
+  const [startBooking, { isLoading: isBooking }] = useStartBookingMutation();
+  const [startCharging, { isLoading: isCharging }] =
     useStartChargingMutation();
 
   const existingSessionLabel = useMemo(() => {
@@ -52,52 +114,43 @@ const UserStationPage = () => {
   }, [sessionsData]);
 
   const hasExistingSession = existingSessionLabel !== null;
-
-  const freePorts = useMemo(
-    () => ports.filter((p) => p.status === "FREE"),
-    [ports],
-  );
-
-  useEffect(() => {
-    if (!stationId) return;
-    void fetchStationById(stationId)
-      .then(setStation)
-      .catch(() => setStation(null));
-  }, [stationId]);
-
-  const loadPorts = useCallback(async () => {
-    if (!stationId) {
-      setPortsError("Missing station id.");
-      setIsLoadingPorts(false);
-      return [];
-    }
-    setIsLoadingPorts(true);
-    setPortsError(null);
-    try {
-      const nextPorts = await fetchStationPorts(stationId);
-      setPorts(nextPorts);
-      return nextPorts;
-    } catch (err) {
-      const msg =
-        err instanceof Error ? err.message : "Failed to load station ports";
-      setPortsError(msg);
-      return [];
-    } finally {
-      setIsLoadingPorts(false);
-    }
-  }, [stationId]);
-
-  useEffect(() => {
-    void loadPorts();
-  }, [loadPorts]);
-
+  
   const handleBook = async () => {
-    if (!stationId || hasExistingSession) return;
-
-    const latestPorts = await loadPorts();
-    const freePort = latestPorts.find((p) => p.status === "FREE");
+    if ( !stationId || hasExistingSession ) return;
+    let isPortsUpdated = false;
+    let freePort: StationPort | undefined = undefined;
+    try {
+      if (!ports) {
+        await refetchPorts().unwrap();
+        isPortsUpdated = true;
+      }
+      
+      freePort = ports?.find((p) => p.status === "FREE");
+      // Second attempt to get free port if first attempt failed
+      if (!freePort && !isPortsUpdated) {
+        await refetchPorts().unwrap();
+        isPortsUpdated = true;
+        freePort = ports?.find((p) => p.status === "FREE");
+      }
+    } catch (error) {
+      logger.error("Failed to load ports", error);
+      toast.error(
+        "Error while loading ports. Try again",
+        {
+          position: "bottom-right",
+          toastId: "ports-error",
+        },
+      );
+      return;
+    }
     if (!freePort) {
-      setPortsError("No free ports available right now.");
+      toast.error(
+        "Sorry. No free ports available right now.",
+        {
+          position: "bottom-right",
+          toastId: "no-free-ports",
+        },
+      );
       return;
     }
 
@@ -107,45 +160,73 @@ const UserStationPage = () => {
         portCode: freePort.portCode,
         oldState: "FREE",
       }).unwrap();
-      navigate("/user/session");
+      toast.success(
+        <div className="flex items-center gap-2">
+          <EasySpinner size="sm" />
+          <span>Redirecting to the sessions page</span>
+        </div>,
+        {
+          autoClose: TOAST_AUTO_CLOSE,
+          position: "bottom-right",
+          toastId: "booking-success",
+        },
+      );
+      window.setTimeout(() => {
+        navigate("/user/session");
+      }, TOAST_AUTO_CLOSE);
     } catch {
-      /* error exposed via bookingError */
+      toast.error(
+        "Error while booking the port. Try again. If the problem persists, contact support.",
+        {
+          position: "bottom-right",
+          toastId: "booking-error",
+        },
+      );
+      logger.error("Failed to start booking");
     }
   };
 
-  const handleInitiateCharging = async () => {
+  const handleStartCharging = async (portCode: string) => {
     if (!stationId || hasExistingSession) return;
-    setSelectedPortCode("");
-
-    const latestPorts = await loadPorts();
-    const free = latestPorts.filter((p) => p.status === "FREE");
-    if (free.length === 0) {
-      setPortsError("No free ports available right now.");
-      return;
-    }
-    setChargeModalOpen(true);
-  };
-
-  const handleStartCharging = async () => {
-    if (!stationId || !selectedPortCode || hasExistingSession) return;
-    setChargeModalOpen(false);
-
+    
     try {
+      setChargingPortCode(portCode);
       await startCharging({
         stationId,
-        portCode: selectedPortCode,
+        portCode: portCode,
         oldState: "FREE",
       }).unwrap();
-      navigate("/user/session");
+      toast.success(
+        <div className="flex items-center gap-2">
+          <EasySpinner size="sm" />
+          <span>Successfully started charging. Redirecting to the sessions page</span>
+        </div>,
+        {
+          autoClose: TOAST_AUTO_CLOSE,
+          position: "bottom-right",
+          toastId: "charging-success",
+        },
+      );
+      window.setTimeout(() => {
+        navigate("/user/session");
+      }, TOAST_AUTO_CLOSE);
     } catch {
-      /* error exposed via chargingError */
+      toast.error(
+        "Error while starting charging. Try again. If the problem persists, contact support.",
+        {
+          position: "bottom-right",
+          toastId: "charging-error",
+        },
+      );
+      logger.error("Failed to start charging");
+    } finally {
+      setChargingPortCode(null);
     }
   };
 
-  const mutationErrorMsg =
-    (bookingError as { message?: string } | undefined)?.message ??
-    (chargingError as { message?: string } | undefined)?.message ??
-    null;
+  const stationAddress = useMemo(() => {
+    return station?.city ? (station.city + ", " + station.address) : station?.address ?? "-";
+  }, [station]);
 
   return (
     <div className="space-y-6">
@@ -160,8 +241,7 @@ const UserStationPage = () => {
         {station?.name ?? "Station"}
       </h1>
       <p className="text-center text-sm text-slate-500">
-        {station?.city ?? "Unknown city"},{" "}
-        {station?.address ?? "Unknown address"}
+        {stationAddress}
       </p>
 
       {hasExistingSession && (
@@ -178,107 +258,57 @@ const UserStationPage = () => {
         </section>
       )}
 
-      {portsError && (
-        <p className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
-          {portsError}
-        </p>
-      )}
-
-      {mutationErrorMsg && (
-        <p className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
-          {mutationErrorMsg}
-        </p>
-      )}
-
-      {isLoadingPorts ? (
-        <EasySpinner />
-      ) : (
-        !portsError && (
-          <p className="text-center text-sm text-slate-700">
-            The station has {freePorts.length} free (of {ports.length}) ports
-            right now.
+      <section className="space-y-3 rounded-md border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-around">
+          <p className="text-sm text-slate-800">
+            Planning to visit? Book a free port for 15 minutes:
           </p>
-        )
-      )}
-
-      <div className="flex justify-center">
-        <button
-          type="button"
-          className="rounded bg-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-300"
-          onClick={() => void loadPorts()}
-          disabled={isLoadingPorts}
-        >
-          Refetch
-        </button>
-      </div>
-
-      <section className="space-y-3 rounded-md border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">
-          Book a port now
-        </h2>
-
-        <div className="flex justify-center">
-          <SimpleButton
-            caption="Book"
-            loadingCaption="Booking..."
-            handleClick={() => void handleBook()}
-            isLoading={isBooking}
-            isDisabled={
-              hasExistingSession || !stationId || isLoadingPorts
-            }
-          />
-        </div>
-      </section>
-
-      <section className="space-y-3 rounded-md border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">
-          On the station right now?
-        </h2>
-
-        <div className="flex justify-center">
-          <SimpleButton
-            caption="Initiate charging"
-            loadingCaption="Preparing..."
-            handleClick={() => void handleInitiateCharging()}
-            isLoading={isCharging}
-            isDisabled={
-              hasExistingSession || !stationId || isLoadingPorts
-            }
-          />
-        </div>
-      </section>
-
-      <Modal
-        isOpen={chargeModalOpen}
-        onClose={() => setChargeModalOpen(false)}
-        showCloseButton={true}
-        title="Start charging"
-      >
-        <div className="mt-4 space-y-4">
-          <select
-            className="w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm"
-            value={selectedPortCode}
-            onChange={(e) => setSelectedPortCode(e.target.value)}
-          >
-            <option value="">-- Choose your port --</option>
-            {freePorts.map((port) => (
-              <option key={port.portId} value={port.portCode}>
-                {port.portCode}
-              </option>
-            ))}
-          </select>
-
-          <div className="flex justify-end">
-            <SimpleButton
-              caption="Charge"
-              loadingCaption="Starting..."
-              handleClick={() => void handleStartCharging()}
-              isLoading={isCharging}
-              isDisabled={!selectedPortCode}
-            />
+          <div className="flex justify-center max-w-20 md:mx-auto">
+            <EasyButton
+              onClick={() => void handleBook()}
+              disabled={hasExistingSession || !stationId || isLoadingPorts || isBooking}
+              className="min-w-28 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isBooking ? (
+                <span className="inline-flex items-center gap-2">
+                  <EasySpinner size="sm" />
+                  Booking...
+                </span>
+              ) : (
+                "Book"
+              )}
+            </EasyButton>
           </div>
         </div>
-      </Modal>
+      </section>
+
+      <section className="space-y-4 rounded-md border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 className="text-lg font-semibold text-slate-900">
+          On the station right now? Choose your port:
+        </h2>
+
+        {isLoadingPorts ? (
+          <div className="flex justify-center py-4">
+            <EasySpinner />
+            Loading ports...
+          </div>
+        ) : ports && ports.length > 0 ? (
+          <div className="grid grid-cols-1 justify-items-center gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {ports.map((port) => (
+              <PortCard
+                key={port.portId}
+                port={port}
+                onStartCharging={handleStartCharging}
+                isCharging={isCharging && chargingPortCode === port.portCode}
+                isDisabled={hasExistingSession || isCharging}
+              />
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-slate-600">No ports found for this station.</p>
+        )}
+      </section>
+
     </div>
   );
 };
