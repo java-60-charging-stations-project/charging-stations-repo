@@ -42,12 +42,13 @@ function buildCollectorErrorLog(
 ): CollectorErrorLog {
   const nowIso = new Date().toISOString();
   const resolverId = req.user?.sub ?? 'guest';
+  const source_service = sourceService ?? null;
   return {
     level: 'ERROR',
     message,
     service: 'backend',
     event,
-    source_service: sourceService,
+    source_service,
     caller_id: resolverId,
     request_id: req.get('x-request-id') ?? undefined,
     timestamp: nowIso,
