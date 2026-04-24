@@ -259,15 +259,15 @@ const UserStationPage = () => {
       )}
 
       <section className="space-y-3 rounded-md border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-around">
-          <p className="text-sm text-slate-800">
-            Planning to visit? Book a free port for 15 minutes:
-          </p>
-          <div className="flex justify-center max-w-20 md:mx-auto">
+        <div className="flex flex-col gap-3">
+          <h2 className="text-lg font-semibold text-center text-slate-900">
+            On your way to this station? Book a free port for 15 minutes:
+          </h2>
+          <div className="flex justify-center mx-auto">
             <EasyButton
               onClick={() => void handleBook()}
               disabled={hasExistingSession || !stationId || isLoadingPorts || isBooking}
-              className="min-w-28 disabled:cursor-not-allowed disabled:opacity-60"
+              className="min-w-28 max-w-32 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isBooking ? (
                 <span className="inline-flex items-center gap-2">
@@ -283,8 +283,8 @@ const UserStationPage = () => {
       </section>
 
       <section className="space-y-4 rounded-md border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">
-          On the station right now? Choose your port:
+        <h2 className="text-lg font-semibold text-slate-900 text-center">
+          At the station right now? Choose your port:
         </h2>
 
         {isLoadingPorts ? (
