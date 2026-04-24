@@ -949,6 +949,11 @@ Resources:
                 - dynamodb:UpdateItem
               Resource:
                 - !GetAtt StationEntitiesTable.Arn
+            - Effect: Allow
+              Action:
+                - lambda:InvokeFunction
+              Resource:
+                - !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:charging-stations-payment-notification"
       Events:
         ChargeSimPriceCalcSchedule:
           Type: Schedule
