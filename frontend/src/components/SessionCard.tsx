@@ -89,6 +89,7 @@ export default function SessionCard({ session }: { session: Session }) {
   const isActive = session.state === "ACTIVE";
   const isUnpaid = session.state === "UNPAID";
   const isPaid = session.state === "PAID";
+  const isFailed = session.state === "FAILED";
   const isFreshUnpaid = isFreshUnpaidSession(session);
   const usesActiveColors = isActive || isFreshUnpaid;
   const showAsPaying = isPaying || isFreshUnpaid;
@@ -162,7 +163,7 @@ export default function SessionCard({ session }: { session: Session }) {
         </div>
       )}
 
-      {isUnpaid && (
+      {( isUnpaid || isFailed ) && (
         <>
           <div className="mb-3 grid gap-1 text-sm text-slate-700 sm:grid-cols-2">
             {DateFormatted("Started at", session.startedAt)}

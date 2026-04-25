@@ -2,12 +2,25 @@ import { useGetCompletedSessionsQuery } from "@/store/apiSlice";
 import EasySpinner from "@/components/EasySpinner";
 import SessionCard from "@/components/SessionCard";
 import RefetchIconButton from "@/components/RefetchIconButton";
+import type { Session } from "@/types/sessions";
+
+function sessionCompareByTime(a: Session, b: Session): number {
+  if (!a.endedAt) {
+    return -1;
+  }
+  else if (!b.endedAt) {
+    return 1;
+  }
+  
+  return b.endedAt.localeCompare(a.endedAt);
+}
 
 const UserRecentSessionsPage = () => {
   const { data, isLoading, error, refetch } = useGetCompletedSessionsQuery();
 
-  const unpaidSessions = data?.filter((s) => s.state === "UNPAID") ?? [];
-  const paidSessions = data?.filter((s) => s.state === "PAID") ?? [];
+  const unpaidSessions = data?.filter((s) => s.state === "UNPAID").sort(sessionCompareByTime) ?? [];
+  const paidSessions = data?.filter((s) => s.state === "PAID").sort(sessionCompareByTime) ?? [];
+  const failedSessions = data?.filter((s) => s.state === "FAILED").sort(sessionCompareByTime) ?? [];
 
   return (
     <div className="space-y-6 px-4 py-6 md:px-6">
@@ -28,6 +41,18 @@ const UserRecentSessionsPage = () => {
 
       {!isLoading && !error && (
         <div className="space-y-6">
+          {failedSessions.length > 0 && (
+            <section>
+              <h2 className="mb-3 text-lg font-semibold text-slate-900">
+                Recent failed sessions
+              </h2>
+              <div className="space-y-3">
+                {failedSessions.map((s) => (
+                  <SessionCard key={s.sessionId} session={s} />
+                ))}
+              </div>
+            </section>
+          )}
           {unpaidSessions.length > 0 && (
             <section>
               <h2 className="mb-3 text-lg font-semibold text-slate-900">
