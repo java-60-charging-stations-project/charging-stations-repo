@@ -37,7 +37,7 @@ function buildCollectorErrorLog(
   req: Request,
   message: string,
   event: string,
-  /** Prefer Lambda function name/ARN when the fault came from Lambda so collectors can dedupe. */
+  /** Lambda function name/ARN. Include only for Lambda-related errors. */
   sourceService?: string
 ): CollectorErrorLog {
   const nowIso = new Date().toISOString();
@@ -47,7 +47,7 @@ function buildCollectorErrorLog(
     message,
     service: 'backend',
     event,
-    source_service: sourceService ?? 'errorHandler',
+    ...(sourceService ? { source_service: sourceService } : {}),
     caller_id: resolverId,
     request_id: req.get('x-request-id') ?? undefined,
     timestamp: nowIso,
@@ -69,7 +69,7 @@ export function errorHandler(
   }
 
   if (error instanceof ServiceError) {
-    const collectorSource = error.collectorSource ?? 'errorHandler';
+    const collectorSource = error.collectorSource;
     const collectorEvent =
       error.statusCode === 403
         ? 'FORBIDDEN_RESPONSE'
@@ -78,6 +78,7 @@ export function errorHandler(
           : error.collectorSource
             ? 'LAMBDA_RESPONSE_ERROR'
             : 'SERVICE_ERROR';
+    const sourceServiceForLog = collectorEvent.startsWith('LAMBDA_') ? collectorSource : undefined;
 
     if (error.statusCode === 403) {
       const meta: ForbiddenLogContext = {
@@ -90,7 +91,7 @@ export function errorHandler(
       };
       logger.warn('Forbidden response returned', meta);
       logger.collectorError(
-        buildCollectorErrorLog(req, error.message, collectorEvent, collectorSource)
+        buildCollectorErrorLog(req, error.message, collectorEvent, sourceServiceForLog)
       );
     } else {
       const meta: ServiceErrorLogContext = {
@@ -101,7 +102,7 @@ export function errorHandler(
       };
       logger.error('Service error returned', meta);
       logger.collectorError(
-        buildCollectorErrorLog(req, error.message, collectorEvent, collectorSource)
+        buildCollectorErrorLog(req, error.message, collectorEvent, sourceServiceForLog)
       );
     }
 
@@ -122,7 +123,7 @@ export function errorHandler(
     };
     logger.warn('Validation error returned', meta);
     logger.collectorError(
-      buildCollectorErrorLog(req, validationMessage, 'VALIDATION_ERROR', 'errorHandler')
+      buildCollectorErrorLog(req, validationMessage, 'VALIDATION_ERROR')
     );
 
     res.status(400).json({
@@ -141,7 +142,7 @@ export function errorHandler(
   };
   logger.error('Unhandled error returned', meta);
   logger.collectorError(
-    buildCollectorErrorLog(req, meta.message, 'UNHANDLED_ERROR', 'errorHandler')
+    buildCollectorErrorLog(req, meta.message, 'UNHANDLED_ERROR')
   );
 
   res.status(500).json({
