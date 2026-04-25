@@ -1,0 +1,365 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Charging stations backend on ECS Fargate behind ALB
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC ID
+    Default: vpc-01eb545134560739e
+  PublicSubnets:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Public subnets (use at least 2 in different AZs for ALB)
+    Default: subnet-0d53d5fb3c0a49277, subnet-0ac3863b0b8448d3f
+  ImageUri:
+    Type: String
+    Description: ECR image URI
+    Default: 773769103104.dkr.ecr.il-central-1.amazonaws.com/charging-stations:latest
+  ContainerPort:
+    Type: Number
+    Default: 8000
+  ContainerCpu:
+    Type: Number
+    Default: 256
+    Description: CPU units for the Fargate task (e.g., 256 = 0.25 vCPU)
+  ContainerMemory:
+    Type: Number
+    Default: 512
+    Description: Memory for the Fargate task in MiB
+  HealthCheckPath:
+    Type: String
+    Default: /health
+    Description: Health check path for the application (HTTP 200 expected)
+  LambdaRegion:
+    Type: String
+    Default: il-central-1
+  LambdaAccountId:
+    Type: String
+    Default: 852215679994
+  LambdaHealthName:
+    Type: String
+    Default: charging-stations-health
+  LambdaUserInfoName:
+    Type: String
+    Default: charging-stations-get-user-info
+  LambdaUserManagementName:
+    Type: String
+    Default: charging-stations-write-user-rds
+  LambdaStationsReadName:
+    Type: String
+    Default: charging-stations-get-station-info
+  LambdaStationsWriteName:
+    Type: String
+    Default: charging-stations-write-station-rds
+  LambdaStationsDynamoReadName:
+    Type: String
+    Default: charging-stations-get-ports-sessions-dynamo
+  LambdaStationsDynamoWriteName:
+    Type: String
+    Default: charging-stations-write-station-ports-dynamo
+  LambdaLogsReadName:
+    Type: String
+    Default: charging-stations-read-logs-rds
+  LambdaLogsWriteName:
+    Type: String
+    Default: charging-stations-write-logs-rds
+  CognitoCrossAccountRoleArn:
+    Type: String
+    Description: Cross-account IAM role ARN used by the backend to manage Cognito users
+    Default: arn:aws:iam::852215679994:role/sam-db-lambdas-cognito-cross-account
+  LambdaLogSubscriptionProcessorName:
+    Type: String
+    Default: charging-stations-log-subscription-processor
+    Description: Lambda function name in LambdaAccountId that receives CloudWatch Logs subscription deliveries
+  LambdaCommandQueueName:
+    Type: String
+    Default: sam-db-lambdas-command.fifo
+    Description: FIFO command queue name in LambdaAccountId that receives commands from the backend
+  DesiredCount:
+    Type: Number
+    Default: 1
+Resources:
+  Cluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: charging-stations-cluster
+
+  TaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: ReadBackendEnvFromS3
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource: arn:aws:s3:::charge-st-backend-config-773769103104/backend/prod.env
+
+  TaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeHealthLambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaHealthName}"
+        - PolicyName: InvokeUserManagementLambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaUserManagementName}"
+        - PolicyName: InvokeUserInfoLambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaUserInfoName}"
+        - PolicyName: InvokeStationsReadLambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaStationsReadName}"
+        - PolicyName: InvokeStationsWriteLambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaStationsWriteName}"
+        - PolicyName: InvokeStationsDynamoReadLambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaStationsDynamoReadName}"
+        - PolicyName: InvokeStationsDynamoWriteLambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaStationsDynamoWriteName}"
+        - PolicyName: InvokeLogsReadLambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaLogsReadName}"
+        - PolicyName: InvokeLogsWriteLambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaLogsWriteName}"
+        - PolicyName: AssumeCrossAccountCognitoRole
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: sts:AssumeRole
+                Resource: !Ref CognitoCrossAccountRoleArn
+        - PolicyName: SendCommandQueueMessages
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                Resource: !Sub "arn:aws:sqs:${LambdaRegion}:${LambdaAccountId}:${LambdaCommandQueueName}"
+
+  TaskLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /ecs/charging-stations-backend
+      RetentionInDays: 14
+
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for the public application load balancer
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: charging-stations-alb
+      Scheme: internet-facing
+      Type: application
+      SecurityGroups:
+        - !Ref LoadBalancerSecurityGroup
+      Subnets: !Ref PublicSubnets
+
+  ApplicationTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: charging-stations-tg
+      VpcId: !Ref VpcId
+      Protocol: HTTP
+      Port: !Ref ContainerPort
+      TargetType: ip
+      HealthCheckEnabled: true
+      HealthCheckPath: !Ref HealthCheckPath
+      HealthCheckProtocol: HTTP
+      Matcher:
+        HttpCode: 200
+
+  ApplicationLoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref ApplicationTargetGroup
+
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Cpu: !Ref ContainerCpu
+      Memory: !Ref ContainerMemory
+      NetworkMode: awsvpc
+      RequiresCompatibilities: [FARGATE]
+      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt TaskRole.Arn
+      ContainerDefinitions:
+        - Name: charging-stations-backend
+          Image: !Ref ImageUri
+          PortMappings:
+            - ContainerPort: !Ref ContainerPort
+          EnvironmentFiles:
+            - Type: s3
+              Value: arn:aws:s3:::charge-st-backend-config-773769103104/backend/prod.env
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref TaskLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+
+  ServiceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ECS service security group
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: !Ref ContainerPort
+          ToPort: !Ref ContainerPort
+          SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
+
+  Service:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - ApplicationLoadBalancerListener
+    Properties:
+      Cluster: !Ref Cluster
+      LaunchType: FARGATE
+      DesiredCount: !Ref DesiredCount
+      TaskDefinition: !Ref TaskDefinition
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets: !Ref PublicSubnets
+          SecurityGroups:
+            - !Ref ServiceSecurityGroup
+      LoadBalancers:
+        - ContainerName: charging-stations-backend
+          ContainerPort: !Ref ContainerPort
+          TargetGroupArn: !Ref ApplicationTargetGroup
+
+  SourceLogRouterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: nodejs20.x
+      FunctionName: charging-stations-source-log-router
+      Handler: logRouter.handler
+      CodeUri: scripts/log_router
+      Timeout: 30
+      MemorySize: 128
+      Environment:
+        Variables:
+          LOG_PROCESSOR_FUNCTION_ARN: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaLogSubscriptionProcessorName}"
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action: lambda:InvokeFunction
+              Resource: !Sub "arn:aws:lambda:${LambdaRegion}:${LambdaAccountId}:function:${LambdaLogSubscriptionProcessorName}"
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+          - logRouter.ts
+        Minify: false
+        Sourcemap: true
+        Target: es2020
+
+  SourceLogRouterInvokePermissionFromLogs:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref SourceLogRouterFunction
+      Action: lambda:InvokeFunction
+      Principal: logs.amazonaws.com
+      SourceArn: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/ecs/charging-stations-backend:*"
+
+  BackendAuditLogSubscriptionToSourceRouter:
+    Type: AWS::Logs::SubscriptionFilter
+    DependsOn:
+      - SourceLogRouterInvokePermissionFromLogs
+    Properties:
+      LogGroupName: /ecs/charging-stations-backend
+      FilterName: audit-high-severity-ecs-backend
+      FilterPattern: '{ ($.level = "ERROR" || $.level = "CRITICAL") && $.source_service IS NULL }'
+      DestinationArn: !GetAtt SourceLogRouterFunction.Arn
+
+Outputs:
+  LoadBalancerArn:
+    Description: ARN of the application load balancer
+    Value: !Ref ApplicationLoadBalancer
+  LoadBalancerDnsName:
+    Description: DNS name of the application load balancer
+    Value: !GetAtt ApplicationLoadBalancer.DNSName
+  LoadBalancerSecurityGroupId:
+    Description: Security group ID of the application load balancer
+    Value: !Ref LoadBalancerSecurityGroup
+  TargetGroupArn:
+    Description: ARN of the application target group
+    Value: !Ref ApplicationTargetGroup
