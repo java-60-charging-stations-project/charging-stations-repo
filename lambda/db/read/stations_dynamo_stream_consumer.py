@@ -41,7 +41,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     insert_delete_port_ops = []
     change_free_state_port_ops = []
     unpaid_session_ops = []
-    paid_session_ops = []
+    archived_session_ops = []
     for record in records:
         logger.info(f"Processing record: {record}")
         ddb = record.get("dynamodb", {})
@@ -51,7 +51,10 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         if event_name in {"INSERT", "REMOVE"}:
             image = new_image if event_name == "INSERT" else old_image
             if not _is_port_entity(image):
-                continue
+                if _is_session_entity(new_image) and new_image["state"] == "FAILED":
+                    op = {"session_object": {k: float(v) if isinstance(v, Decimal) else v for k, v in new_image.items()}}
+                    archived_session_ops.append(op)
+                    continue
             op = {
                 "event_id": record["eventID"],
                 "station_id": image["station_id"],
@@ -90,15 +93,9 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                     }
                     unpaid_session_ops.append(op)
                 elif old_state == "UNPAID" and new_state == "PAID":
-                    op = {
-                        "event_id": record["eventID"],
-                        "station_id": old_image["station_id"],
-                        "entity_key": old_image["entity_key"],
-                        "operation": "SESSION_PAID",
-                        "session_object": {k: float(v) if isinstance(v, Decimal) else v for k, v in new_image.items()},
-                    }
-                    paid_session_ops.append(op)
-    operations = len(insert_delete_port_ops) + len(change_free_state_port_ops) + len(unpaid_session_ops) + len(paid_session_ops)
+                    op = {"session_object": {k: float(v) if isinstance(v, Decimal) else v for k, v in new_image.items()}}
+                    archived_session_ops.append(op)
+    operations = len(insert_delete_port_ops) + len(change_free_state_port_ops) + len(unpaid_session_ops) + len(archived_session_ops)
     logger.info(f"Found {operations} operations")
     if not operations:
         return {"data": {"operations": operations, "received": len(records)}}
@@ -174,13 +171,13 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             logger.info(f"Forwarded {len(unpaid_session_ops)} operations to update session state successfully")
             log_audit("INFO", message=f"Forwarded {len(unpaid_session_ops)} operations to update session state successfully", 
             status="SUCCESS", **audit_base)
-        if paid_session_ops:
-            audit_base["event"] = "SESSION_PAID"
-            logger.info(f"Forwarding {len(paid_session_ops)} operations to {WRITE_STATION_RDS_FUNCTION_NAME}")
+        if archived_session_ops:
+            audit_base["event"] = "SESSION_ARCHIVED"
+            logger.info(f"Forwarding {len(archived_session_ops)} operations to {WRITE_STATION_RDS_FUNCTION_NAME}")
             client = boto3.client("lambda", region_name=REGION)
             payload = {
                 "service": { "action": "archive_session", "callerId": "DynamoDB Stream Consumer" },
-                "data": paid_session_ops,
+                "data": archived_session_ops,
             }
             response = client.invoke(
                 InvocationType="Event",
@@ -193,8 +190,8 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 log_audit("ERROR", message=f"async invoke failed with status {status}", status="ERROR", 
                 errorMessage=f"async invoke failed with status {status}", **audit_base)
                 raise LambdaResponseError({"error": f"async invoke failed with status {status}", "code": "UNHANDLED_ERROR"})
-            logger.info(f"Forwarded {len(paid_session_ops)} operations to archive session successfully")
-            log_audit("INFO", message=f"Forwarded {len(paid_session_ops)} operations to archive session successfully", 
+            logger.info(f"Forwarded {len(archived_session_ops)} operations to archive session successfully")
+            log_audit("INFO", message=f"Forwarded {len(archived_session_ops)} operations to archive session successfully", 
             status="SUCCESS", **audit_base)
     except Exception as e:
         logger.error(f"Forwarded {operations} operations failed: {str(e)}")
