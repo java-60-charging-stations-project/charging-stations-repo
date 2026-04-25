@@ -494,20 +494,21 @@ def pay_session(session_data: dict) -> dict:
     event_id = session_data["event_id"]
     transact_items: list[dict] = []
     now = datetime.now(timezone.utc).isoformat()
+    expiration_time = int(time.time() + EXPIRATION_TIME_PAID_SESSION_SECONDS)
     transact_items.append({
         "Delete": {"TableName": STATIONS_DYNAMO_TABLE,
         "Key": {"station_id": {"S": str(user_id)}, "entity_key": {"S": "SESSION_LOCK"}},
         "ConditionExpression": "attribute_exists(station_id)"}})
     transact_items.append({
         "Update": {"TableName": STATIONS_DYNAMO_TABLE,
-        "Key": {"station_id": {"S": str(session_data["station_id"])}, "entity_key": {"S": entity_key},
-        "exp_time": {"N": str(int(time.time() + EXPIRATION_TIME_PAID_SESSION_SECONDS))}},
-        "UpdateExpression": "SET #st = :paid, updated_at = :ts, paid_at = :ts, last_event_id = :last_event_id",
+        "Key": {"station_id": {"S": str(session_data["station_id"])}, "entity_key": {"S": entity_key}},
+        "UpdateExpression": "SET #st = :paid, updated_at = :ts, paid_at = :ts, last_event_id = :last_event_id, exp_time = :exp_time",
         "ConditionExpression": """attribute_exists(station_id) AND attribute_exists(entity_key) AND 
         (attribute_not_exists(paid_at) OR attribute_type(paid_at, :type_null))
         AND (attribute_not_exists(last_event_id) OR attribute_type(last_event_id, :type_null) OR last_event_id <> :last_event_id)""",
         "ExpressionAttributeNames": {"#st": "state"},
-        "ExpressionAttributeValues": {":paid": {"S": "PAID"}, ":ts": {"S": now}, ":last_event_id": {"S": event_id}, ":type_null": {"S": "NULL"}}},
+        "ExpressionAttributeValues": {":paid": {"S": "PAID"}, ":ts": {"S": now}, ":last_event_id": {"S": event_id}, ":type_null": {"S": "NULL"}, 
+        ":exp_time": {"N": str(expiration_time)}}},
     })
     try:
         client.transact_write_items(TransactItems=transact_items)

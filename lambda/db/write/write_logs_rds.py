@@ -49,7 +49,6 @@ def extract_log_instance_from_event(event: dict) -> dict:
         "message": event["message"],
         "service": event["service"],
         "event": event["event"],
-        "source_service": event.get("source_service"),
         "caller_id": event["caller_id"],
         "request_id": event.get("request_id") or str(uuid.uuid4()),
         "timestamp": event["timestamp"],
@@ -71,7 +70,6 @@ def write_logs_in_rds(batch_logs: list[dict]) -> None:
         "message",
         "service",
         "event",
-        "source_service",
         "caller_id",
         "request_id",
         "timestamp",
@@ -83,20 +81,7 @@ def write_logs_in_rds(batch_logs: list[dict]) -> None:
     insert_sql = f"""
         INSERT INTO logs ({", ".join(columns)})
         VALUES %s
-        ON CONFLICT (request_id) DO UPDATE SET
-            log_id = EXCLUDED.log_id,
-            level = EXCLUDED.level,
-            message = EXCLUDED.message,
-            service = EXCLUDED.service,
-            event = EXCLUDED.event,
-            source_service = EXCLUDED.source_service,
-            caller_id = EXCLUDED.caller_id,
-            request_id = EXCLUDED.request_id,
-            timestamp = EXCLUDED.timestamp,
-            resolve_time = EXCLUDED.resolve_time,
-            resolver_id = EXCLUDED.resolver_id,
-            resolved = EXCLUDED.resolved
-        WHERE EXCLUDED.source_service IS NULL
+        ON CONFLICT DO NOTHING
     """
     values = [
         (
@@ -105,7 +90,6 @@ def write_logs_in_rds(batch_logs: list[dict]) -> None:
             row.get("message"),
             row.get("service"),
             row.get("event"),
-            row.get("source_service"),
             row.get("caller_id"),
             row.get("request_id"),
             row.get("timestamp"),

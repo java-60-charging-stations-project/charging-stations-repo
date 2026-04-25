@@ -10,7 +10,7 @@ const pollingInterval = config.userSessionsPollingInterval;
 const UserCurrentSessionPage = () => {
   const { data, isLoading, error, refetch } = useGetSessionsQuery(undefined, {
     pollingInterval,
-    skipPollingIfUnfocused: true,
+    skipPollingIfUnfocused: false,
     refetchOnReconnect: true,
   });
 

@@ -13,7 +13,7 @@ _conn = None
 
 DEFAULT_PAGE_SIZE = 200
 LOGS_SELECT = """
-    log_id, level, message, service, event, source_service, caller_id, request_id,
+    log_id, level, message, service, event, caller_id, request_id,
     timestamp, resolve_time, resolver_id, resolved
 """
 SORTABLE_COLUMNS = {
@@ -22,7 +22,6 @@ SORTABLE_COLUMNS = {
     "message": "message",
     "service": "service",
     "event": "event",
-    "sourceService": "source_service",
     "callerId": "caller_id",
     "requestId": "request_id",
     "timestamp": "timestamp",

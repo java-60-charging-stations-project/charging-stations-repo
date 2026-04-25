@@ -83,9 +83,8 @@ def cloudwatch_subscription_to_records(payload: dict[str, Any]) -> list[dict[str
                     "level": message_dict["level"],
                     "service": message_dict["service"],
                     "event": message_dict["event"],
-                    "source_service": message_dict.get("source_service"),
                     "caller_id": message_dict["caller_id"],
-                    "request_id": message_dict["request_id"],
+                    "request_id": message_dict.get("request_id"),
                 }
             )
         except Exception as e:
