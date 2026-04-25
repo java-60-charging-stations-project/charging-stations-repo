@@ -7,6 +7,7 @@ import { getLogger } from "@/services/logging";
 import { toast } from "react-toastify";
 import { type PaginationParams } from "@/hooks/usePaginationParams";
 import type { UserRole } from "@/types";
+import EasySpinner from "./EasySpinner";
 
 const logger = getLogger("logs");
 
@@ -40,6 +41,7 @@ const LogsTable: FC<LogsTableProps> = ({ role, paginationParams, filterParams, p
     const {
         data: logsResponse,
         isError: isLoadError,
+        isLoading,
         error: loadError,
     } = useGetLogsQuery({ role, page, pageSize, filterParams }, {
         pollingInterval: pollingIntervalMs,
@@ -47,13 +49,22 @@ const LogsTable: FC<LogsTableProps> = ({ role, paginationParams, filterParams, p
         refetchOnReconnect: true,
     });
 
-    if (isLoadError || !logsResponse) {
+    if (isLoadError) {
         return (
             <p className="text-red-600 font-bold border-2 border-yellow-500 p-2 rounded mb-2">
                 Error: {loadError?.message ?? "No data received"}
             </p>
         );
-    }
+    };
+
+    if (isLoading || !logsResponse) {
+        return (
+            <div className="w-max" >
+                <EasySpinner size="lg" />
+                <p>Awaiting server response...</p>
+            </div>
+        );
+    };
     
     const { data: logs, meta } = logsResponse;
     

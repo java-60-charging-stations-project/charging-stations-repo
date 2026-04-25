@@ -6,15 +6,15 @@ Parameters:
   VpcId:
     Type: AWS::EC2::VPC::Id
     Description: VPC ID
-    Default: vpc-01eb545134560739e
+    Default: /* TODO Add ID  */
   PublicSubnets:
     Type: List<AWS::EC2::Subnet::Id>
     Description: Public subnets (use at least 2 in different AZs for ALB)
-    Default: subnet-0d53d5fb3c0a49277, subnet-0ac3863b0b8448d3f
+    Default: // TODO create 2 subnets and add ids: subnet-0d53d5fb3c0a49277, subnet-0ac3863b0b8448d3f
   ImageUri:
     Type: String
     Description: ECR image URI
-    Default: 773769103104.dkr.ecr.il-central-1.amazonaws.com/charging-stations:latest
+    Default: // TODO create repo and add image 773769103104.dkr.ecr.il-central-1.amazonaws.com/charging-stations:latest
   ContainerPort:
     Type: Number
     Default: 8000
@@ -104,7 +104,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - s3:GetObject
-                Resource: arn:aws:s3:::charge-st-backend-config-773769103104/backend/prod.env
+                Resource: // TODO update bucket arn arn:aws:s3:::charge-st-backend-config-773769103104/backend/prod.env
 
   TaskRole:
     Type: AWS::IAM::Role
@@ -266,7 +266,7 @@ Resources:
             - ContainerPort: !Ref ContainerPort
           EnvironmentFiles:
             - Type: s3
-              Value: arn:aws:s3:::charge-st-backend-config-773769103104/backend/prod.env
+              Value: /* TODO create bucket */
           LogConfiguration:
             LogDriver: awslogs
             Options:
