@@ -154,6 +154,23 @@ def get_health_record(station_id: str, entity_key: str) -> dict | None:
         logger.error(f"error getting health record: {e}")
         raise LambdaResponseError({"error": f"error getting health record: {e}", "code": "DATABASE_ERROR"})
 
+def get_failed_session(station_id: str, port_key: str, message_id: str) -> dict | None:
+    try:
+        table = get_dynamo_stations_table()
+    except Exception as e:
+        logger.error(f"error getting dynamo stations table: {e}")
+        raise LambdaResponseError({"error": f"error getting dynamo stations table: {e}", "code": "DATABASE_ERROR"})
+    entity_key = f"PORT#{port_key}#SESSION#{message_id}"
+    try:
+        resp = table.query(
+            KeyConditionExpression=Key("station_id").eq(station_id) & Key("entity_key").eq(entity_key),
+        )
+        items = resp.get("Items", [])
+        return items[0] if items else None
+    except Exception as e:
+        logger.error(f"error getting failed session: {e}")
+        raise LambdaResponseError({"error": f"error getting failed session: {e}", "code": "DATABASE_ERROR"})
+
 def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponsePayload:
     logger.info(f"Handler called with event: {event}")
     try:
@@ -207,6 +224,13 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                 health_record = get_health_record(station_id, entity_key)
                 log_audit("INFO", message="health record retrieved successfully", status="SUCCESS", **audit_base)
                 return SuccessResponsePayload(data={"health_record": health_record}, meta={})
+            case "getFailedSession":
+                message_id = event["data"]["messageId"]
+                station_id = event["data"]["stationId"]
+                port_key = event["data"]["portKey"]
+                session = get_failed_session(station_id, port_key, message_id)
+                log_audit("INFO", message="failed session by message id retrieved successfully", status="SUCCESS", **audit_base)
+                return SuccessResponsePayload(data={"session": session if session else None}, meta={})
             case _:
                 log_audit("ERROR", message=f"invalid action {action}", status="ERROR", errorMessage=f"invalid action {action}", **audit_base)
                 return ErrorResponsePayload(error=f"invalid action {action}", code="INVALID_REQUEST")

@@ -881,6 +881,42 @@ Use `userUpdateStationPorts` with the same `data` shape and include `data.userId
 
 `userUpdateStationPorts` requires `userId`. Valid **`oldState`** values include **`OCCUPIED`** (e.g. ending a charging session and returning the port to `FREE`).
 
+For async command-queue user flows, include queue message id in payload so simulated port-update failures can be persisted as FAILED session rows keyed by that id:
+
+```json
+{
+  "service": { "action": "userUpdateStationPorts", "callerId": "string" },
+  "data": {
+    "stationId": "station-uuid",
+    "portCode": "A1",
+    "oldState": "FREE|BOOKED|OCCUPIED",
+    "newState": "FREE|BOOKED|OCCUPIED",
+    "userId": "user-uuid",
+    "messageId": "queue-message-id"
+  }
+}
+```
+
+If the payload uses snake_case internally, `message_id` may be accepted as the same value.
+
+For async command-queue user flows, include queue message id in payload so simulated port-update failures can be persisted as FAILED session rows keyed by that id:
+
+```json
+{
+  "service": { "action": "userUpdateStationPorts", "callerId": "string" },
+  "data": {
+    "stationId": "station-uuid",
+    "portCode": "A1",
+    "oldState": "FREE|BOOKED|OCCUPIED",
+    "newState": "FREE|BOOKED|OCCUPIED",
+    "userId": "user-uuid",
+    "messageId": "queue-message-id"
+  }
+}
+```
+
+If the payload uses snake_case internally, `message_id` may be accepted as the same value.
+
 **Support occupied -> disabled behavior:** `supportUpdateStationPorts` allows `oldState = OCCUPIED` with `newState = DISABLED`. In that path, the write lambda attempts to locate the active session by port and close it as `UNPAID` with `ended_at` and `final_cost` in the same transaction as the port-state update.
 
 **Session lock:** the **session lock** item uses sort key `SESSION_LOCK` and stores the user id in the table’s **`station_id`** attribute (overload in the single-table design). A conditional `Put` ensures **at most one lock per user** everywhere, so a user cannot open a second session on another port/station until the first flow completes and the lock is cleared as designed.
@@ -915,6 +951,14 @@ For user flows, the success payload may also include:
 - `user_id`
 
 Response (error): `INVALID_REQUEST` (bad states, condition failed, stale port/session state), `DATABASE_ERROR` (including Dynamo **`TransactionCanceledException`** when a multi-item transaction is rolled back — e.g. port state mismatch, session conditional failure, or **session lock already present** if the user already has an open session elsewhere). The error text may include Dynamo **`CancellationReasons`** for debugging.
+
+Async failed-session note:
+
+- When simulated port update fails in `userUpdateStationPorts` and message id is provided, the writer stores a session row with:
+  - `station_id = <stationId>`
+  - `entity_key = PORT#<portCode>#SESSION#<messageId>`
+  - `state = FAILED`
+- This row is later readable by `getFailedSession` and can also be archived by the stream consumer.
 
 ---
 
@@ -1289,6 +1333,64 @@ Response (success):
         "updated_at": "ISO timestamp"
       }
     ]
+  },
+  "meta": {}
+}
+```
+
+---
+
+### `getFailedSession`
+
+Lambda: `charging-stations-get-ports-sessions-dynamo`  
+Action: `getFailedSession`
+
+Reads one FAILED session created for async user flow correlation by exact DynamoDB primary key.
+
+Request:
+
+```json
+{
+  "service": { "action": "getFailedSession", "callerId": "string" },
+  "data": {
+    "stationId": "station-uuid",
+    "portKey": "A1",
+    "messageId": "queue-message-id"
+  }
+}
+```
+
+Lookup key used by Lambda:
+
+- `station_id = stationId`
+- `entity_key = PORT#<portKey>#SESSION#<messageId>`
+
+Response (success, found):
+
+```json
+{
+  "data": {
+    "session": {
+      "station_id": "station-uuid",
+      "entity_key": "PORT#A1#SESSION#queue-message-id",
+      "state": "FAILED",
+      "session_id": "failed_FREE_to_BOOKED_transition",
+      "user_id": "user-uuid",
+      "updated_at": "ISO timestamp",
+      "ended_at": "ISO timestamp",
+      "exp_time": 1770000000
+    }
+  },
+  "meta": {}
+}
+```
+
+Response (success, not found):
+
+```json
+{
+  "data": {
+    "session": null
   },
   "meta": {}
 }

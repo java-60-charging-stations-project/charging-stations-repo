@@ -157,6 +157,7 @@ The template provisions **RDS** (PostgreSQL, IAM auth), **VPC endpoints** (RDS A
 **WriteStationPortsDynamo** – Action-based (`callerId` in `service`):
 - `insertStationPorts`: `data.stationId`, `data.ports` (array of `code`). Atomic batch via DynamoDB `TransactWriteItems`; response includes `data.created_ports`.
 - `supportUpdateStationPorts` / `userUpdateStationPorts`: optimistic state updates using `oldState`/`newState`; `userUpdateStationPorts` requires `userId` and creates a session item in the same transaction. Support flow allows `OCCUPIED -> DISABLED` and closes the active session as `UNPAID` (`ended_at`, `final_cost`) in the same transaction when a session row is found.
+- Async user command flow: `userUpdateStationPorts` can include queue `messageId` (or internal `message_id`) so simulated port-update failures are persisted as FAILED session rows in Dynamo with key `PORT#<portCode>#SESSION#<messageId>`.
 - `deleteStationPorts`: delete one disabled port by `portKey`.
 - `pay_session` (internal from stream consumer) and `paySessionUser` (direct retry/user call): payment success is probabilistic. With `PAYMENT_SUCCESS_RATE=80` and condition `random(1..100) <= PAYMENT_SUCCESS_RATE`, effective behavior is about 80% success / 20% simulated failure.
 - On simulated payment failure, `pay_session` asynchronously invokes `charging-stations-payment-notification` (action `notify_payment_failure`) and returns `PAYMENT_FAILED`.
@@ -178,7 +179,7 @@ See **`lambda_request_responces.md`** for full shapes. Summary:
 - **WriteLogsRDS** – `write_logs` (batch upsert by `request_id`) and `resolveLog` (set `resolved=true`, `resolver_id`, `resolve_time` by `logId`).
 - **GetLogsInfo** – `getLogs` with filters (`level`, `service`, `callerId`, `event`, `resolved`), sortable `orderBy`, and pagination (`page`, `pageSize`, max 200).
 - **WriteStationPortsDynamo** – `insertStationPorts`, port updates, `deleteStationPorts` (see **`lambda_request_responces.md`**).
-- **GetPortsSessionsDynamo** – supports `getSessionByUser` (`data.latest=true` for history/all states on `user_id-index`), `getSessionByStation` (sessions by station partition), and `getHealthRecord` (`data.messageId`, `data.userId`) which returns `data.health_record` only when the record has not expired (`exp_time >= now`).
+- **GetPortsSessionsDynamo** – supports `getSessionByUser` (`data.latest=true` for history/all states on `user_id-index`), `getSessionByStation` (sessions by station partition), `getHealthRecord` (`data.messageId`, `data.userId`) which returns `data.health_record` only when the record has not expired (`exp_time >= now`), and `getFailedSession` (`data.stationId`, `data.portKey`, `data.messageId`) for async failed-session polling by frontend/backend.
 - **StationEntitiesStreamConsumer** – Dynamo stream: forwards port insert/remove and free-state changes to station RDS updates, `UNPAID` transitions to payment, and `PAID` transitions to RDS session archive (details in **`lambda_request_responces.md`**).
 
 ### Maintenance cron Lambdas

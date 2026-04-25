@@ -263,15 +263,7 @@ def _transact_update_session_booked_to_active(session: dict, ts_iso: str, charge
         }
     }
 
-def update_station_ports(action: str, port_data: dict, user_id: str| None = None) -> dict:
-    random_chance = random.randint(1, 100)
-    port_update_success = random_chance <= PORT_UPDATE_SUCCESS_RATE
-    if not port_update_success:
-        logger.error(f"port update failed: {port_data}")
-        raise LambdaResponseError({"error": f"port update failed", "code": "UNHANDLED_ERROR"})
-    if not port_data["port_key"]:
-        logger.error(f"port key is required for {action}")
-        raise LambdaResponseError({"error": f"port key is required for {action}", "code": "INVALID_REQUEST"})
+def update_station_ports(action: str, port_data: dict, user_id: str| None = None, message_id: str| None = None) -> dict:
     try:
         client = get_dynamo_client()
     except Exception as e:
@@ -281,6 +273,34 @@ def update_station_ports(action: str, port_data: dict, user_id: str| None = None
     new_state = port_data["new_state"]
     station_id = port_data["station_id"]
     port_key = port_data["port_key"]
+    random_chance = random.randint(1, 100)
+    port_update_success = random_chance <= PORT_UPDATE_SUCCESS_RATE
+    if not port_update_success:
+        logger.error(f"port update failed: {port_data}" )
+        if message_id:
+            port_data["user_id"] = user_id or "support"
+            port_data["entity_key"] = f"PORT#{port_key}"
+            entity_key = port_data["entity_key"]
+            failed_session_data = build_session_object(port_data)
+            failed_session_data["entity_key"] = f"{entity_key}#SESSION#{message_id}"
+            failed_session_data["state"] = "FAILED"
+            failed_session_data["session_id"] = f"failed_{old_state}_to_{new_state}_transition"
+            failed_session_data["ended_at"] = failed_session_data["updated_at"]
+            failed_session_data["exp_time"] = int(time.time() + EXPIRATION_TIME_PAID_SESSION_SECONDS)
+            try:
+                client.put_item(
+                    TableName=STATIONS_DYNAMO_TABLE,
+                    Item=to_av_map(failed_session_data),
+                    ConditionExpression="attribute_not_exists(station_id) AND attribute_not_exists(entity_key)",
+                )
+            except ClientError as e:
+                logger.error(f"session already exists: {e}")
+                raise LambdaResponseError({"error": f"session already exists: {e}", "code": "INVALID_REQUEST"})
+            except Exception as e:
+                logger.error(f"error inserting failed session: {e}")
+                raise LambdaResponseError({"error": f"error inserting failed session: {e}", "code": "DATABASE_ERROR"})
+        raise LambdaResponseError({"error": f"port update failed, data: {port_data}, message_id: {message_id}, user_id: {user_id}", 
+        "code": "UNHANDLED_ERROR"})
     if action == "supportUpdateStationPorts":
         old_support_states = ["FREE", "ERROR", "DISABLED", "BOOKED", "OCCUPIED"]
         new_support_states = ["FREE", "DISABLED"]
@@ -308,8 +328,6 @@ def update_station_ports(action: str, port_data: dict, user_id: str| None = None
         if new_state not in new_user_states:
             logger.error(f"invalid new state: {new_state}")
             raise LambdaResponseError({"error": f"invalid new state: {new_state}", "code": "INVALID_REQUEST"})
-    elif action == "lambda_update_station_ports":
-        pass
     updated_at = datetime.now(timezone.utc).isoformat()
     transact_items: list[dict] = []
     try:
@@ -455,20 +473,6 @@ def get_tariff(station_id: str) -> Decimal:
     tariff = str((response_json.get("data", {}).get("rate_plan", {}).get("offPeakRate", 0.0)))
     return tariff
 
-def archive_session_to_rds(session: dict) -> None:
-    payload = {
-        "service": {"action": "archive_session", "callerId": "write-station-ports-dynamo"},
-        "data": session,
-    }
-    client = boto3.client("lambda", region_name=AWS_REGION)
-    resp = client.invoke(
-        FunctionName=f"arn:aws:lambda:{AWS_REGION}:{AWS_LAMBDA_HOST_ACCOUNT}:function:{WRITE_STATION_RDS_FUNCTION_NAME}",
-        InvocationType="Event",
-        Payload=json.dumps(payload).encode("utf-8"),
-    )
-    if resp.get("StatusCode") != 202:
-        raise LambdaResponseError({"error": f"archive invoke failed: {resp}", "code": "DATABASE_ERROR"})
-
 def pay_session(session_data: dict) -> dict:
     random_chance = random.randint(1, 100)
     success = random_chance <= PAYMENT_SUCCESS_RATE
@@ -483,7 +487,7 @@ def pay_session(session_data: dict) -> dict:
             logger.error(f"payment failed notification invoke failed: {resp}")
             raise LambdaResponseError({"error": f"payment failed notification invoke failed: {resp}", "code": "DATABASE_ERROR"})
         logger.info(f"payment failed notification invoked successfully: {resp}")
-        raise LambdaResponseError({"error": f"session payment failed", "code": "PAYMENT_FAILED"})
+        raise LambdaResponseError({"error": f"session payment failed, data: {session_data}", "code": "PAYMENT_FAILED"})
     try:
         client = get_dynamo_client()
     except Exception as e:
@@ -638,9 +642,11 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                 log_audit("INFO", message="station ports updated successfully", status="SUCCESS", **audit_base)
                 return SuccessResponsePayload(data=updated_port_data, meta={})
             case "userUpdateStationPorts":
-                user_id = event["data"]["userId"]
+                data = event["data"]
+                message_id = data.get("messageId")
+                user_id = data.get("userId")
                 update_data = get_update_data_from_event(event)
-                updated_port_data = update_station_ports(action, update_data, user_id)
+                updated_port_data = update_station_ports(action, update_data, user_id, message_id)
                 log_audit("INFO", message="station ports updated successfully", status="SUCCESS", **audit_base)
                 return SuccessResponsePayload(data=updated_port_data, meta={})
             case "deleteStationPorts":

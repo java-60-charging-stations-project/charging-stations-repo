@@ -33,7 +33,7 @@ Parameters:
   InvokerAccountIdB:
     Type: String
     Description: AWS account ID that is allowed to invoke this Lambda (e.g. the account that runs Node.js and calls Invoke)
-    Default: ""
+    Default: "516341734874"
   # VPC and subnets (must be private subnets that can reach each other)
   VpcId:
     Type: AWS::EC2::VPC::Id
@@ -1355,6 +1355,14 @@ Resources:
       Action: lambda:InvokeFunction
       Principal: !Sub "arn:aws:iam::${InvokerAccountIdA}:root"
 
+  AllowSourceRouterInvokeLogSubscriptionProcessorB:
+    Type: AWS::Lambda::Permission
+    Condition: UseInvokerAccountB
+    Properties:
+      FunctionName: !Ref LogSubscriptionProcessorFunction
+      Action: lambda:InvokeFunction
+      Principal: !Sub "arn:aws:iam::${InvokerAccountIdB}:root"
+
   LogSubscriptionLambdaPermission:
     Type: AWS::Lambda::Permission
     Properties:
@@ -1412,10 +1420,18 @@ Resources:
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
-          - Sid: AllowBackendAccountASend
+          - Sid: AllowBackendInvokerAccountsSend
             Effect: Allow
             Principal:
-              AWS: !Sub "arn:aws:iam::${InvokerAccountIdA}:root"
+              AWS:
+                Fn::If:
+                  - UseBothInvokers
+                  - - !Sub "arn:aws:iam::${InvokerAccountIdA}:root"
+                    - !Sub "arn:aws:iam::${InvokerAccountIdB}:root"
+                  - Fn::If:
+                      - UseInvokerAccountA
+                      - !Sub "arn:aws:iam::${InvokerAccountIdA}:root"
+                      - !Sub "arn:aws:iam::${InvokerAccountIdB}:root"
             Action:
               - sqs:SendMessage
             Resource: !GetAtt CommandQueue.Arn
