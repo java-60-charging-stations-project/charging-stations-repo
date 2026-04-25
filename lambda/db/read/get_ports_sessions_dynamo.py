@@ -60,12 +60,13 @@ def get_session_by_user(user_id: str, latest: bool = False) -> list[dict]:
     }
     if not latest:
         query_params.update({
-            "FilterExpression": "#s IN (:booked, :active, :unpaid)",
+            "FilterExpression": "#s IN (:booked, :active, :unpaid, :failed)",
             "ExpressionAttributeNames": {"#s": "state"},
             "ExpressionAttributeValues": {
                 ":booked": "BOOKED",
                 ":active": "ACTIVE",
                 ":unpaid": "UNPAID",
+                ":failed": "FAILED",
             }
         })
     try:

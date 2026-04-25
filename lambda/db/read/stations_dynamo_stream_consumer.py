@@ -54,7 +54,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 if _is_session_entity(new_image) and new_image["state"] == "FAILED":
                     op = {"session_object": {k: float(v) if isinstance(v, Decimal) else v for k, v in new_image.items()}}
                     archived_session_ops.append(op)
-                    continue
+                continue
             op = {
                 "event_id": record["eventID"],
                 "station_id": image["station_id"],
