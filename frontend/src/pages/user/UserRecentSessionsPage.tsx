@@ -4,7 +4,7 @@ import SessionCard from "@/components/SessionCard";
 import RefetchIconButton from "@/components/RefetchIconButton";
 import type { Session } from "@/types/sessions";
 
-const sessionCompareByTime(a: Session, b: Session): number {
+function sessionCompareByTime(a: Session, b: Session): number {
   if (!a.endedAt) {
     return -1;
   }

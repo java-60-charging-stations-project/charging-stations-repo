@@ -7,16 +7,21 @@ import EasySpinner from "../EasySpinner";
 import Modal from "../Modal";
 import SimpleButton from "../SimpleButton";
 import { useAddStationPortsMutation, useDeleteStationPortMutation, useGetStationPortsQuery, useUpdateStationPortStateMutation } from "@/store/apiSlice";
+import { toast } from "react-toastify";
 
 const MAX_PORTS = config.maxPortsPerStation;
 
 const logger = getLogger("PortsView");
 
+function getErrorMessage(error: unknown): string {
+    return (error instanceof Error) ? error.message : String(error);
+}
+
 export interface PortsViewProps {
     stationId: string;
     stationState: StationState;
     enabled?: boolean;
-}
+};
 
 const PortsView: FC<PortsViewProps> = ({
     stationId,
@@ -69,6 +74,7 @@ const PortsView: FC<PortsViewProps> = ({
             setNewPorts([]);
         } catch (err) {
             console.error(err);
+            toast.error(`Error adding ports: ${getErrorMessage(err)}`);
         }
     }, [stationId, newPorts, addPortsMutation]);
 
@@ -82,6 +88,7 @@ const PortsView: FC<PortsViewProps> = ({
             setDeletePortId(null);
         } catch (err) {
             console.error(err);
+            toast.error(`Error deleting ports: ${getErrorMessage(err)}`);
         }
     }, [stationId, deletePortMutation]);
 
@@ -99,18 +106,19 @@ const PortsView: FC<PortsViewProps> = ({
             setEditPortId(null);
         } catch (err) {
             console.error(err);
+            toast.error(`Error deleting ports: ${getErrorMessage(err)}`);
         }
     }, [stationId, updatePortStateMutation]);
 
     const canDeletePort: boolean = enabled && stationState === "OUT_OF_SERVICE";
-    const isLocked = isLoading || isUpdating || isDeleting || isAdding;
-    const error = loadError?.message || addError?.message || deleteError?.message || updateError?.message;
+    const isMutating = isUpdating || isDeleting || isAdding;
+    const isLocked = isLoading || isMutating;
     
-    if (error) {
+    if (loadError) {
         return (
             <div className="flex flex-col gap-2 text-xs w-full">
                 <p className="w-full text-right text-red-500 text-xs mt-0.5 pr-0">
-                    {error}
+                    {loadError.message}
                 </p>
             </div>
         );
