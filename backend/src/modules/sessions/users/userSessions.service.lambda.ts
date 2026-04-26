@@ -161,7 +161,7 @@ export class UserSessionsServiceLambda implements UserSessionsIService {
       callerId: userId,
       targetFn: "charging-stations-write-station-ports-dynamo",
       action: "userUpdateStationPorts",
-      groupId: `${stationId}-${portCode}`,
+      groupId: `${userId}`,
       deduplicationId: `${userId}-${stationId}-${portCode}-${newState}`,
     };
     logger.debug(`Sending groupId=${queueRequest.groupId}, deduplicationId=${queueRequest.deduplicationId}`);
