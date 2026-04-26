@@ -36,9 +36,18 @@ import type {
   UserPaymentResponse,
   UserPaymentResponseLambda,
 } from './userSessions.types';
+import { addCommandToQuery, CommandQueueRequest, CommandQueueResponse } from '../../../utils/sqsCommandQueue';
 
 const logger = createLogger('sessions.users.service');
 const LAMBDA_INVOKER: LambdaInvoker = new AwsLambdaInvoker(env.awsRegion);
+
+type StationUpdateData = {
+  userId: string;
+  stationId: string;
+  portCode: string;
+  oldState: UserSessionPortState;
+  newState: 'BOOKED' | 'OCCUPIED' | 'FREE';
+};
 
 function throwFromUserSessionsLambdaError(result: LambdaErrorResponse, collectorSource: string): never {
   const message = result.error;
@@ -72,9 +81,9 @@ export class UserSessionsServiceLambda implements UserSessionsIService {
     logger.debug(`.createManualPayment calling Lambda=${lambdaName}, Action=${actionName}, Payload=`, lambdaPayload);
     const result = await LAMBDA_INVOKER.
       invokeJson<LambdaSuccessPayload<UserPaymentResponseLambda> | LambdaErrorResponse>(
-      lambdaName,
-      lambdaPayload
-    );
+        lambdaName,
+        lambdaPayload
+      );
     logger.debug(".createManualPayment Lambda Response=", result);
 
     if (isLambdaErrorPayload(result)) {
@@ -98,11 +107,7 @@ export class UserSessionsServiceLambda implements UserSessionsIService {
   };
 
   private async updateStationPort(
-    userId: string,
-    stationId: string,
-    portCode: string,
-    oldState: UserSessionPortState,
-    newState: 'BOOKED' | 'OCCUPIED' | 'FREE',
+    { userId, stationId, portCode, oldState, newState }: StationUpdateData
   ): Promise<UserSessionPortUpdateResponse> {
     logger.debug('Invoking ports write lambda: userUpdateStationPorts', {
       userId,
@@ -141,6 +146,55 @@ export class UserSessionsServiceLambda implements UserSessionsIService {
 
     return mapLambdaUserStationPortUpdate(result.data);
   }
+
+  private async sendUpdatePortCommand(
+    { userId, stationId, portCode, oldState, newState }: StationUpdateData
+  ): Promise<CommandQueueResponse> {
+    logger.debug('Sending command to change port state: ', {
+      userId,
+      stationId,
+      portCode,
+      oldState,
+      newState,
+    });
+    const queueRequest: CommandQueueRequest = {
+      callerId: userId,
+      targetFn: "charging-stations-write-station-ports-dynamo",
+      action: "userUpdateStationPorts",
+      groupId: `${stationId}-${portCode}`,
+      deduplicationId: `${userId}-${stationId}-${portCode}-${newState}`,
+    };
+    logger.debug(`Sending groupId=${queueRequest.groupId}, deduplicationId=${queueRequest.deduplicationId}`);
+    const requestData = {
+      userId,
+      stationId,
+      portCode,
+      oldState,
+      newState,
+    };
+    try {
+      const response = await addCommandToQuery(queueRequest, requestData);
+      logger.debug(`Response from SQS, messageId=${response.messageId}`);
+      return response;
+    }
+    catch (error) {
+      logger.error("Error sending message to SQS Command query:", error);
+      throw new ServiceError(
+        "Error invoking Command SQS on changing port state",
+        502,
+        "NO_RESPONSE",
+      );
+    }
+  };
+
+  private async executePortUpdate(
+    updateData: StationUpdateData
+  ): Promise<CommandQueueResponse | UserSessionPortUpdateResponse> {
+    if (env.lambdaCallMode === "async") {
+      return this.sendUpdatePortCommand(updateData);
+    }
+    return this.updateStationPort(updateData);
+  };
 
   async getUserSessions(userId: string, latest = false): Promise<UserSession[]> {
     logger.debug('Invoking ports read lambda: getSessionByUser', { userId });
@@ -265,8 +319,8 @@ export class UserSessionsServiceLambda implements UserSessionsIService {
     stationId: string,
     portCode: string,
     oldState: UserSessionPortState,
-  ): Promise<UserSessionPortUpdateResponse> {
-    return this.updateStationPort(userId, stationId, portCode, oldState, 'BOOKED');
+  ): Promise<CommandQueueResponse | UserSessionPortUpdateResponse> {
+    return this.executePortUpdate({ userId, stationId, portCode, oldState, newState: 'BOOKED'});
   }
 
   async startChargingSession(
@@ -274,8 +328,8 @@ export class UserSessionsServiceLambda implements UserSessionsIService {
     stationId: string,
     portCode: string,
     oldState: UserSessionPortState,
-  ): Promise<UserSessionPortUpdateResponse> {
-    return this.updateStationPort(userId, stationId, portCode, oldState, 'OCCUPIED');
+  ): Promise<CommandQueueResponse | UserSessionPortUpdateResponse> {
+    return this.executePortUpdate({ userId, stationId, portCode, oldState, newState: 'OCCUPIED'});
   }
 
   async stopBooking(
@@ -283,8 +337,8 @@ export class UserSessionsServiceLambda implements UserSessionsIService {
     stationId: string,
     portCode: string,
     oldState: UserSessionPortState,
-  ): Promise<UserSessionPortUpdateResponse> {
-    return this.updateStationPort(userId, stationId, portCode, oldState, 'FREE');
+  ): Promise<CommandQueueResponse | UserSessionPortUpdateResponse> {
+    return this.executePortUpdate({ userId, stationId, portCode, oldState, newState: 'FREE'});
   }
 
   async stopChargingSession(
@@ -292,7 +346,7 @@ export class UserSessionsServiceLambda implements UserSessionsIService {
     stationId: string,
     portCode: string,
     oldState: UserSessionPortState,
-  ): Promise<UserSessionPortUpdateResponse> {
-    return this.updateStationPort(userId, stationId, portCode, oldState, 'FREE');
+  ): Promise<CommandQueueResponse | UserSessionPortUpdateResponse> {
+    return this.executePortUpdate({ userId, stationId, portCode, oldState, newState: 'FREE'});
   }
 }

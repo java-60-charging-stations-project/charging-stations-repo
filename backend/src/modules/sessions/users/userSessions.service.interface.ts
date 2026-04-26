@@ -1,3 +1,4 @@
+import { CommandQueueResponse } from '../../../utils/sqsCommandQueue';
 import type {
   UserSessionHistoryPage,
   UserSessionHistoryQuery,
@@ -18,28 +19,28 @@ export interface UserSessionsIService {
     stationId: string,
     portCode: string,
     oldState: UserSessionPortState,
-  ): Promise<UserSessionPortUpdateResponse>;
+  ): Promise<CommandQueueResponse | UserSessionPortUpdateResponse>;
 
   startChargingSession(
     userId: string,
     stationId: string,
     portCode: string,
     oldState: UserSessionPortState,
-  ): Promise<UserSessionPortUpdateResponse>;
+  ): Promise<CommandQueueResponse | UserSessionPortUpdateResponse>;
 
   stopBooking(
     userId: string,
     stationId: string,
     portCode: string,
     oldState: UserSessionPortState,
-  ): Promise<UserSessionPortUpdateResponse>;
+  ): Promise<CommandQueueResponse | UserSessionPortUpdateResponse>;
 
   stopChargingSession(
     userId: string,
     stationId: string,
     portCode: string,
     oldState: UserSessionPortState,
-  ): Promise<UserSessionPortUpdateResponse>;
+  ): Promise<CommandQueueResponse | UserSessionPortUpdateResponse>;
 
   createManualPayment(paymentRequest: UserPaymentRequest): Promise<UserPaymentResponse>;
 };
