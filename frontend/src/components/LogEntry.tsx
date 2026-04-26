@@ -71,7 +71,7 @@ const LogEntry: FC<LogEntryProps> = ({ logRecord, onResolve, isResolving }) => {
                 )
                 }
                 <span className="shrink-0 whitespace-nowrap text-sm text-neutral-700">{formattedTimestamp}</span>
-                <span className="min-w-0 flex-1 truncate text-sm text-neutral-900" title={message}>{message}</span>
+                <span className="min-w-0 flex-1 truncate text-sm text-neutral-900" title={"Record source system"}>{`Source system: ${source}`}</span>
                 <button
                     className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-neutral-300 bg-neutral-50 text-base leading-none text-neutral-700 hover:bg-neutral-100"
                     onClick={toggleDetails}
@@ -82,14 +82,17 @@ const LogEntry: FC<LogEntryProps> = ({ logRecord, onResolve, isResolving }) => {
             </div>
             {detailsOpen && (
                 <div className="mt-2 rounded border border-neutral-200 bg-white/90 p-2 text-sm">
+                    <div className="mb-2 border-b border-neutral-200 pb-2 wrap-break-word text-neutral-900">
+                        {`Record message: ${message}`}
+                    </div>
                     <div className="grid gap-x-4 gap-y-1 sm:grid-cols-2">
-                    <DetailLine label="Log entry ID" value={log_id} />
-                    <DetailLine label="Source" value={source} />
-                    <DetailLine label="Event" value={event} />
-                    <DetailLine label="Request ID" value={request_id ?? "-"} />
-                    <DetailLine label="Resolved by" value={resolver_id ?? "-"} />
-                    <DetailLine label="Happened at" value={formattedTimestamp} />
-                    <DetailLine label="Resolved at" value={formatTimestamp(resolve_time)} />
+                        <DetailLine label="Log entry ID" value={log_id} />
+                        <DetailLine label="Source" value={source} />
+                        <DetailLine label="Event" value={event} />
+                        <DetailLine label="Request ID" value={request_id ?? "-"} />
+                        <DetailLine label="Resolved by" value={resolver_id ?? "-"} />
+                        <DetailLine label="Happened at" value={formattedTimestamp} />
+                        <DetailLine label="Resolved at" value={formatTimestamp(resolve_time)} />
                     </div>
                 </div>
             )}
