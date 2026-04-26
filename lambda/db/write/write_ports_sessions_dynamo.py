@@ -284,7 +284,7 @@ def update_station_ports(action: str, port_data: dict, user_id: str| None = None
             failed_session_data = build_session_object(port_data)
             failed_session_data["entity_key"] = f"{entity_key}#SESSION#{message_id}"
             failed_session_data["state"] = "FAILED"
-            failed_session_data["session_id"] = f"failed_{old_state}_to_{new_state}_transition"
+            failed_session_data["session_id"] = f"{old_state},{new_state}"
             failed_session_data["ended_at"] = failed_session_data["updated_at"]
             failed_session_data["exp_time"] = int(time.time() + EXPIRATION_TIME_PAID_SESSION_SECONDS)
             try:
@@ -686,8 +686,8 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
         log_audit("ERROR", message="missing data", status="ERROR", errorMessage=f"missing data: {e}", **audit_base)
         return ErrorResponsePayload(error=f"missing data: {e}", code="INVALID_REQUEST")
     except LambdaResponseError as e:
-        log_audit("ERROR", message=f"error performing {action}", status="ERROR", errorMessage=e.response.get("error"), **audit_base)
+        log_audit("ERROR", message=f"error performing {action}: {e.response.get('error')}", status="ERROR", errorMessage=e.response.get("error"), **audit_base)
         return ErrorResponsePayload(error=e.response["error"], code=e.response["code"])
     except Exception as e:
-        log_audit("ERROR", message=f"error performing {action}", status="ERROR", errorMessage=str(e), **audit_base)
+        log_audit("ERROR", message=f"error performing {action}: {e}", status="ERROR", errorMessage=str(e), **audit_base)
         return ErrorResponsePayload(error=f"unhandled error performing {action}: {e}", code="UNHANDLED_ERROR")

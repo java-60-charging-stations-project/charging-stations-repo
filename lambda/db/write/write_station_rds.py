@@ -589,8 +589,8 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
         log_audit("ERROR", message="missing data", status="ERROR", errorMessage=f"missing data: {e}", **audit_base)
         return ErrorResponsePayload(error=f"missing data: {e}", code="INVALID_REQUEST")
     except LambdaResponseError as e:
-        log_audit("ERROR", message=f"error performing {action}", status="ERROR", errorMessage=e.response.get("error"), **audit_base)
+        log_audit("ERROR", message=f"error performing {action} : {e.response.get('error')}", status="ERROR", errorMessage=e.response.get("error"), **audit_base)
         return ErrorResponsePayload(error=e.response["error"], code=e.response["code"])
     except Exception as e:
-        log_audit("ERROR", message=f"error performing {action}", status="ERROR", errorMessage=str(e), **audit_base)
+        log_audit("ERROR", message=f"error performing {action} : {e}", status="ERROR", errorMessage=str(e), **audit_base)
         return ErrorResponsePayload(error=f"unhandled error performing {action}: {e}", code="UNHANDLED_ERROR")
