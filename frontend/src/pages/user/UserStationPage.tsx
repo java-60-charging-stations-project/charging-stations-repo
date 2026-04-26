@@ -96,8 +96,7 @@ const UserStationPage = () => {
   });
 
   const [startBooking, { isLoading: isBooking }] = useStartBookingMutation();
-  const [startCharging, { isLoading: isCharging }] =
-    useStartChargingMutation();
+  const [startCharging, { isLoading: isCharging }] = useStartChargingMutation();
 
   const existingSessionLabel = useMemo(() => {
     const s = sessionsData?.sessions.find(

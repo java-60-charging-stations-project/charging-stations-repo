@@ -9,7 +9,7 @@ import type { LogRecord, LogRequest, LogResolveRequest } from "@/types/logs";
 import { createSelector } from "@reduxjs/toolkit";
 import type { AppStartListening } from "./listenerMiddleware";
 import { getLogger } from "@/services/logging";
-import { isFreshUnpaidSession, isStaleUnpaidSession } from "@/utils/sessionStatus";
+import { isActiveSession, isFailedSession, isFreshUnpaidSession, isRecentSession, isStaleUnpaidSession, sortByCreatedAt, sortByEndedAt, sortRecentSessions } from "@/utils/sessionStatus";
 
 const logger = getLogger("apiSlice");
 
@@ -43,14 +43,7 @@ export const apiSlice = createApi({
             }),
             transformResponse: (rawResponse: ApiResponse<UserSessionsResponse>): Session[] => {
                 const response = unwrapData(rawResponse);
-                const stateOrder: Record<string, number> = { UNPAID: 0, PAID: 1 };
-                return response.sessions
-                    .filter(s => s.state === "PAID" || s.state === "UNPAID")
-                    .sort((a, b) => {
-                        const statesDiff = stateOrder[a.state] - stateOrder[b.state];
-                        if (statesDiff !== 0) return statesDiff;
-                        return new Date(b.endedAt ?? 0).getTime() - new Date(a.endedAt ?? 0).getTime();
-                    });
+                return response.sessions.filter(isRecentSession).sort(sortRecentSessions);
             },
             providesTags: ['Session'],
         }),
@@ -219,6 +212,27 @@ export const apiSlice = createApi({
 });
 
 // Selectors
+export const selectActualSessions = createSelector(
+    apiSlice.endpoints.getSessions.select(undefined),
+    (selected) => {
+        let result: Session[] = [];
+        if (selected.data?.sessions) {
+            result = selected.data?.sessions;
+        }
+        return result;
+    }
+);
+
+export const selectActiveSessions = createSelector(
+    selectActualSessions,
+    (selected) => selected.filter(isActiveSession).sort(sortByCreatedAt)
+);
+
+export const selectFailedSessions = createSelector(
+    selectActualSessions,
+    (selected) => selected.filter(isFailedSession).sort(sortByEndedAt)
+);
+
 export const selectActiveSessionStateSelector = createSelector(
     apiSlice.endpoints.getSessions.select(undefined),
     (selected) => {
