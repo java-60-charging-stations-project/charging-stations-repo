@@ -14,6 +14,10 @@ import { config } from "@/config/env";
 import { getLogger } from "@/services/logging";
 import { toast } from "react-toastify";
 
+function getEncodedPath(location: Location): string {
+    return encodeURIComponent(location.pathname + location.search);
+}
+
 const logger = getLogger("User.Station");
 const TOAST_AUTO_CLOSE = 3000;
 
@@ -79,6 +83,11 @@ const UserStationPage = () => {
   const { stationId } = useParams<{ stationId: string }>();
   const navigate = useNavigate();
   const [chargingPortCode, setChargingPortCode] = useState<string | null>(null);
+  const [isRequestAccepted, setIsRequestAccepted] = useState<boolean>(false);
+
+  const navigateToSessions = () => {
+    navigate(`/user/session?from=${getEncodedPath(location)}`);
+  }
   
   const { data: sessionsData } = useGetSessionsQuery(undefined, {
     pollingInterval,
@@ -160,13 +169,14 @@ const UserStationPage = () => {
         oldState: "FREE",
       }).unwrap();
 
+      setIsRequestAccepted(true); // Helpful for async requests
       const bookMessage = (serverResponse.type === "sync")
-        ? `The port ${freePort.portCode} is booked!`
+        ? `The port ${freePort.portCode} is booked`
         : `Request to book port ${freePort.portCode} accepted`;
       toast.success(
         <div className="flex items-center gap-2">
           <EasySpinner size="sm" />
-          <span>{ bookMessage }. Redirecting to the sessions page</span>
+          <span>{ bookMessage }. Redirecting...</span>
         </div>,
         {
           autoClose: TOAST_AUTO_CLOSE,
@@ -175,7 +185,7 @@ const UserStationPage = () => {
         },
       );
       window.setTimeout(() => {
-        navigate("/user/session");
+        navigateToSessions();
       }, TOAST_AUTO_CLOSE);
     } catch {
       toast.error(
@@ -194,15 +204,19 @@ const UserStationPage = () => {
     
     try {
       setChargingPortCode(portCode);
-      await startCharging({
+      const serverResponse = await startCharging({
         stationId,
         portCode: portCode,
         oldState: "FREE",
       }).unwrap();
+      setIsRequestAccepted(true); // Helpful for async requests
+      const chargeMessage = (serverResponse.type === "sync")
+        ? `Charging started at the port ${portCode}`
+        : `Request to start charging at the ${portCode} accepted`;
       toast.success(
         <div className="flex items-center gap-2">
           <EasySpinner size="sm" />
-          <span>Successfully started charging. Redirecting to the sessions page</span>
+          <span>{ chargeMessage }. Redirecting...</span>
         </div>,
         {
           autoClose: TOAST_AUTO_CLOSE,
@@ -211,7 +225,7 @@ const UserStationPage = () => {
         },
       );
       window.setTimeout(() => {
-        navigate("/user/session");
+        navigateToSessions();
       }, TOAST_AUTO_CLOSE);
     } catch {
       toast.error(
@@ -253,7 +267,7 @@ const UserStationPage = () => {
             You already have the {existingSessionLabel} session.
           </p>
           <Link
-            to="/user/session"
+            to={`/user/session?from=${getEncodedPath(location)}`}
             className="mt-2 inline-block text-sm font-medium text-blue-600 hover:underline"
           >
             Go to sessions &rarr;
@@ -303,7 +317,7 @@ const UserStationPage = () => {
                 port={port}
                 onStartCharging={handleStartCharging}
                 isCharging={isCharging && chargingPortCode === port.portCode}
-                isDisabled={hasExistingSession || isCharging}
+                isDisabled={hasExistingSession || isCharging || isRequestAccepted}
               />
             ))}
           </div>
