@@ -35,8 +35,10 @@ import type {
   UserPaymentRequest,
   UserPaymentResponse,
   UserPaymentResponseLambda,
+  UserPortUpdateResponse,
+  UserSessionPortUpdateResponseAsync,
 } from './userSessions.types';
-import { addCommandToQuery, CommandQueueRequest, CommandQueueResponse } from '../../../utils/sqsCommandQueue';
+import { addCommandToQuery, CommandQueueRequest } from '../../../utils/sqsCommandQueue';
 
 const logger = createLogger('sessions.users.service');
 const LAMBDA_INVOKER: LambdaInvoker = new AwsLambdaInvoker(env.awsRegion);
@@ -149,7 +151,7 @@ export class UserSessionsServiceLambda implements UserSessionsIService {
 
   private async sendUpdatePortCommand(
     { userId, stationId, portCode, oldState, newState }: StationUpdateData
-  ): Promise<CommandQueueResponse> {
+  ): Promise<UserSessionPortUpdateResponseAsync> {
     logger.debug('Sending command to change port state: ', {
       userId,
       stationId,
@@ -173,9 +175,9 @@ export class UserSessionsServiceLambda implements UserSessionsIService {
       newState,
     };
     try {
-      const response = await addCommandToQuery(queueRequest, requestData);
-      logger.debug(`Response from SQS, messageId=${response.messageId}`);
-      return response;
+      const {messageId} = await addCommandToQuery(queueRequest, requestData);
+      logger.debug(`Response from SQS, messageId=${messageId}`);
+      return {messageId};
     }
     catch (error) {
       logger.error("Error sending message to SQS Command query:", error);
@@ -189,11 +191,13 @@ export class UserSessionsServiceLambda implements UserSessionsIService {
 
   private async executePortUpdate(
     updateData: StationUpdateData
-  ): Promise<CommandQueueResponse | UserSessionPortUpdateResponse> {
+  ): Promise<UserPortUpdateResponse> {
     if (env.lambdaCallMode === "async") {
-      return this.sendUpdatePortCommand(updateData);
+      const asyncResponse = await this.sendUpdatePortCommand(updateData);
+      return { type: "async", response: asyncResponse };
     }
-    return this.updateStationPort(updateData);
+    const syncResponse = await this.updateStationPort(updateData);
+    return { type: "sync", response: syncResponse };
   };
 
   async getUserSessions(userId: string, latest = false): Promise<UserSession[]> {
@@ -319,7 +323,7 @@ export class UserSessionsServiceLambda implements UserSessionsIService {
     stationId: string,
     portCode: string,
     oldState: UserSessionPortState,
-  ): Promise<CommandQueueResponse | UserSessionPortUpdateResponse> {
+  ): Promise<UserPortUpdateResponse> {
     return this.executePortUpdate({ userId, stationId, portCode, oldState, newState: 'BOOKED'});
   }
 
@@ -328,7 +332,7 @@ export class UserSessionsServiceLambda implements UserSessionsIService {
     stationId: string,
     portCode: string,
     oldState: UserSessionPortState,
-  ): Promise<CommandQueueResponse | UserSessionPortUpdateResponse> {
+  ): Promise<UserPortUpdateResponse> {
     return this.executePortUpdate({ userId, stationId, portCode, oldState, newState: 'OCCUPIED'});
   }
 
@@ -337,7 +341,7 @@ export class UserSessionsServiceLambda implements UserSessionsIService {
     stationId: string,
     portCode: string,
     oldState: UserSessionPortState,
-  ): Promise<CommandQueueResponse | UserSessionPortUpdateResponse> {
+  ): Promise<UserPortUpdateResponse> {
     return this.executePortUpdate({ userId, stationId, portCode, oldState, newState: 'FREE'});
   }
 
@@ -346,7 +350,7 @@ export class UserSessionsServiceLambda implements UserSessionsIService {
     stationId: string,
     portCode: string,
     oldState: UserSessionPortState,
-  ): Promise<CommandQueueResponse | UserSessionPortUpdateResponse> {
+  ): Promise<UserPortUpdateResponse> {
     return this.executePortUpdate({ userId, stationId, portCode, oldState, newState: 'FREE'});
   }
 }
