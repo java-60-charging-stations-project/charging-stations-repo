@@ -4,29 +4,18 @@ import SessionCard from "@/components/SessionCard";
 import { isFreshUnpaidSession } from "@/utils/sessionStatus";
 import { config } from "@/config/env";
 import useFromParam from "@/hooks/useFromParam";
-import { useNavigate } from "react-router";
-import SimpleButton from "@/components/SimpleButton";
 import EasyButton from "@/components/EasyButton";
+import { Link } from "react-router";
 
 const pollingInterval = config.userSessionsPollingInterval;
 
 const UserCurrentSessionPage = () => {
   const from = useFromParam();
-  const navigate = useNavigate();
   const { data, isLoading, error, refetch } = useGetSessionsQuery(undefined, {
     pollingInterval,
     skipPollingIfUnfocused: false,
     refetchOnReconnect: true,
   });
-
-  const navigateBack = () => {
-      if (from) {
-          navigate(from);
-      }
-      else {
-          navigate("/user/stations");
-      }
-  };
 
   const bookedSessions =
     data?.sessions.filter((s) => s.state === "BOOKED") ?? [];
@@ -43,7 +32,12 @@ const UserCurrentSessionPage = () => {
         <h1 className="text-2xl font-bold">Your active sessions</h1>
         <div className="w-full flex justify-between items-center">
           {from ? (
-            <SimpleButton color={"secondary"} handleClick={navigateBack} caption="← Back to station" />
+            <Link
+              to={from}
+              className="mt-2 inline-block text-sm font-medium text-blue-600 hover:underline"
+            >
+               &larr; Back to station
+            </Link>
           ) : (
             <span />
           )}

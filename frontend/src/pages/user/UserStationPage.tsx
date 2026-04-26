@@ -251,7 +251,7 @@ const UserStationPage = () => {
         to="/user/stations"
         className="inline-block text-sm text-blue-600 hover:underline"
       >
-        &larr; Back to stations
+        &larr; Back to stations list
       </Link>
 
       <h1 className="text-center text-2xl font-bold">
