@@ -1464,7 +1464,10 @@ Resources:
             - Effect: Allow
               Action:
                 - lambda:InvokeFunction
-              Resource: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:charging-stations-*"
+              Resource:
+                - !GetAtt HealthFunction.Arn
+                - !GetAtt WriteStationPortsFunction.Arn
+
       Events:
         CommandQueueEvent:
           Type: SQS

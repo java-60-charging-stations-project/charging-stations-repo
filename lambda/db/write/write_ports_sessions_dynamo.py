@@ -293,6 +293,7 @@ def update_station_ports(action: str, port_data: dict, user_id: str| None = None
                     Item=to_av_map(failed_session_data),
                     ConditionExpression="attribute_not_exists(station_id) AND attribute_not_exists(entity_key)",
                 )
+                return {"message": "async failed session inserted successfully"}
             except ClientError as e:
                 logger.error(f"session already exists: {e}")
                 raise LambdaResponseError({"error": f"session already exists: {e}", "code": "INVALID_REQUEST"})

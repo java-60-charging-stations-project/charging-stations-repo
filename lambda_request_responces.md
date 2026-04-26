@@ -958,7 +958,7 @@ Async failed-session note:
   - `station_id = <stationId>`
   - `entity_key = PORT#<portCode>#SESSION#<messageId>`
   - `state = FAILED`
-- This row is later readable by `getFailedSession` and can also be archived by the stream consumer.
+- This row is later readable by `getNewSession` and can also be archived by the stream consumer.
 
 ---
 
@@ -1248,7 +1248,7 @@ Response (success):
 
 Implementation notes:
 
-- Query uses GSI **`user_id-index`** with `KeyConditionExpression = user_id` and filter **`state IN (BOOKED, ACTIVE, UNPAID)`**.
+- Query uses GSI **`user_id-index`** with `KeyConditionExpression = user_id` and filter **`state IN (BOOKED, ACTIVE, UNPAID, FAILED)`**.
 - With `data.latest = true`, the state filter is skipped, so the response may include additional historical states (for example `PAID`) present for the user in DynamoDB.
 - Numeric fields are JSON numbers when returned through the API (they may be stored as `Decimal` in Dynamo).
 
@@ -1340,21 +1340,24 @@ Response (success):
 
 ---
 
-### `getFailedSession`
+### `getNewSession`
 
 Lambda: `charging-stations-get-ports-sessions-dynamo`  
-Action: `getFailedSession`
+Action: `getNewSession`
 
-Reads one FAILED session created for async user flow correlation by exact DynamoDB primary key.
+Resolves a just-created session for async user flow correlation:
+
+- First lookup by exact DynamoDB primary key.
+- If not found yet, fallback lookup by `user_id-index` for current in-flight sessions (`BOOKED` or `ACTIVE`).
 
 Request:
 
 ```json
 {
-  "service": { "action": "getFailedSession", "callerId": "string" },
+  "service": { "action": "getNewSession", "callerId": "string" },
   "data": {
     "stationId": "station-uuid",
-    "portKey": "A1",
+    "portCode": "A1",
     "messageId": "queue-message-id"
   }
 }
@@ -1363,7 +1366,7 @@ Request:
 Lookup key used by Lambda:
 
 - `station_id = stationId`
-- `entity_key = PORT#<portKey>#SESSION#<messageId>`
+- `entity_key = PORT#<portCode>#SESSION#<messageId>`
 
 Response (success, found):
 
@@ -1372,13 +1375,13 @@ Response (success, found):
   "data": {
     "session": {
       "station_id": "station-uuid",
-      "entity_key": "PORT#A1#SESSION#queue-message-id",
-      "state": "FAILED",
-      "session_id": "failed_FREE_to_BOOKED_transition",
+      "entity_key": "PORT#A1#SESSION#queue-message-id-or-session-id", 
+      "state": "FAILED|BOOKED|ACTIVE",
+      "session_id": "session-or-correlation-id",
       "user_id": "user-uuid",
       "updated_at": "ISO timestamp",
       "ended_at": "ISO timestamp",
-      "exp_time": 1770000000
+      "exp_time": 1770000000 (only for failed sessions)
     }
   },
   "meta": {}
