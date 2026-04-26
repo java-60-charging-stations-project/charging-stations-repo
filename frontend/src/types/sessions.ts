@@ -34,7 +34,7 @@ export type UserSessionPortUpdateRequest = {
     oldState: SessionPortState;
 };
 
-export type UserSessionPortUpdateResponse = {
+export type UserSessionPortUpdateResponseSync = {
     stationId: string;
     portCode: string;
     newState: string;
@@ -43,6 +43,18 @@ export type UserSessionPortUpdateResponse = {
     timeBookedBefore?: string;
     sessionId?: string;
 };
+
+export type UserSessionPortUpdateResponseAsync = {
+    messageId: string;
+}
+
+export type UserSessionPortUpdateResponse = {
+    type: "sync";
+    response: UserSessionPortUpdateResponseSync;
+} | {
+    type: "async";
+    response: UserSessionPortUpdateResponseAsync;
+}
 
 export type UserSessionPaymentRequest = {
   stationId: string;

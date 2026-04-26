@@ -6,6 +6,7 @@ import type {
   UserSessionPortUpdateResponse,
   UserPaymentResponse,
   UserPaymentRequest,
+  UserPortUpdateResponse,
 } from './userSessions.types';
 
 export interface UserSessionsIService {
@@ -18,28 +19,28 @@ export interface UserSessionsIService {
     stationId: string,
     portCode: string,
     oldState: UserSessionPortState,
-  ): Promise<UserSessionPortUpdateResponse>;
+  ): Promise<UserPortUpdateResponse>;
 
   startChargingSession(
     userId: string,
     stationId: string,
     portCode: string,
     oldState: UserSessionPortState,
-  ): Promise<UserSessionPortUpdateResponse>;
+  ): Promise<UserPortUpdateResponse>;
 
   stopBooking(
     userId: string,
     stationId: string,
     portCode: string,
     oldState: UserSessionPortState,
-  ): Promise<UserSessionPortUpdateResponse>;
+  ): Promise<UserPortUpdateResponse>;
 
   stopChargingSession(
     userId: string,
     stationId: string,
     portCode: string,
     oldState: UserSessionPortState,
-  ): Promise<UserSessionPortUpdateResponse>;
+  ): Promise<UserPortUpdateResponse>;
 
   createManualPayment(paymentRequest: UserPaymentRequest): Promise<UserPaymentResponse>;
 };

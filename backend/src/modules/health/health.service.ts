@@ -144,7 +144,6 @@ export async function executeHealthRequest(callerId?: string): Promise<HealthRes
       "Error invoking Command query (SQS)",
       502,
       "NO_RESPONSE",
-      { collectorSource: env.commandQueueUrl ?? "Command-query-SQS" }
     );
   }
 }

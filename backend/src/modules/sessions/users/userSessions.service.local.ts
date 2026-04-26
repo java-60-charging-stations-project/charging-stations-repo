@@ -9,6 +9,7 @@ import type {
   UserSessionState,
   UserPaymentRequest,
   UserPaymentResponse,
+  UserPortUpdateResponse,
 } from './userSessions.types';
 import { ConflictError, ResourceNotFoundError } from '../../../common/serviceErrors';
 
@@ -66,14 +67,14 @@ export class UserSessionsServiceLocal implements UserSessionsIService {
     stationId: string,
     portCode: string,
     _oldState: UserSessionPortState,
-  ): Promise<UserSessionPortUpdateResponse> {
+  ): Promise<UserPortUpdateResponse> {
     const now = new Date();
     const updatedAt = now.toISOString();
     const timeBookedBefore = new Date(now.getTime() + 15 * 60 * 1000).toISOString();
 
     this.appendLocalSession(userId, stationId, portCode, 'BOOKED', updatedAt);
 
-    return {
+    const response = {
       stationId,
       portCode,
       newState: 'BOOKED',
@@ -81,6 +82,8 @@ export class UserSessionsServiceLocal implements UserSessionsIService {
       timeBookedAt: updatedAt,
       timeBookedBefore,
     };
+
+    return { type: "sync", response };
   }
 
   async startChargingSession(
@@ -88,17 +91,18 @@ export class UserSessionsServiceLocal implements UserSessionsIService {
     stationId: string,
     portCode: string,
     _oldState: UserSessionPortState,
-  ): Promise<UserSessionPortUpdateResponse> {
+  ): Promise<UserPortUpdateResponse> {
     const updatedAt = new Date().toISOString();
 
     this.appendLocalSession(userId, stationId, portCode, 'ACTIVE', updatedAt);
 
-    return {
+    const response = {
       stationId,
       portCode,
       newState: 'OCCUPIED',
       updatedAt,
     };
+    return { type: "sync", response };
   }
 
   async stopBooking(
@@ -106,7 +110,7 @@ export class UserSessionsServiceLocal implements UserSessionsIService {
     stationId: string,
     portCode: string,
     _oldState: UserSessionPortState,
-  ): Promise<UserSessionPortUpdateResponse> {
+  ): Promise<UserPortUpdateResponse> {
     const updatedAt = new Date().toISOString();
     for (const s of LOCAL_USER_SESSIONS) {
       if (s.userId === userId && s.stationId === stationId && s.portCode === portCode && s.state === 'BOOKED') {
@@ -114,7 +118,8 @@ export class UserSessionsServiceLocal implements UserSessionsIService {
         s.updatedAt = updatedAt;
       }
     }
-    return { stationId, portCode, newState: 'FREE', updatedAt };
+    const response = { stationId, portCode, newState: 'FREE', updatedAt };
+    return { type: "sync", response };
   }
 
   async stopChargingSession(
@@ -122,7 +127,7 @@ export class UserSessionsServiceLocal implements UserSessionsIService {
     stationId: string,
     portCode: string,
     _oldState: UserSessionPortState,
-  ): Promise<UserSessionPortUpdateResponse> {
+  ): Promise<UserPortUpdateResponse> {
     const updatedAt = new Date().toISOString();
     for (const s of LOCAL_USER_SESSIONS) {
       if (s.userId === userId && s.stationId === stationId && s.portCode === portCode && s.state === 'ACTIVE') {
@@ -130,7 +135,8 @@ export class UserSessionsServiceLocal implements UserSessionsIService {
         s.updatedAt = updatedAt;
       }
     }
-    return { stationId, portCode, newState: 'FREE', updatedAt };
+    const response = { stationId, portCode, newState: 'FREE', updatedAt };
+    return { type: "sync", response };
   }
 
   async createManualPayment(paymentRequest: UserPaymentRequest): Promise<UserPaymentResponse> {

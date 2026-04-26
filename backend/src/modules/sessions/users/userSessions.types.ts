@@ -89,6 +89,22 @@ export interface UserSessionPortUpdateResponse {
   sessionId?: string;
 }
 
+export interface UserSessionPortUpdateResponseAsync {
+  messageId: string;
+}
+
+export interface UserPortUpdateSyncResponse {
+  type: "sync";
+  response: UserSessionPortUpdateResponse;
+}
+
+export interface UserPortUpdateAsyncResponse {
+  type: "async";
+  response: UserSessionPortUpdateResponseAsync;
+}
+
+export type UserPortUpdateResponse = UserPortUpdateSyncResponse | UserPortUpdateAsyncResponse;
+
 export interface LambdaUserUpdateStationPortsData {
   stationId: string;
   portCode: string;

@@ -1,6 +1,6 @@
 import type { Session, UserSessionPaymentRequest, UserSessionPortUpdateRequest } from "@/types/sessions";
 import EasySpinner from "@/components/EasySpinner";
-import { isFreshUnpaidSession } from "@/utils/sessionStatus";
+import { extractFailedSessionAction, isFreshUnpaidSession, unpackFailedSessionId } from "@/utils/sessionStatus";
 import {
   useCancelBookingMutation,
   useStartChargingMutation,
@@ -21,6 +21,17 @@ function formatDate(value?: string | null): string {
 function formatNumeric(value?: number | string | null, suffix = ""): string {
   if (value == null) return "—";
   return `${value}${suffix}`;
+}
+
+function formatDuration(minutes?: number | null): string {
+  if (minutes == null) return "—";
+  if (minutes < 1) return "Less than a minute";
+  if (minutes >= 24 * 60) return "More than 24 hours";
+  const hours = Math.floor(minutes / 60);
+  const mins = Math.floor(minutes % 60);
+  if (hours === 0) return `${mins} min`;
+  if (mins === 0) return `${hours} h`;
+  return `${hours} h ${mins} min`;
 }
 
 function ActionButton({
@@ -70,6 +81,15 @@ function NumberFormatted(label: string, value?: number | string | null, suffix =
   );
 };
 
+function DurationFormatted(label: string, minutes?: number | null) {
+  return (
+    <p>
+      <span className="font-medium">{label}:</span>{" "}
+      {formatDuration(minutes)}
+    </p>
+  );
+};
+
 export default function SessionCard({ session }: { session: Session }) {
   const [cancelBooking, { isLoading: isCancelling }] = useCancelBookingMutation();
   const [startCharging, { isLoading: isStarting }] = useStartChargingMutation();
@@ -107,6 +127,8 @@ export default function SessionCard({ session }: { session: Session }) {
       ? "bg-green-100 text-green-800 border-green-300"
       : "bg-amber-100 text-amber-800 border-amber-300";
   
+  const failedStates = unpackFailedSessionId(session);
+  
   const payManually = async () => {
     const payRequest: UserSessionPaymentRequest = {
       stationId: session.stationId,
@@ -124,6 +146,13 @@ export default function SessionCard({ session }: { session: Session }) {
 
   return (
     <article className={`rounded-lg border p-4 shadow-sm ${stateColors}`}>
+      {
+        isFailed && failedStates && (
+          <h2 className="font-bold text-2xl text-slate-900">
+            Failed to { extractFailedSessionAction(failedStates) }
+          </h2>
+        )
+      }
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
           <p className="font-semibold text-slate-900">
@@ -145,7 +174,7 @@ export default function SessionCard({ session }: { session: Session }) {
           {DateFormatted("Booked until", session.timeBookedBefore)}
           {NumberFormatted("Tariff", session.tariff, ` ${config.currency.code}`)}
           {NumberFormatted("Current Cost", session.currentCost, ` ${config.currency.code}`)}
-          {NumberFormatted("Duration", session.durationMinutes, " min")}
+          {DurationFormatted("Duration", session.durationMinutes)}
         </div>
       )}
 
@@ -157,7 +186,7 @@ export default function SessionCard({ session }: { session: Session }) {
           {NumberFormatted("Current Cost", session.currentCost, ` ${config.currency.code}`)}
           {NumberFormatted("Energy consumed", session.energyConsumedKwh, " kWh")}
           {NumberFormatted("Charge", session.chargeLevelPercent, "%")}
-          {NumberFormatted("Duration", session.durationMinutes, " min")}
+          {DurationFormatted("Duration", session.durationMinutes)}
           {NumberFormatted("Time until 100%", session.estimatedMinutesRemaining, " min")}
           
         </div>
@@ -174,7 +203,7 @@ export default function SessionCard({ session }: { session: Session }) {
             {NumberFormatted("Total Cost", session.currentCost, ` ${config.currency.code}`)}
             {NumberFormatted("Energy consumed", session.energyConsumedKwh, " kWh")}
             {NumberFormatted("Final charge", session.chargeLevelPercent, "%")}
-            {NumberFormatted("Total duration", session.durationMinutes, " min")}
+            {DurationFormatted("Total duration", session.durationMinutes)}
             {isPayError && (
               <p>
                 <span className="font-medium">Payment error:</span>{" "}
@@ -195,7 +224,7 @@ export default function SessionCard({ session }: { session: Session }) {
             {NumberFormatted("Total Cost", session.currentCost, ` ${config.currency.code}`)}
             {NumberFormatted("Energy consumed", session.energyConsumedKwh, " kWh")}
             {NumberFormatted("Final charge", session.chargeLevelPercent, "%")}
-            {NumberFormatted("Total duration", session.durationMinutes, " min")}
+            {DurationFormatted("Total duration", session.durationMinutes)}
           </div>
         )
       }
@@ -239,7 +268,7 @@ export default function SessionCard({ session }: { session: Session }) {
               label="Process payment"
               variant="danger"
               isLoading={isStopping}
-                onClick={payManually}
+              onClick={payManually}
             />
           )
         }

@@ -1,13 +1,16 @@
 import { useGetSessionsQuery } from "@/store/apiSlice";
 import EasySpinner from "@/components/EasySpinner";
 import SessionCard from "@/components/SessionCard";
-import RefetchIconButton from "@/components/RefetchIconButton";
 import { isFreshUnpaidSession } from "@/utils/sessionStatus";
 import { config } from "@/config/env";
+import useFromParam from "@/hooks/useFromParam";
+import EasyButton from "@/components/EasyButton";
+import { Link } from "react-router";
 
 const pollingInterval = config.userSessionsPollingInterval;
 
 const UserCurrentSessionPage = () => {
+  const from = useFromParam();
   const { data, isLoading, error, refetch } = useGetSessionsQuery(undefined, {
     pollingInterval,
     skipPollingIfUnfocused: false,
@@ -25,10 +28,20 @@ const UserCurrentSessionPage = () => {
 
   return (
     <div className="space-y-6">
-      <div className="relative flex items-center justify-center">
+      <div className="w-full flex flex-col items-center gap-2">
         <h1 className="text-2xl font-bold">Your active sessions</h1>
-        <div className="absolute right-0">
-          <RefetchIconButton onClick={refetch} />
+        <div className="w-full flex justify-between items-center">
+          {from ? (
+            <Link
+              to={from}
+              className="mt-2 inline-block text-sm font-medium text-blue-600 hover:underline"
+            >
+               &larr; Back to station
+            </Link>
+          ) : (
+            <span />
+          )}
+          <EasyButton onClick={refetch}>Reload</EasyButton>
         </div>
       </div>
 
