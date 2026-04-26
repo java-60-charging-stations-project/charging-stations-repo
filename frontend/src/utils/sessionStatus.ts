@@ -27,6 +27,36 @@ export function isStaleUnpaidSession(session: Session | null): boolean {
     return Date.now() - endedAtMs >= config.unpaidSessionGracePeriodMs;
 };
 
+export type StateTransition = {
+    fromState: string;
+    toState: string;
+};
+
+export function unpackFailedSessionId(failedSession: Session): StateTransition | null {
+    const [fromState, toState] = failedSession.sessionId.split(",");
+    
+    return { fromState, toState };
+};
+
+export function extractFailedSessionAction({fromState, toState}: StateTransition): string {
+    if (fromState === "BOOKED" && toState === "FREE") {
+        return "cancel the booking";
+    }
+    else if (fromState === "BOOKED" && toState === "OCCUPIED") {
+        return "start charging";
+    }
+        else if (fromState === "FREE" && toState === "BOOKED") {
+        return "book the port";
+    }
+    else if (fromState === "FREE" && toState === "OCCUPIED") {
+        return "initiate charging";
+    }
+    else if (fromState === "OCCUPIED" && toState === "FREE") {
+        return "stop charging";
+    }
+    return `change port state from ${fromState} to ${toState}`;
+};
+
 /********* Sort function for user sessions *********/
 // Sort sessions by endedAt attribute desc
 export function sortByEndedAt(a: Session, b: Session): number {

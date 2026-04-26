@@ -1,6 +1,6 @@
 import type { Session, UserSessionPaymentRequest, UserSessionPortUpdateRequest } from "@/types/sessions";
 import EasySpinner from "@/components/EasySpinner";
-import { isFreshUnpaidSession } from "@/utils/sessionStatus";
+import { extractFailedSessionAction, isFreshUnpaidSession, unpackFailedSessionId } from "@/utils/sessionStatus";
 import {
   useCancelBookingMutation,
   useStartChargingMutation,
@@ -107,6 +107,8 @@ export default function SessionCard({ session }: { session: Session }) {
       ? "bg-green-100 text-green-800 border-green-300"
       : "bg-amber-100 text-amber-800 border-amber-300";
   
+  const failedStates = unpackFailedSessionId(session);
+  
   const payManually = async () => {
     const payRequest: UserSessionPaymentRequest = {
       stationId: session.stationId,
@@ -124,6 +126,13 @@ export default function SessionCard({ session }: { session: Session }) {
 
   return (
     <article className={`rounded-lg border p-4 shadow-sm ${stateColors}`}>
+      {
+        isFailed && failedStates && (
+          <h2 className="font-bold text-2xl text-slate-900">
+            Failed to { extractFailedSessionAction(failedStates) }
+          </h2>
+        )
+      }
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
           <p className="font-semibold text-slate-900">
@@ -239,7 +248,7 @@ export default function SessionCard({ session }: { session: Session }) {
               label="Process payment"
               variant="danger"
               isLoading={isStopping}
-                onClick={payManually}
+              onClick={payManually}
             />
           )
         }
