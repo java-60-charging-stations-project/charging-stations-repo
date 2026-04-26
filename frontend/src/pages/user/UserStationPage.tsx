@@ -154,15 +154,19 @@ const UserStationPage = () => {
     }
 
     try {
-      await startBooking({
+      const serverResponse = await startBooking({
         stationId,
         portCode: freePort.portCode,
         oldState: "FREE",
       }).unwrap();
+
+      const bookMessage = (serverResponse.type === "sync")
+        ? `The port ${freePort.portCode} is booked!`
+        : `Request to book port ${freePort.portCode} accepted`;
       toast.success(
         <div className="flex items-center gap-2">
           <EasySpinner size="sm" />
-          <span>Redirecting to the sessions page</span>
+          <span>{ bookMessage }. Redirecting to the sessions page</span>
         </div>,
         {
           autoClose: TOAST_AUTO_CLOSE,
