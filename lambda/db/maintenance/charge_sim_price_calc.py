@@ -7,7 +7,6 @@ from utils.logger import logger, log_audit
 from utils.error_handlers import LambdaResponseError
 from utils.price_calculator import calculate_price
 from data_types.contract_types import SuccessResponsePayload, ErrorResponsePayload
-import random
 import json
 
 AWS_REGION = os.environ["AWS_REGION"]
@@ -90,7 +89,14 @@ def handler(event, context) -> SuccessResponsePayload | ErrorResponsePayload:
                     energy_consumed_kwh = Decimal(str(session.get("energy_consumed_kwh") or 0))
                     remaining_charge_percent = max(0, 100 - charge_level_percent)
                     if remaining_charge_percent > 0:
-                        additional_charge_percent = random.randint(1, min(remaining_charge_percent, 3))
+                        if charge_level_percent < 70:
+                            additional_charge_percent = 3
+                        elif charge_level_percent >= 70 and charge_level_percent < 90:
+                            additional_charge_percent = 2
+                        elif charge_level_percent >= 90:
+                            additional_charge_percent = 1
+                        else:
+                            additional_charge_percent = 0
                         new_charge_percent = charge_level_percent + additional_charge_percent
                         if new_charge_percent >= 100:
                             logger.info(f"Session {station_id}/{entity_key} charge level percent is 100, stopping charging")
@@ -110,6 +116,21 @@ def handler(event, context) -> SuccessResponsePayload | ErrorResponsePayload:
                             session["stopped_at"] = now.isoformat()
                             new_charge_percent = 100
                             additional_charge_percent = 100 - charge_level_percent
+                        elif new_charge_percent >= 80 and charge_level_percent < 80:
+                            logger.info(f"Session {station_id}/{entity_key} charge level percent is at 80%")
+                            client = boto3.client("lambda", region_name=AWS_REGION)
+                            resp = client.invoke(
+                                FunctionName=NOTIFICATION_LAMBDA_FUNCTION_NAME,
+                                InvocationType="Event",
+                                Payload=json.dumps({"service": 
+                                {"action": "notify_charging_at_80", "callerId": "charge_sim_price_calc"}, 
+                                "data": {"station_id": station_id, "entity_key": entity_key, "user_id": user_id}}).encode("utf-8"),
+                            )
+                            if resp.get("StatusCode") != 202:
+                                logger.error(f"error charging at 80% notification invoke failed: {resp}")
+                            if resp.get("FunctionError"):
+                                logger.error(f"error charging at 80% notification invoke failed: {resp.get('FunctionError')}")
+                            logger.info(f"charging at 80% notification invoked successfully: {resp}")
                         additional_charge_kwh = Decimal(str(additional_charge_percent * 1))
                         session["charge_level_percent"] = new_charge_percent
                         session["energy_consumed_kwh"] = energy_consumed_kwh + additional_charge_kwh

@@ -115,6 +115,46 @@ def publish_charging_stopped_notification(payload_data: dict) -> dict:
         logger.error(f"error publishing notification: {e}")
         raise LambdaResponseError({"error": f"error sending email: {e}", "code": "EMAIL_ERROR"})
 
+def publish_charging_at_80_notification(payload_data: dict) -> dict:
+    user_id = payload_data["user_id"]
+    station_id = payload_data["station_id"]
+    entity_key = payload_data["entity_key"]
+    session_id = payload_data.get("session_id") or entity_key.split("#")[-1]
+    occurred_at = payload_data.get("occurred_at") or datetime.now(timezone.utc).isoformat()
+    user = get_user_contact(user_id)
+    if not user:
+        logger.error(f"user not found: {user_id}")
+        raise LambdaResponseError({"error": f"user not found: {user_id}", "code": "NOT_FOUND"})
+    try:
+        email = user["email"]
+        full_name = user["full_name"]
+        ses = boto3.client("ses", region_name=AWS_REGION)
+        response = ses.send_email(
+            Source=os.environ["SES_FROM_EMAIL"],
+            Destination={"ToAddresses": [email]},
+            Message={
+                "Subject": {"Data": "Charging session reached 80%"},
+                "Body": {
+                    "Text": {
+                        "Data": (
+                            f"Hello, {full_name}!\n\n"
+                            f"Your charging session has reached 80%.\n"
+                            f"Session: {session_id}\n"
+                            f"Station: {station_id}\n"
+                            f"Occurred at: {occurred_at}\n\n"
+                            f"Please check the app for more details.\n\n"
+                            f"Best regards,\n"
+                            f"The Charging Stations Team"
+                        )
+                    }
+                },
+            },
+        )
+        return {"message_id": response.get("MessageId"), "notified_email": email, "session_id": session_id}
+    except Exception as e:
+        logger.error(f"error publishing notification: {e}")
+        raise LambdaResponseError({"error": f"error sending email: {e}", "code": "EMAIL_ERROR"})
+
 def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponsePayload:
     logger.info(f"Handler called with event: {event}")
     try:
@@ -144,6 +184,11 @@ def handler(event: dict, context: Any) -> SuccessResponsePayload | ErrorResponse
                 data = event["data"]
                 result = publish_charging_stopped_notification(data)
                 log_audit("INFO", message="charging stopped notification sent", status="SUCCESS", **audit_base)
+                return SuccessResponsePayload(data=result, meta={})
+            case "notify_charging_at_80":
+                data = event["data"]
+                result = publish_charging_at_80_notification(data)
+                log_audit("INFO", message="charging at 80% notification sent", status="SUCCESS", **audit_base)
                 return SuccessResponsePayload(data=result, meta={})
             case _:
                 log_audit("ERROR", message=f"invalid action {action}", status="ERROR", errorMessage=f"invalid action {action}", 
