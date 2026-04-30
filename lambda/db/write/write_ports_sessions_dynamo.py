@@ -282,6 +282,7 @@ def update_station_ports(action: str, port_data: dict, user_id: str| None = None
             port_data["entity_key"] = f"PORT#{port_key}"
             entity_key = port_data["entity_key"]
             failed_session_data = build_session_object(port_data)
+            failed_session_data = {k: v for k, v in failed_session_data.items() if v is not None}
             failed_session_data["entity_key"] = f"{entity_key}#SESSION#{message_id}"
             failed_session_data["state"] = "FAILED"
             failed_session_data["session_id"] = f"{old_state},{new_state}"
