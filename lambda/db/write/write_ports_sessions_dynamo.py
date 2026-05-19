@@ -451,6 +451,7 @@ def delete_station_ports(station_id: str, port_key: str) -> list[dict]:
         logger.error(f"error deleting station ports from dynamo: {e}")
         raise LambdaResponseError({"error": f"error deleting station ports: {e}", "code": "UNHANDLED_ERROR"})
 
+
 def get_tariff(station_id: str) -> Decimal:
     client = boto3.client("lambda", region_name=AWS_REGION)
     payload = {
