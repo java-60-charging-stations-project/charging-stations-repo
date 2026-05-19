@@ -20,7 +20,7 @@ export function createApp() {
   const app = express();
 
   app.disable('x-powered-by');
-  app.use(morgan('dev'));
+  app.use(morgan('combined'));
   app.use(cors({
     origin: env.corsOrigin === '*' ? true : env.corsOrigin,
     credentials: true
