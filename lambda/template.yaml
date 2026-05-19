@@ -10,6 +10,71 @@ Globals:
 
 Parameters:
 
+  PublicSubnets:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Public subnets (use at least 2 in different AZs for ALB)
+    Default: subnet-01245553ad03dedc8, subnet-08e225b94a41fefcc
+  ImageUri:
+    Type: String
+    Description: ECR image URI
+    Default: 852215679994.dkr.ecr.il-central-1.amazonaws.com/charging-stations:latest
+  ContainerPort:
+    Type: Number
+    Default: 8000
+  ContainerCpu:
+    Type: Number
+    Default: 256
+    Description: CPU units for the Fargate task (e.g., 256 = 0.25 vCPU)
+  ContainerMemory:
+    Type: Number
+    Default: 512
+    Description: Memory for the Fargate task in MiB
+  HealthCheckPath:
+    Type: String
+    Default: /health
+    Description: Health check path for the application (HTTP 200 expected)
+  LambdaRegion:
+    Type: String
+    Default: il-central-1
+  LambdaHealthName:
+    Type: String
+    Default: charging-stations-health
+  LambdaUserInfoName:
+    Type: String
+    Default: charging-stations-get-user-info
+  LambdaUserManagementName:
+    Type: String
+    Default: charging-stations-write-user-rds
+  LambdaStationsReadName:
+    Type: String
+    Default: charging-stations-get-station-info
+  LambdaStationsWriteName:
+    Type: String
+    Default: charging-stations-write-station-rds
+  LambdaStationsDynamoReadName:
+    Type: String
+    Default: charging-stations-get-ports-sessions-dynamo
+  LambdaStationsDynamoWriteName:
+    Type: String
+    Default: charging-stations-write-station-ports-dynamo
+  LambdaLogsReadName:
+    Type: String
+    Default: charging-stations-read-logs-rds
+  LambdaLogsWriteName:
+    Type: String
+    Default: charging-stations-write-logs-rds
+  LambdaLogSubscriptionProcessorName:
+    Type: String
+    Default: charging-stations-log-subscription-processor
+    Description: Lambda function name in LambdaAccountId that receives CloudWatch Logs subscription deliveries
+  LambdaCommandQueueName:
+    Type: String
+    Default: sam-db-lambdas-command.fifo
+    Description: FIFO command queue name in LambdaAccountId that receives commands from the backend
+  DesiredCount:
+    Type: Number
+    Default: 1
+
   SesFromEmail:
     Type: String
     Default: "mike.volchek17@gmail.com"
@@ -25,16 +90,6 @@ Parameters:
     Description: Route table id (rtb-...) used by private subnet 1 for DynamoDB gateway endpoint
     Default: rtb-0fdf4c197cd94cdef
 
-  InvokerAccountIdA:
-    Type: String
-    Description: AWS account ID that is allowed to invoke this Lambda (e.g. the account that runs Node.js and calls Invoke)
-    Default: "773769103104"
-
-  InvokerAccountIdB:
-    Type: String
-    Description: AWS account ID that is allowed to invoke this Lambda (e.g. the account that runs Node.js and calls Invoke)
-    Default: "516341734874"
-  # VPC and subnets (must be private subnets that can reach each other)
   VpcId:
     Type: AWS::EC2::VPC::Id
     Description: VPC for Lambda and RDS
@@ -68,15 +123,228 @@ Parameters:
     Description: ARN of existing DB secret
     Default: arn:aws:secretsmanager:il-central-1:852215679994:secret:charging-stations-rds-postgres-credentials-adUrnW
 
-  
-Conditions:
-  UseInvokerAccountA: !Not [!Equals [!Ref InvokerAccountIdA, ""]]
-  UseInvokerAccountB: !Not [!Equals [!Ref InvokerAccountIdB, ""]]
-  HasAnyInvoker: !Or [!Condition UseInvokerAccountA, !Condition UseInvokerAccountB]
-  UseBothInvokers: !And [!Condition UseInvokerAccountA, !Condition UseInvokerAccountB]
-
 Resources:
+  Cluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: charging-stations-cluster
 
+  TaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: ReadBackendEnvFromS3
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource: arn:aws:s3:::charge-st-backend-config-852215679994/backend/prod.env
+
+  TaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Ref BackendCognitoUserGroupManagementPolicy
+      Policies:
+        - PolicyName: InvokeHealthLambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !Sub "arn:aws:lambda:${LambdaRegion}:${AWS::AccountId}:function:${LambdaHealthName}"
+        - PolicyName: InvokeUserManagementLambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !Sub "arn:aws:lambda:${LambdaRegion}:${AWS::AccountId}:function:${LambdaUserManagementName}"
+        - PolicyName: InvokeUserInfoLambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !Sub "arn:aws:lambda:${LambdaRegion}:${AWS::AccountId}:function:${LambdaUserInfoName}"
+        - PolicyName: InvokeStationsReadLambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !Sub "arn:aws:lambda:${LambdaRegion}:${AWS::AccountId}:function:${LambdaStationsReadName}"
+        - PolicyName: InvokeStationsWriteLambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !Sub "arn:aws:lambda:${LambdaRegion}:${AWS::AccountId}:function:${LambdaStationsWriteName}"
+        - PolicyName: InvokeStationsDynamoReadLambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !Sub "arn:aws:lambda:${LambdaRegion}:${AWS::AccountId}:function:${LambdaStationsDynamoReadName}"
+        - PolicyName: InvokeStationsDynamoWriteLambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !Sub "arn:aws:lambda:${LambdaRegion}:${AWS::AccountId}:function:${LambdaStationsDynamoWriteName}"
+        - PolicyName: InvokeLogsReadLambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !Sub "arn:aws:lambda:${LambdaRegion}:${AWS::AccountId}:function:${LambdaLogsReadName}"
+        - PolicyName: InvokeLogsWriteLambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !Sub "arn:aws:lambda:${LambdaRegion}:${AWS::AccountId}:function:${LambdaLogsWriteName}"
+        - PolicyName: SendCommandQueueMessages
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                Resource: !Sub "arn:aws:sqs:${LambdaRegion}:${AWS::AccountId}:${LambdaCommandQueueName}"
+
+  TaskLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /ecs/charging-stations-backend
+      RetentionInDays: 14
+
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for the public application load balancer
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: charging-stations-alb
+      Scheme: internet-facing
+      Type: application
+      SecurityGroups:
+        - !Ref LoadBalancerSecurityGroup
+      Subnets: !Ref PublicSubnets
+
+  ApplicationTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: charging-stations-tg
+      VpcId: !Ref VpcId
+      Protocol: HTTP
+      Port: !Ref ContainerPort
+      TargetType: ip
+      HealthCheckEnabled: true
+      HealthCheckPath: !Ref HealthCheckPath
+      HealthCheckProtocol: HTTP
+      Matcher:
+        HttpCode: 200
+
+  ApplicationLoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref ApplicationTargetGroup
+
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Cpu: !Ref ContainerCpu
+      Memory: !Ref ContainerMemory
+      NetworkMode: awsvpc
+      RequiresCompatibilities: [FARGATE]
+      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt TaskRole.Arn
+      ContainerDefinitions:
+        - Name: charging-stations-backend
+          Image: !Ref ImageUri
+          PortMappings:
+            - ContainerPort: !Ref ContainerPort
+          EnvironmentFiles:
+            - Type: s3
+              Value: arn:aws:s3:::charge-st-backend-config-852215679994/backend/prod.env
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref TaskLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+
+  ServiceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ECS service security group
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: !Ref ContainerPort
+          ToPort: !Ref ContainerPort
+          SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
+
+  Service:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - ApplicationLoadBalancerListener
+    Properties:
+      Cluster: !Ref Cluster
+      LaunchType: FARGATE
+      DesiredCount: !Ref DesiredCount
+      TaskDefinition: !Ref TaskDefinition
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets: !Ref PublicSubnets
+          SecurityGroups:
+            - !Ref ServiceSecurityGroup
+      LoadBalancers:
+        - ContainerName: charging-stations-backend
+          ContainerPort: !Ref ContainerPort
+          TargetGroupArn: !Ref ApplicationTargetGroup
+  
   UserPool:
     Type: AWS::Cognito::UserPool
     Properties:
@@ -269,31 +537,6 @@ Resources:
               - cognito-idp:ForgotPassword
             Resource: !GetAtt UserPool.Arn
 
-  # Trust matches AWS::Lambda::Permission invoker principals — backend sts:AssumeRole for cognito-idp Admin APIs
-  BackendCognitoCrossAccountRole:
-    Type: AWS::IAM::Role
-    Condition: HasAnyInvoker
-    Properties:
-      RoleName: !Sub ${AWS::StackName}-cognito-cross-account
-      Description: Assumed from invoker account(s) for Cognito user-pool group management
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              AWS:
-                Fn::If:
-                  - UseBothInvokers
-                  - - !Sub "arn:aws:iam::${InvokerAccountIdA}:root"
-                    - !Sub "arn:aws:iam::${InvokerAccountIdB}:root"
-                  - Fn::If:
-                      - UseInvokerAccountA
-                      - !Sub "arn:aws:iam::${InvokerAccountIdA}:root"
-                      - !Sub "arn:aws:iam::${InvokerAccountIdB}:root"
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - !Ref BackendCognitoUserGroupManagementPolicy
-
   ChargingStationsRDSPostgresDB:
     Type: AWS::RDS::DBInstance
     DeletionPolicy: Snapshot
@@ -402,22 +645,6 @@ Resources:
                 - DBResourceId: !GetAtt ChargingStationsRDSPostgresDB.DbiResourceId
                   DBUser: !Sub "{{resolve:secretsmanager:${DBSecretArn}:SecretString:username}}"
 
-  WriteLogsRDSInvokePermissionA:
-    Type: AWS::Lambda::Permission
-    Condition: UseInvokerAccountA
-    Properties:
-      FunctionName: !Ref WriteLogsRDSFunction
-      Action: lambda:InvokeFunction
-      Principal: !Sub "arn:aws:iam::${InvokerAccountIdA}:root"
-
-  WriteLogsRDSInvokePermissionB:
-    Type: AWS::Lambda::Permission
-    Condition: UseInvokerAccountB
-    Properties:
-      FunctionName: !Ref WriteLogsRDSFunction
-      Action: lambda:InvokeFunction
-      Principal: !Sub "arn:aws:iam::${InvokerAccountIdB}:root"
-
   GetLogsInfoFunction:
     Type: AWS::Serverless::Function
     DependsOn:
@@ -455,23 +682,6 @@ Resources:
                 - DBResourceId: !GetAtt ChargingStationsRDSPostgresDB.DbiResourceId
                   DBUser: !Sub "{{resolve:secretsmanager:${DBSecretArn}:SecretString:username}}"
 
-  GetLogsInfoInvokePermissionA:
-    Type: AWS::Lambda::Permission
-    Condition: UseInvokerAccountA
-    Properties:
-      FunctionName: !Ref GetLogsInfoFunction
-      Action: lambda:InvokeFunction
-      Principal: !Sub "arn:aws:iam::${InvokerAccountIdA}:root"
-
-  GetLogsInfoInvokePermissionB:
-    Type: AWS::Lambda::Permission
-    Condition: UseInvokerAccountB
-    Properties:
-      FunctionName: !Ref GetLogsInfoFunction
-      Action: lambda:InvokeFunction
-      Principal: !Sub "arn:aws:iam::${InvokerAccountIdB}:root"
-  
-
   GetUserInfoFunction:
     Type: AWS::Serverless::Function
     DependsOn:
@@ -508,23 +718,7 @@ Resources:
                 - "arn:aws:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:${DBResourceId}/${DBUser}"
                 - DBResourceId: !GetAtt ChargingStationsRDSPostgresDB.DbiResourceId
                   DBUser: !Sub "{{resolve:secretsmanager:${DBSecretArn}:SecretString:username}}"
-
-  GetUserInfoInvokePermissionA:
-    Type: AWS::Lambda::Permission
-    Condition: UseInvokerAccountA
-    Properties:
-      FunctionName: !Ref GetUserInfoFunction
-      Action: lambda:InvokeFunction
-      Principal: !Sub "arn:aws:iam::${InvokerAccountIdA}:root"
       
-  GetUserInfoInvokePermissionB:
-    Type: AWS::Lambda::Permission
-    Condition: UseInvokerAccountB
-    Properties:
-      FunctionName: !Ref GetUserInfoFunction
-      Action: lambda:InvokeFunction
-      Principal: !Sub "arn:aws:iam::${InvokerAccountIdB}:root"
-
   CreateRDSTablesFunction:
     Type: AWS::Serverless::Function
     DependsOn:
@@ -563,38 +757,6 @@ Resources:
                 - "arn:aws:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:${DBResourceId}/${DBUser}"
                 - DBResourceId: !GetAtt ChargingStationsRDSPostgresDB.DbiResourceId
                   DBUser: !Sub "{{resolve:secretsmanager:${DBSecretArn}:SecretString:username}}"
-  # Cross-account: only when InvokerAccountId is provided
-  CreateRDSTablesInvokePermissionA:
-    Type: AWS::Lambda::Permission
-    Condition: UseInvokerAccountA
-    Properties:
-      FunctionName: !Ref CreateRDSTablesFunction
-      Action: lambda:InvokeFunction
-      Principal: !Sub "arn:aws:iam::${InvokerAccountIdA}:root"
-      
-  CreateRDSTablesInvokePermissionB:
-    Type: AWS::Lambda::Permission
-    Condition: UseInvokerAccountB
-    Properties:
-      FunctionName: !Ref CreateRDSTablesFunction
-      Action: lambda:InvokeFunction
-      Principal: !Sub "arn:aws:iam::${InvokerAccountIdB}:root"
-
-  WriteUserRDSInvokePermissionA:
-    Type: AWS::Lambda::Permission
-    Condition: UseInvokerAccountA
-    Properties:
-      FunctionName: !Ref WriteUserRDSFunction
-      Action: lambda:InvokeFunction
-      Principal: !Sub "arn:aws:iam::${InvokerAccountIdA}:root"
-      
-  WriteUserRDSInvokePermissionB:
-    Type: AWS::Lambda::Permission
-    Condition: UseInvokerAccountB
-    Properties:
-      FunctionName: !Ref WriteUserRDSFunction
-      Action: lambda:InvokeFunction
-      Principal: !Sub "arn:aws:iam::${InvokerAccountIdB}:root"
 
   CognitoInvokeWriteUserRDSPermission:
     Type: AWS::Lambda::Permission
@@ -628,22 +790,6 @@ Resources:
                 - cognito-idp:InitiateAuth
                 - cognito-idp:RespondToAuthChallenge
               Resource: !GetAtt UserPool.Arn
-
-  ConfirmConsoleCreatedAdminInvokePermissionA:
-    Type: AWS::Lambda::Permission
-    Condition: UseInvokerAccountA
-    Properties:
-      FunctionName: !Ref ConfirmConsoleCreatedAdminFunction
-      Action: lambda:InvokeFunction
-      Principal: !Sub "arn:aws:iam::${InvokerAccountIdA}:root"
-      
-  ConfirmConsoleCreatedAdminInvokePermissionB:
-    Type: AWS::Lambda::Permission
-    Condition: UseInvokerAccountB
-    Properties:
-      FunctionName: !Ref ConfirmConsoleCreatedAdminFunction
-      Action: lambda:InvokeFunction
-      Principal: !Sub "arn:aws:iam::${InvokerAccountIdB}:root"
       
   HealthFunction:
     Type: AWS::Serverless::Function
@@ -670,23 +816,6 @@ Resources:
               Resource:
                 - !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:charging-stations-write-station-ports-dynamo"
 
-  # Cross-account: only when InvokerAccountId is provided
-  HealthInvokePermissionA:
-    Type: AWS::Lambda::Permission
-    Condition: UseInvokerAccountA
-    Properties:
-      FunctionName: !Ref HealthFunction
-      Action: lambda:InvokeFunction
-      Principal: !Sub "arn:aws:iam::${InvokerAccountIdA}:root"
-      
-  HealthInvokePermissionB:
-    Type: AWS::Lambda::Permission
-    Condition: UseInvokerAccountB
-    Properties:
-      FunctionName: !Ref HealthFunction
-      Action: lambda:InvokeFunction
-      Principal: !Sub "arn:aws:iam::${InvokerAccountIdB}:root"
-  
   WriteStationRDSFunction:
     Type: AWS::Serverless::Function
     DependsOn:
@@ -730,22 +859,6 @@ Resources:
                 - lambda:InvokeFunction
               Resource: !GetAtt GetPortsSessionsFunction.Arn
   
-  WriteStationRDSInvokePermissionA:
-    Type: AWS::Lambda::Permission
-    Condition: UseInvokerAccountA
-    Properties:
-      FunctionName: !Ref WriteStationRDSFunction
-      Action: lambda:InvokeFunction
-      Principal: !Sub "arn:aws:iam::${InvokerAccountIdA}:root"
-  
-  WriteStationRDSInvokePermissionB:
-    Type: AWS::Lambda::Permission
-    Condition: UseInvokerAccountB
-    Properties:
-      FunctionName: !Ref WriteStationRDSFunction
-      Action: lambda:InvokeFunction
-      Principal: !Sub "arn:aws:iam::${InvokerAccountIdB}:root"
-  
   GetStationInfoFunction:
     Type: AWS::Serverless::Function
     DependsOn:
@@ -783,22 +896,6 @@ Resources:
                 - DBResourceId: !GetAtt ChargingStationsRDSPostgresDB.DbiResourceId
                   DBUser: !Sub "{{resolve:secretsmanager:${DBSecretArn}:SecretString:username}}"
 
-  GetStationInfoInvokePermissionA:
-    Type: AWS::Lambda::Permission
-    Condition: UseInvokerAccountA
-    Properties:
-      FunctionName: !Ref GetStationInfoFunction
-      Action: lambda:InvokeFunction
-      Principal: !Sub "arn:aws:iam::${InvokerAccountIdA}:root"
-
-  GetStationInfoInvokePermissionB:
-    Type: AWS::Lambda::Permission
-    Condition: UseInvokerAccountB
-    Properties:
-      FunctionName: !Ref GetStationInfoFunction
-      Action: lambda:InvokeFunction
-      Principal: !Sub "arn:aws:iam::${InvokerAccountIdB}:root"
-  
   # Single-table design: ports + future sessions
   StationEntitiesTable:
     Type: AWS::DynamoDB::Table
@@ -1022,22 +1119,6 @@ Resources:
               Resource: 
                 - !GetAtt GetUserInfoFunction.Arn
 
-  PaymentNotificationInvokePermissionA:
-    Type: AWS::Lambda::Permission
-    Condition: UseInvokerAccountA
-    Properties:
-      FunctionName: !Ref PaymentNotificationFunction
-      Action: lambda:InvokeFunction
-      Principal: !Sub "arn:aws:iam::${InvokerAccountIdA}:root"
-
-  PaymentNotificationInvokePermissionB:
-    Type: AWS::Lambda::Permission
-    Condition: UseInvokerAccountB
-    Properties:
-      FunctionName: !Ref PaymentNotificationFunction
-      Action: lambda:InvokeFunction
-      Principal: !Sub "arn:aws:iam::${InvokerAccountIdB}:root"
-
   WriteStationPortsFunction:
     Type: AWS::Serverless::Function
     DependsOn:
@@ -1092,22 +1173,6 @@ Resources:
                 - !GetAtt GetStationInfoFunction.Arn
                 - !GetAtt GetPortsSessionsFunction.Arn
                 - !GetAtt PaymentNotificationFunction.Arn
-    
-  WriteStationPortsInvokePermissionA:
-    Type: AWS::Lambda::Permission
-    Condition: UseInvokerAccountA
-    Properties:
-      FunctionName: !Ref WriteStationPortsFunction
-      Action: lambda:InvokeFunction
-      Principal: !Sub "arn:aws:iam::${InvokerAccountIdA}:root"
-
-  WriteStationPortsInvokePermissionB:
-    Type: AWS::Lambda::Permission
-    Condition: UseInvokerAccountB
-    Properties:
-      FunctionName: !Ref WriteStationPortsFunction
-      Action: lambda:InvokeFunction
-      Principal: !Sub "arn:aws:iam::${InvokerAccountIdB}:root"
 
   StationEntitiesStreamConsumerFunction:
     Type: AWS::Serverless::Function
@@ -1195,22 +1260,6 @@ Resources:
                 - DBResourceId: !GetAtt ChargingStationsRDSPostgresDB.DbiResourceId
                   DBUser: !Sub "{{resolve:secretsmanager:${DBSecretArn}:SecretString:username}}"
 
-  GetSessionInfoInvokePermissionA:
-    Type: AWS::Lambda::Permission
-    Condition: UseInvokerAccountA
-    Properties:
-      FunctionName: !Ref GetSessionInfoFunction
-      Action: lambda:InvokeFunction
-      Principal: !Sub "arn:aws:iam::${InvokerAccountIdA}:root"
-
-  GetSessionInfoInvokePermissionB:
-    Type: AWS::Lambda::Permission
-    Condition: UseInvokerAccountB
-    Properties:
-      FunctionName: !Ref GetSessionInfoFunction
-      Action: lambda:InvokeFunction
-      Principal: !Sub "arn:aws:iam::${InvokerAccountIdB}:root"
-
   GetPortsSessionsFunction:
     Type: AWS::Serverless::Function
     DependsOn:
@@ -1245,28 +1294,13 @@ Resources:
                 - !GetAtt StationEntitiesTable.Arn
                 - !Sub "${StationEntitiesTable.Arn}/index/*"
 
-  GetPortsSessionsInvokePermissionA:
-    Type: AWS::Lambda::Permission
-    Condition: UseInvokerAccountA
-    Properties:
-      FunctionName: !Ref GetPortsSessionsFunction
-      Action: lambda:InvokeFunction
-      Principal: !Sub "arn:aws:iam::${InvokerAccountIdA}:root"
-
-  GetPortsSessionsInvokePermissionB:
-    Type: AWS::Lambda::Permission
-    Condition: UseInvokerAccountB
-    Properties:
-      FunctionName: !Ref GetPortsSessionsFunction
-      Action: lambda:InvokeFunction
-      Principal: !Sub "arn:aws:iam::${InvokerAccountIdB}:root"
-
   ReconcileFreePortsFunction:
     Type: AWS::Serverless::Function
     DependsOn:
       - DynamoDBGatewayEndpoint
       - ApplicationSharedLambdaLogGroup
     Properties:
+      Runtime: python3.12
       LoggingConfig:
         LogGroup: !Sub "/charging-stations/${AWS::StackName}/lambda/application"
       FunctionName: charging-stations-reconcile-free-ports
@@ -1348,21 +1382,6 @@ Resources:
       SourceArn: !Sub 
         "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${ApplicationSharedLambdaLogGroup}:*"
 
-  AllowSourceRouterInvokeLogSubscriptionProcessor:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !Ref LogSubscriptionProcessorFunction
-      Action: lambda:InvokeFunction
-      Principal: !Sub "arn:aws:iam::${InvokerAccountIdA}:root"
-
-  AllowSourceRouterInvokeLogSubscriptionProcessorB:
-    Type: AWS::Lambda::Permission
-    Condition: UseInvokerAccountB
-    Properties:
-      FunctionName: !Ref LogSubscriptionProcessorFunction
-      Action: lambda:InvokeFunction
-      Principal: !Sub "arn:aws:iam::${InvokerAccountIdB}:root"
-
   LogSubscriptionLambdaPermission:
     Type: AWS::Lambda::Permission
     Properties:
@@ -1391,6 +1410,25 @@ Resources:
       FilterPattern: '"\"level\": \"CRITICAL\"" "\"service\": "'
       DestinationArn: !GetAtt LogSubscriptionProcessorFunction.Arn
   
+  LogSubscriptionPermEcsBackend:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref LogSubscriptionProcessorFunction
+      Action: lambda:InvokeFunction
+      Principal: logs.amazonaws.com
+      SourceArn: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/ecs/charging-stations-backend:*"
+
+  BackendAuditLogSubscription:
+    Type: AWS::Logs::SubscriptionFilter
+    DependsOn:
+      - LogSubscriptionPermEcsBackend
+      - LogSubscriptionProcessorFunction
+    Properties:
+      LogGroupName: /ecs/charging-stations-backend
+      FilterName: audit-high-severity-ecs-backend
+      FilterPattern: '{ ($.level = "ERROR" || $.level = "CRITICAL") && $.source_service IS NULL }'
+      DestinationArn: !GetAtt LogSubscriptionProcessorFunction.Arn
+
   CommandQueueDlq:
     Type: AWS::SQS::Queue
     Properties:
@@ -1424,20 +1462,10 @@ Resources:
             Effect: Allow
             Principal:
               AWS:
-                Fn::If:
-                  - UseBothInvokers
-                  - - !Sub "arn:aws:iam::${InvokerAccountIdA}:root"
-                    - !Sub "arn:aws:iam::${InvokerAccountIdB}:root"
-                  - Fn::If:
-                      - UseInvokerAccountA
-                      - !Sub "arn:aws:iam::${InvokerAccountIdA}:root"
-                      - !Sub "arn:aws:iam::${InvokerAccountIdB}:root"
+                - !Sub "arn:aws:iam::${AWS::AccountId}:root"
             Action:
               - sqs:SendMessage
             Resource: !GetAtt CommandQueue.Arn
-            Condition:
-              StringNotEquals:
-                aws:PrincipalAccount: ""
 
   CommandRouterFunction:
     Type: AWS::Serverless::Function
@@ -1494,17 +1522,6 @@ Outputs:
     Value: !Ref UserPoolClient
     Export:
       Name: !Sub ${AWS::StackName}-UserPoolClientId
-  BackendCognitoUserGroupManagementPolicyArn:
-    Description: Attach this managed policy to the Fargate/ECS task role that calls Cognito Admin group APIs
-    Value: !Ref BackendCognitoUserGroupManagementPolicy
-    Export:
-      Name: !Sub ${AWS::StackName}-BackendCognitoGroupPolicyArn
-  CognitoCrossAccountRoleArn:
-    Condition: HasAnyInvoker
-    Description: Backend sets CognitoCrossAccountRoleArn to this — sts:AssumeRole from invoker account(s) (same principals as Lambda invoke)
-    Value: !GetAtt BackendCognitoCrossAccountRole.Arn
-    Export:
-      Name: !Sub ${AWS::StackName}-CognitoCrossAccountRoleArn
   LogSubscriptionProcessorFunctionArn:
     Description: ARN of the log subscription processor (cross-account subscription DestinationArn in the backend account)
     Value: !GetAtt LogSubscriptionProcessorFunction.Arn
@@ -1525,5 +1542,16 @@ Outputs:
     Value: !GetAtt CommandQueueDlq.Arn
     Export:
       Name: !Sub "${AWS::StackName}-CommandQueueDlqArn"
-
   
+  LoadBalancerArn:
+    Description: ARN of the application load balancer
+    Value: !Ref ApplicationLoadBalancer
+  LoadBalancerDnsName:
+    Description: DNS name of the application load balancer
+    Value: !GetAtt ApplicationLoadBalancer.DNSName
+  LoadBalancerSecurityGroupId:
+    Description: Security group ID of the application load balancer
+    Value: !Ref LoadBalancerSecurityGroup
+  TargetGroupArn:
+    Description: ARN of the application target group
+    Value: !Ref ApplicationTargetGroup
