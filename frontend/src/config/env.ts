@@ -24,7 +24,9 @@ export const config = {
     mapsGKey: requireStringParameter("VITE_MAPS_G_KEY"),
     mapsStartLat: requireNumberParameter("VITE_MAPS_START_LAT", 32.842345),
     mapsStartLng: requireNumberParameter("VITE_MAPS_START_LNG", 35.077271),
+    docsUrl: getStringParameter("VITE_DOCS_URL"),
     // MOCK PARAMETERS
     mockApiTimeout: requireNumberParameter("VITE_MOCK_API_TIMEOUT", 1000),
     lambdaCallMode: requireStringParameter("VITE_LAMBDA_CALL_MODE", "async"),
+
 };

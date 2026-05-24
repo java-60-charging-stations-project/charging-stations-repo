@@ -3,11 +3,17 @@ import { Link, useLocation, useNavigate } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
 import { LOGIN_PATH, REGISTER_PATH } from "@/router/roleNavigation";
 import type { UserRole } from "@/types";
+import { config } from "@/config/env";
 
-type NavItem = {
-  label: string;
-  to: string;
-};
+type NavItem = 
+  | { label: string; to: string; external?: false }
+  | { label: string; href: string; external: true };
+
+const docsNavItem = (href: string): NavItem => ({
+  label: "Help",
+  href,
+  external: true,
+});
 
 const ROLE_NAV_ITEMS: Record<UserRole, NavItem[]> = {
   USER: [
@@ -42,15 +48,16 @@ const NavMenu: FC = () => {
   const location = useLocation();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
-  const navItems = useMemo(
-    () => (user ? ROLE_NAV_ITEMS[user.userRole] : GUEST_NAV_ITEMS),
-    [user],
-  );
-  const identity = user?.email ?? "Guest";
-
+  const navItems = useMemo(() => {
+    const base = user ? ROLE_NAV_ITEMS[user.userRole] : GUEST_NAV_ITEMS;
+    if (!config.docsUrl) return base;
+    return [...base, docsNavItem(config.docsUrl)];
+  }, [user]);
   const closeMobileMenu = () => {
     setIsMobileOpen(false);
   };
+
+  const identity = user?.email ?? "Guest";
 
   const handleLogin = () => {
     closeMobileMenu();
@@ -84,13 +91,20 @@ const NavMenu: FC = () => {
 
         <div className="hidden items-center gap-3 md:flex">
           {navItems.map((item) => {
-            const isActive = location.pathname === item.to;
-            return (
+            return "external" in item && item.external ? (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    className="rounded-md px-2.5 py-1 text-sm font-medium no-underline text-slate-700 hover:bg-slate-100"
+                  >
+                    {item.label}
+                  </a>
+                ) : (
               <Link
                 key={item.to}
                 to={item.to}
                 className={`rounded-md px-2.5 py-1 text-sm font-medium no-underline ${
-                  isActive
+                  location.pathname === item.to
                     ? "bg-slate-800 text-white hover:bg-slate-900 hover:text-white"
                     : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
                 }`}
@@ -115,14 +129,22 @@ const NavMenu: FC = () => {
         <div className="border-t border-slate-200 px-4 pb-4 md:hidden">
           <div className="flex flex-col gap-2 pt-3">
             {navItems.map((item) => {
-              const isActive = location.pathname.startsWith(item.to);
-              return (
+              return "external" in item && item.external ? (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    onClick={closeMobileMenu}
+                    className="rounded-md px-2.5 py-1 text-sm font-medium no-underline text-slate-700 hover:bg-slate-100"
+                  >
+                    {item.label}
+                  </a>
+                ) : (
                 <Link
                   key={item.to}
                   to={item.to}
                   onClick={closeMobileMenu}
                   className={`rounded-md px-3 py-2 text-sm font-medium no-underline ${
-                    isActive
+                    location.pathname === item.to
                       ? "bg-slate-800 text-white hover:bg-slate-900 hover:text-white"
                       : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
                   }`}
