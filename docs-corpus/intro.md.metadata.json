@@ -1,0 +1,28 @@
+{
+  "metadataAttributes": {
+    "source_url": {
+      "value": {
+        "type": "STRING",
+        "stringValue": "http://charge-st-docs.s3-website.il-central-1.amazonaws.com/docs/intro"
+      }
+    },
+    "doc_path": {
+      "value": {
+        "type": "STRING",
+        "stringValue": "docs/intro"
+      }
+    },
+    "visibility": {
+      "value": {
+        "type": "STRING",
+        "stringValue": "public"
+      }
+    },
+    "corpus_path": {
+      "value": {
+        "type": "STRING",
+        "stringValue": "intro.md"
+      }
+    }
+  }
+}

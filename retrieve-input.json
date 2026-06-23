@@ -1,0 +1,11 @@
+{
+    "knowledgeBaseId": "GRL3JSU23F",
+    "retrievalQuery": {
+      "text": "What Node.js version does Docusaurus need?"
+    },
+    "retrievalConfiguration": {
+      "managedSearchConfiguration": {
+        "numberOfResults": 3
+      }
+    }
+  }
